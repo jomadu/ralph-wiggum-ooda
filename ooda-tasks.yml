@@ -1,0 +1,37 @@
+# OODA Task Compositions
+# Usage: ./ooda.sh --task <name> [--max-iterations N]
+
+build:
+  observe: prompts/observe_plan_specs_impl.md
+  orient: prompts/orient_build.md
+  decide: prompts/decide_build.md
+  act: prompts/act_build.md
+  default_iterations: 5
+
+plan-spec-to-impl:
+  observe: prompts/observe_plan_specs_impl.md
+  orient: prompts/orient_gap.md
+  decide: prompts/decide_gap_plan.md
+  act: prompts/act_plan.md
+  default_iterations: 1
+
+plan-impl-to-spec:
+  observe: prompts/observe_plan_specs_impl.md
+  orient: prompts/orient_gap.md
+  decide: prompts/decide_gap_plan.md
+  act: prompts/act_plan.md
+  default_iterations: 1
+
+plan-spec-refactor:
+  observe: prompts/observe_specs.md
+  orient: prompts/orient_quality.md
+  decide: prompts/decide_refactor_plan.md
+  act: prompts/act_plan.md
+  default_iterations: 1
+
+plan-impl-refactor:
+  observe: prompts/observe_impl.md
+  orient: prompts/orient_quality.md
+  decide: prompts/decide_refactor_plan.md
+  act: prompts/act_plan.md
+  default_iterations: 1
