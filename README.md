@@ -141,7 +141,7 @@ project-root/
 ├── ooda-tasks.yml             # Task compositions
 ├── AGENTS.md                  # Operational guide (generated/verified by orient)
 ├── PLAN.md                    # Task list and progress (generated/updated by act)
-├── prompts/                   # OODA phase components (18 files)
+├── prompts/                   # OODA phase components
 │   ├── observe_*.md           # Observation variants
 │   ├── orient_*.md            # Analysis variants
 │   ├── decide_*.md            # Decision variants
