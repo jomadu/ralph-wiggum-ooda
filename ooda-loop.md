@@ -21,7 +21,7 @@ The key insight is that this is a continuous loop, not a linear process. After a
 ## In software/tech contexts
 
 - Agile methodologies mirror OODA principles with rapid iteration cycles
-- DevOps practices (observe metrics → orient around data → decide on changes → act/deploy) follow this pattern
+- DevOps practices (observe metrics > orient around data > decide on changes > act/deploy) follow this pattern
 - Incident response and security operations use OODA to respond faster than attackers
 
 The framework emphasizes adaptability and continuous learning over rigid planning.

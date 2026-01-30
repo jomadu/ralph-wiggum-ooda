@@ -4,7 +4,7 @@ An autonomous AI coding methodology that runs Claude in a continuous loop using 
 
 ## Core Concept
 
-Each loop iteration: **read plan → pick task → implement → test → commit → clear context → repeat**
+Each loop iteration: **read plan > pick task > implement > test > commit > clear context > repeat**
 
 Fresh context each iteration keeps the AI in its "smart zone" (40-60% context utilization). File-based memory (specs, plan, agents file) persists learnings between iterations.
 
@@ -109,7 +109,7 @@ project-root/
 ## Workflow
 
 ### Phase 1: Define Requirements (LLM conversation)
-1. Discuss project ideas → identify Jobs to Be Done (JTBD)
+1. Discuss project ideas > identify Jobs to Be Done (JTBD)
 2. Break JTBD into topics of concern
 3. LLM writes `specs/FILENAME.md` for each topic
 

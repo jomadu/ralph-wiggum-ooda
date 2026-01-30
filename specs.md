@@ -19,7 +19,7 @@ A JTBD describes a high-level user outcome or need. It answers "What does the us
 
 A topic of concern is a distinct aspect or component within a JTBD. It represents a cohesive area of functionality that can be specified independently.
 
-**Relationship:** 1 JTBD → multiple topics of concern
+**Relationship:** 1 JTBD > multiple topics of concern
 
 **Examples:**
 - JTBD: "Process payments securely"
@@ -27,7 +27,7 @@ A topic of concern is a distinct aspect or component within a JTBD. It represent
 
 **Scope Test:** Can you describe it in one sentence without "and"?
 - ✓ "Transaction processing executes payment authorization and captures funds"
-- ✗ "User management handles authentication, profiles, and billing" → 3 topics
+- ✗ "User management handles authentication, profiles, and billing" > 3 topics
 
 ## Specification Documents
 
@@ -53,7 +53,7 @@ The README.md follows this organization:
 6. **Documentation** - Links to detailed docs organized by category
 
 **Principles:**
-- Progressive disclosure (quick start → detailed docs)
+- Progressive disclosure (quick start > detailed docs)
 - Action-oriented (commands you can run immediately)
 - Problem-solution framing (why before how)
 - Links to detailed documentation (README stays concise)

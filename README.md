@@ -1,14 +1,14 @@
-# Ralph Wiggum OODA
+# Ralph Wiggum OODA Loop
 
 An autonomous AI coding methodology using composable [OODA-based](ooda-loop.md) prompts to maintain fresh context across iterations.
 
 ## Core Concept
 
-Each loop iteration: **observe → orient → decide → act → clear context → repeat**
+Each loop iteration: **observe > orient > decide > act > clear context > repeat**
 
 Fresh context each iteration keeps the AI in its "smart zone" (40-60% context utilization). File-based memory (AGENTS.md, PLAN.md) persists learnings between iterations.
 
-This methodology evolved from the [Ralph Loop](ralph-loop.md) by Geoff Huntley, applying the OODA framework to create composable prompt components.
+This methodology evolved from the [Ralph Loop](ralph-loop.md) by Geoff Huntley. It applies the OODA framework to break the monolithic prompt into discrete phases, creating composable prompt components.
 
 ## The Loop Mechanism
 
@@ -22,7 +22,7 @@ This methodology evolved from the [Ralph Loop](ralph-loop.md) by Geoff Huntley, 
 
 The script interpolates the 4 prompt components into a template and feeds it to an LLM agent. Each iteration:
 1. Loads prompt template with 4 OODA phase components
-2. Agent executes observe → orient → decide → act
+2. Agent executes observe > orient > decide > act
 3. Updates PLAN.md on disk
 4. Exits (context cleared)
 5. Loop restarts with fresh context
@@ -35,15 +35,15 @@ Exits when max iterations reached.
 
 1. **Observe** - Gather information from specs, implementation, PLAN.md, and AGENTS.md
 2. **Orient** - Analyze observations using task-specific criteria and synthesize understanding
-3. **Decide** - Determine plan structure, priorities, and tasks for PLAN.md
-4. **Act** - Write the plan to PLAN.md
+3. **Decide** - Determine plan structure, priorities, tasks for PLAN.md, and necessary AGENTS.md updates
+4. **Act** - Write the plan to PLAN.md and update AGENTS.md
 
 ### Building Tasks (Task 1)
 
 1. **Observe** - Gather information from PLAN.md, AGENTS.md, specs, and implementation
 2. **Orient** - Understand task requirements and identify what needs to be built
-3. **Decide** - Pick highest priority task and determine implementation approach
-4. **Act** - Implement task, run quality checks per AGENTS.md, commit when passing, update PLAN.md
+3. **Decide** - Pick highest priority task from PLAN.md, determine implementation approach, and identify AGENTS.md updates
+4. **Act** - Implement task, run quality checks per AGENTS.md, update PLAN.md and AGENTS.md, commit when passing
 
 ## Task Types
 
@@ -53,10 +53,10 @@ The methodology supports multiple task types through prompt composition:
    - Only task type that modifies implementation code
    - Backpressure from tests ensures correctness
 
-2. **Plan spec→impl** - Create plan to make implementation match specifications
+2. **Plan spec-to-impl** - Create plan to make implementation match specifications
    - Gap analysis: what's in specs but not in code
 
-3. **Plan impl→spec** - Create plan to make specifications match implementation
+3. **Plan impl-to-spec** - Create plan to make specifications match implementation
    - Gap analysis: what's in code but not in specs
 
 4. **Plan spec refactoring** - Create plan to refactor specs out of local optimums
