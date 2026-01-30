@@ -1,5 +1,3 @@
-# Orient: Gap Analysis
-
 Based on your observations:
 
 1. Compare specifications against implementation

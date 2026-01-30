@@ -1,5 +1,3 @@
-# Observe: Plan, Specifications, and Implementation
-
 Read AGENTS.md first to understand:
 - What constitutes "specification" in this repository
 - What constitutes "implementation" in this repository

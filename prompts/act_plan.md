@@ -1,5 +1,3 @@
-# Act: Plan
-
 Execute your decision:
 
 1. Write PLAN.md with prioritized tasks

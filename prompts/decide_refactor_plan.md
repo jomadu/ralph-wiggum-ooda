@@ -1,5 +1,3 @@
-# Decide: Refactor Plan
-
 Based on your quality assessment:
 
 1. If criteria fail threshold: propose refactoring (spec or implementation)

@@ -1,5 +1,3 @@
-# Observe: Specifications
-
 Read AGENTS.md first to understand:
 - What constitutes "specification" in this repository
 - Quality criteria definitions for specifications

@@ -1,5 +1,3 @@
-# Decide: Gap Plan
-
 Based on your gap analysis:
 
 1. Structure the plan by priority

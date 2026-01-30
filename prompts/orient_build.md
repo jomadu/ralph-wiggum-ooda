@@ -1,5 +1,3 @@
-# Orient: Build
-
 Based on your observations:
 
 1. Understand the specific task requirements from PLAN.md

@@ -1,5 +1,3 @@
-# Orient: Quality Assessment
-
 Based on your observations and AGENTS.md criteria:
 
 1. Apply boolean criteria (PASS/FAIL) to what you observed

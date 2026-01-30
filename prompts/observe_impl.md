@@ -1,5 +1,3 @@
-# Observe: Implementation
-
 Read AGENTS.md first to understand:
 - What constitutes "implementation" in this repository
 - Quality criteria definitions for implementation

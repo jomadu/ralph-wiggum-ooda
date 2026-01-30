@@ -1,5 +1,3 @@
-# Act: Build
-
 Execute your decision:
 
 1. Implement the task

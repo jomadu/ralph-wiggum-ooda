@@ -1,5 +1,3 @@
-# Decide: Build
-
 Based on your orientation:
 
 1. Pick the highest priority task from PLAN.md
