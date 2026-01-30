@@ -4,6 +4,8 @@ Autonomous AI coding that maintains fresh context across iterations using compos
 
 Evolved from the [Ralph Loop](https://ghuntley.com/ralph/) by Geoff Huntley, applying the OODA framework to break monolithic prompts into composable components.
 
+<a href="https://buymeacoffee.com/Max.dunn" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
+
 ## TL;DR
 
 ```bash
