@@ -1,5 +1,5 @@
 # OODA Procedure Compositions
-# Usage: ./ooda.sh <procedure> --task <task-id> [--max-iterations N]
+# Usage: ./ooda.sh <task-id> <procedure> [--max-iterations N]
 
 bootstrap:
   observe: prompts/observe_bootstrap.md

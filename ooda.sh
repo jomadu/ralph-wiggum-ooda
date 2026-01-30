@@ -1,15 +1,14 @@
 #!/bin/bash
-# Usage: ./ooda.sh [procedure] [--procedures <file>] [--task <task-id>] [--max-iterations N]
-#    OR: ./ooda.sh --observe <file> --orient <file> --decide <file> --act <file> --task <task-id> [--max-iterations N]
+# Usage: ./ooda.sh <task-id> <procedure> [--procedures <file>] [--max-iterations N]
+#    OR: ./ooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
 # Examples:
-#   ./ooda.sh build --task TASK-123
-#   ./ooda.sh build --task TASK-123 --max-iterations 5
-#   ./ooda.sh build --procedures custom-procedures.yml --task TASK-123
-#   ./ooda.sh --observe prompts/observe_specs.md \
+#   ./ooda.sh TASK-123 build
+#   ./ooda.sh TASK-123 build --max-iterations 5
+#   ./ooda.sh TASK-123 build --procedures custom-procedures.yml
+#   ./ooda.sh TASK-123 --observe prompts/observe_specs.md \
 #             --orient prompts/orient_gap.md \
 #             --decide prompts/decide_gap_plan.md \
 #             --act prompts/act_plan.md \
-#             --task TASK-123 \
 #             --max-iterations 1
 
 # Parse YAML (minimal parser for our simple structure)
@@ -58,7 +57,13 @@ PROCEDURE=""
 PROCEDURES_FILE="ooda-procedures.yml"
 TASK_ID=""
 
-# Check if first arg is a positional procedure name (not a flag)
+# First positional argument is task ID (required)
+if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
+    TASK_ID="$1"
+    shift
+fi
+
+# Second positional argument is procedure name (optional)
 if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
     PROCEDURE="$1"
     shift
@@ -68,10 +73,6 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --procedures)
             PROCEDURES_FILE="$2"
-            shift 2
-            ;;
-        --task)
-            TASK_ID="$2"
             shift 2
             ;;
         --observe)
@@ -96,12 +97,20 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./ooda.sh [procedure] [--procedures <file>] [--task <task-id>] [--max-iterations N]"
-            echo "   OR: ./ooda.sh --observe <file> --orient <file> --decide <file> --act <file> --task <task-id> [--max-iterations N]"
+            echo "Usage: ./ooda.sh <task-id> <procedure> [--procedures <file>] [--max-iterations N]"
+            echo "   OR: ./ooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
             exit 1
             ;;
     esac
 done
+
+# Validate task ID
+if [ -z "$TASK_ID" ]; then
+    echo "Error: <task-id> is required as first argument"
+    echo "Usage: ./ooda.sh <task-id> <procedure> [--procedures <file>] [--max-iterations N]"
+    echo "   OR: ./ooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+    exit 1
+fi
 
 # If procedure specified, load from config
 if [ -n "$PROCEDURE" ]; then
@@ -130,14 +139,8 @@ fi
 # Validate required arguments
 if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
     echo "Error: All four OODA phases required"
-    echo "Usage: ./ooda.sh [procedure] [--procedures <file>] [--task <task-id>] [--max-iterations N]"
-    echo "   OR: ./ooda.sh --observe <file> --orient <file> --decide <file> --act <file> --task <task-id> [--max-iterations N]"
-    exit 1
-fi
-
-# Task ID is required for non-bootstrap procedures
-if [ "$PROCEDURE" != "bootstrap" ] && [ -z "$TASK_ID" ]; then
-    echo "Error: --task <task-id> is required"
+    echo "Usage: ./ooda.sh <task-id> <procedure> [--procedures <file>] [--max-iterations N]"
+    echo "   OR: ./ooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
     exit 1
 fi
 
@@ -153,15 +156,13 @@ ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current)
 
 # Set up task-specific paths
-if [ -n "$TASK_ID" ]; then
-    TASK_DIR="tasks/${TASK_ID}"
-    PLAN_FILE="${TASK_DIR}/PLAN.md"
-    STORY_FILE="${TASK_DIR}/STORY.md"
-    BUG_FILE="${TASK_DIR}/BUG.md"
-    
-    # Create task directory if it doesn't exist
-    mkdir -p "$TASK_DIR"
-fi
+TASK_DIR="tasks/${TASK_ID}"
+PLAN_FILE="${TASK_DIR}/PLAN.md"
+STORY_FILE="${TASK_DIR}/STORY.md"
+BUG_FILE="${TASK_DIR}/BUG.md"
+
+# Create task directory if it doesn't exist
+mkdir -p "$TASK_DIR"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 [ -n "$PROCEDURE" ] && echo "Procedure: $PROCEDURE"
@@ -170,8 +171,8 @@ echo "Orient:    $ORIENT"
 echo "Decide:    $DECIDE"
 echo "Act:       $ACT"
 echo "Branch:    $CURRENT_BRANCH"
-[ -n "$TASK_ID" ] && echo "Task:      $TASK_ID"
-[ -n "$TASK_ID" ] && echo "Task Dir:  $TASK_DIR"
+echo "Task:      $TASK_ID"
+echo "Task Dir:  $TASK_DIR"
 [ $MAX_ITERATIONS -gt 0 ] && echo "Max:       $MAX_ITERATIONS iterations"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
@@ -182,10 +183,6 @@ create_prompt() {
 
 ## Context
 - Current branch: \`$CURRENT_BRANCH\`
-EOF
-    
-    if [ -n "$TASK_ID" ]; then
-        cat <<EOF
 - Task ID: \`$TASK_ID\`
 - Task directory: \`$TASK_DIR\`
 - Plan file: \`$PLAN_FILE\`
@@ -193,10 +190,6 @@ EOF
 - Bug file: \`$BUG_FILE\` (if this is a bug fix)
 
 Use these file paths when reading or writing task-related documents.
-EOF
-    fi
-    
-    cat <<EOF
 
 ## OBSERVE
 $(cat "$OBSERVE")

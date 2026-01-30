@@ -13,18 +13,18 @@ This methodology evolved from the [Ralph Loop](ralph-loop.md) by Geoff Huntley. 
 ## The Loop Mechanism
 
 ```bash
-./ooda.sh <procedure> --task TASK-123 \
+./ooda.sh TASK-123 <procedure> \
           [--max-iterations N]
 ```
 
 Or with explicit prompt files:
 
 ```bash
-./ooda.sh --observe prompts/observe_X.md \
+./ooda.sh TASK-123 \
+          --observe prompts/observe_X.md \
           --orient prompts/orient_Y.md \
           --decide prompts/decide_Z.md \
           --act prompts/act_W.md \
-          --task TASK-123 \
           [--max-iterations N]
 ```
 
