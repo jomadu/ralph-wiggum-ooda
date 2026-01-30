@@ -140,22 +140,12 @@ project-root/
 ├── ooda.sh                    # Loop script
 ├── AGENTS.md                  # Operational guide (generated/verified by orient)
 ├── PLAN.md                    # Task list and progress (generated/updated by act)
-├── prompts/                   # OODA phase components (15 files)
-│   ├── observe_bootstrap.md
-│   ├── observe_plan_specs_impl.md
-│   ├── observe_specs.md
-│   ├── observe_impl.md
-│   ├── orient_bootstrap.md
-│   ├── orient_build.md
-│   ├── orient_gap.md
-│   ├── orient_quality.md
-│   ├── decide_bootstrap.md
-│   ├── decide_build.md
-│   ├── decide_gap_plan.md
-│   ├── decide_refactor_plan.md
-│   ├── act_bootstrap.md
-│   ├── act_build.md
-│   └── act_plan.md
+├── prompts/                   # OODA phase components (18 files)
+│   ├── README.md              # Prompt composition guide
+│   ├── observe_*.md           # 5 observation variants
+│   ├── orient_*.md            # 5 analysis variants
+│   ├── decide_*.md            # 5 decision variants
+│   └── act_*.md               # 3 execution variants
 ├── specs/                     # Requirements (if using spec-driven approach)
 │   ├── feature-a.md
 │   └── feature-b.md
