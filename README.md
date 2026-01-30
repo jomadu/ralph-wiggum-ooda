@@ -87,10 +87,11 @@ The methodology supports multiple task types through prompt composition:
 ## Key Principles
 
 ### Composable Prompts
-- Minimal yet complete set of prompt variants per phase (15 files total)
+- Minimal yet complete set of prompt variants per phase (18 files total)
 - Most variants in observe (different data sources) and orient (different analysis types)
 - Decide/act more stable across task types
 - Same orient variant can be reused with different observe inputs
+- See [prompts/README.md](prompts/README.md) for detailed breakdown
 
 ### Ralph Loop Language Patterns
 - "study" not "read" - Active, intentional engagement
