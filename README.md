@@ -141,6 +141,7 @@ project-root/
 ├── ooda-tasks.yml             # Task compositions
 ├── AGENTS.md                  # Operational guide
 ├── PLAN.md                    # Task list and progress
+├── FEATURE.md                 # New feature description (optional)
 ├── prompts/                   # OODA phase components
 │   ├── observe_*.md           # Observation variants
 │   ├── orient_*.md            # Analysis variants
