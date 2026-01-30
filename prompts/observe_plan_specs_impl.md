@@ -6,6 +6,6 @@ Study AGENTS.md first to understand:
 Then study:
 - PLAN.md (current state and most important task)
 - Specifications (per AGENTS.md definition)
-- Implementation (per AGENTS.md definition)
+- Implementation (per AGENTS.md definition, file tree, symbols, but not full files)
 
 Focus on gathering information needed to understand the current state and what work needs to be done.
