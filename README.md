@@ -38,7 +38,7 @@ Each iteration clears context. File-based memory persists. AI stays in its "smar
 **8 Procedure Types**
 - Bootstrap your repository (creates operational guide)
 - Build from plan (only procedure that modifies code)
-- Gap analysis (spec ↔ implementation)
+- Gap analysis (spec to implementation)
 - Quality assessment (refactoring triggers)
 - Story/bug incorporation (iterative convergence)
 
@@ -79,7 +79,7 @@ Each iteration:
 - Study story/bug file (if applicable)
 
 **Orient** - Analyze and synthesize
-- Gap analysis (compare specs ↔ code)
+- Gap analysis (compare specs to code)
 - Quality assessment (apply boolean criteria)
 - Understand task requirements
 - Search codebase (don't assume not implemented)
@@ -217,7 +217,7 @@ Specification documents (optional, see [specs.md](specs.md)).
 - One spec per topic of concern using [spec-template.md](spec-template.md)
 - Source of truth for requirements
 - Acceptance criteria define backpressure for act phase
-- Implementation Mapping bridges specs ↔ code
+- Implementation Mapping bridges specs to code
 
 ### prompts/
 
