@@ -140,8 +140,8 @@ project-root/
 ├── ooda.sh                    # Loop script
 ├── ooda-tasks.yml             # Task compositions
 ├── AGENTS.md                  # Operational guide
-├── PLAN.md                    # Task list and progress
-├── FEATURE.md                 # New feature description (optional)
+├── PLAN.md                    # Task list and progress (gitignored)
+├── FEATURE.md                 # New feature description (optional, gitignored)
 ├── prompts/                   # OODA phase components
 │   ├── observe_*.md           # Observation variants
 │   ├── orient_*.md            # Analysis variants
