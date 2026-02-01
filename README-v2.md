@@ -4,6 +4,18 @@
 
 Quick command reference showing the complete workflow from bootstrap to refactoring.
 
+### Installation
+
+How to set up rooda.sh in your repository.
+
+### Basic Workflow
+
+Common command sequences for typical development cycles.
+
+### What You Get
+
+Autonomous coding without context degradation, tests must pass before commit, eventual consistency through iteration.
+
 ## How It Works
 
 Core mechanics of the loop system.
