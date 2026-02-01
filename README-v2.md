@@ -4,10 +4,6 @@
 
 Quick command reference showing the complete workflow from bootstrap to refactoring.
 
-## What You Get
-
-High-level feature overview of procedures, architecture, and quality control.
-
 ## How It Works
 
 Core mechanics of the loop system.
@@ -16,49 +12,37 @@ Core mechanics of the loop system.
 
 Single iteration lifecycle and why fresh context matters.
 
-### Planning vs Building
+### OODA Phases
 
-Two primary loop modes: planning procedures generate work, building procedures execute it.
+Four-phase breakdown (observe, orient, decide, act).
 
 ### AGENTS.md: The Agent-Project Interface
 
 Defines how agents interact with the project (work tracking, build commands, spec/impl definitions, quality criteria).
 
-### OODA Phases: Breaking Down the Monolithic Prompt
+### Example Iteration
 
-The prompt to each loop iteration decomposes into four phases (observe, orient, decide, act).
+Concrete walkthrough of one build cycle.
 
-### Composable Architecture
+## Composable Architecture
 
 How prompt files combine into procedures.
 
-#### Shared Components Across Procedures
+## The 8 Procedures
 
-Same OODA phase components reused in different procedure combinations.
+Brief overview (table showing which components each uses).
 
-#### The 8 Procedures
+## Custom Procedures
 
-Brief overview of the purpose of each procedure (table format).
-
-#### Custom Procedures
-
-Creating your own procedure compositions.
+Creating your own compositions.
 
 ## Key Principles
 
 Critical patterns for agent behavior and quality control mechanisms.
 
-### AGENTS.md as Source of Truth
+## Workflow Patterns
 
-Assumed inaccurate until verified empirically; updated when errors discovered.
-
-### Skepticism and Empirical Verification
-
-Don't assume not implemented; always search codebase first.
-
-### Other Core Principles
-
-Backpressure, parallel subagents, capture the why, tight tasks.
+Common sequences showing when to use which procedure.
 
 ## Sample Repository Structure
 
@@ -70,11 +54,7 @@ Sandboxing requirements and blast radius philosophy.
 
 ## Troubleshooting
 
-Common issues and escape hatches.
-
-### Common Issues
-
-Repeated implementations, test failures, missing code, off-track plans.
+Common issues and solutions.
 
 ## Learn More
 
