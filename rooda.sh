@@ -1,12 +1,11 @@
 #!/bin/bash
-# Usage: ./rooda.sh <task-id> <procedure> [--config <file>] [--max-iterations N] [--task-file <file>] [--plan-file <file>]
-#    OR: ./rooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
+# Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
+#    OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
 # Examples:
-#   ./rooda.sh TASK-123 build
-#   ./rooda.sh TASK-123 build --max-iterations 5
-#   ./rooda.sh TASK-123 build --config custom-config.yml
-#   ./rooda.sh TASK-123 build --task-file custom/task.md --plan-file custom/plan.md
-#   ./rooda.sh TASK-123 --observe prompts/observe_specs.md \
+#   ./rooda.sh build
+#   ./rooda.sh build --max-iterations 5
+#   ./rooda.sh build --config custom-config.yml
+#   ./rooda.sh --observe prompts/observe_specs.md \
 #             --orient prompts/orient_gap.md \
 #             --decide prompts/decide_gap_plan.md \
 #             --act prompts/act_plan.md \
@@ -48,26 +47,6 @@ parse_yaml() {
     return 1
 }
 
-# Interpolate variables in path pattern
-interpolate_path() {
-    local pattern=$1
-    local task_id=$2
-    local branch=$3
-    
-    # First resolve {task_dir} if present
-    local task_dir=$(parse_yaml "$CONFIG_FILE" "paths" "task_dir")
-    task_dir="${task_dir//\{task-id\}/$task_id}"
-    task_dir="${task_dir//\{branch\}/$branch}"
-    
-    # Then interpolate the pattern
-    local result="$pattern"
-    result="${result//\{task-id\}/$task_id}"
-    result="${result//\{branch\}/$branch}"
-    result="${result//\{task_dir\}/$task_dir}"
-    
-    echo "$result"
-}
-
 # Parse arguments
 OBSERVE=""
 ORIENT=""
@@ -76,17 +55,8 @@ ACT=""
 MAX_ITERATIONS=0
 PROCEDURE=""
 CONFIG_FILE="ooda-config.yml"
-TASK_ID=""
-TASK_FILE_OVERRIDE=""
-PLAN_FILE_OVERRIDE=""
 
-# First positional argument is task ID (required)
-if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
-    TASK_ID="$1"
-    shift
-fi
-
-# Second positional argument is procedure name (optional)
+# First positional argument is procedure name (optional)
 if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
     PROCEDURE="$1"
     shift
@@ -96,14 +66,6 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --config)
             CONFIG_FILE="$2"
-            shift 2
-            ;;
-        --task-file)
-            TASK_FILE_OVERRIDE="$2"
-            shift 2
-            ;;
-        --plan-file)
-            PLAN_FILE_OVERRIDE="$2"
             shift 2
             ;;
         --observe)
@@ -128,20 +90,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./rooda.sh <task-id> <procedure> [--config <file>] [--max-iterations N] [--task-file <file>] [--plan-file <file>]"
-            echo "   OR: ./rooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+            echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
+            echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
             exit 1
             ;;
     esac
 done
-
-# Validate task ID
-if [ -z "$TASK_ID" ]; then
-    echo "Error: <task-id> is required as first argument"
-    echo "Usage: ./rooda.sh <task-id> <procedure> [--config <file>] [--max-iterations N] [--task-file <file>] [--plan-file <file>]"
-    echo "   OR: ./rooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
-    exit 1
-fi
 
 # If procedure specified, load from config
 if [ -n "$PROCEDURE" ]; then
@@ -192,29 +146,21 @@ done
 ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current)
 
-# Load path patterns from config or use defaults
-if [ -f "$CONFIG_FILE" ]; then
-    TASK_DIR_PATTERN=$(parse_yaml "$CONFIG_FILE" "paths" "task_dir")
-    TASK_FILE_PATTERN=$(parse_yaml "$CONFIG_FILE" "paths" "task_file")
-    PLAN_FILE_PATTERN=$(parse_yaml "$CONFIG_FILE" "paths" "plan_file")
+# Validate required arguments
+if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
+    echo "Error: All four OODA phases required"
+    echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
+    echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+    exit 1
 fi
 
-# Use defaults if not in config
-TASK_DIR_PATTERN="${TASK_DIR_PATTERN:-tasks/\{task-id\}}"
-TASK_FILE_PATTERN="${TASK_FILE_PATTERN:-\{task_dir\}/TASK.md}"
-PLAN_FILE_PATTERN="${PLAN_FILE_PATTERN:-\{task_dir\}/PLAN.md}"
-
-# Interpolate paths
-TASK_DIR=$(interpolate_path "$TASK_DIR_PATTERN" "$TASK_ID" "$CURRENT_BRANCH")
-TASK_FILE=$(interpolate_path "$TASK_FILE_PATTERN" "$TASK_ID" "$CURRENT_BRANCH")
-PLAN_FILE=$(interpolate_path "$PLAN_FILE_PATTERN" "$TASK_ID" "$CURRENT_BRANCH")
-
-# Apply CLI overrides
-[ -n "$TASK_FILE_OVERRIDE" ] && TASK_FILE="$TASK_FILE_OVERRIDE"
-[ -n "$PLAN_FILE_OVERRIDE" ] && PLAN_FILE="$PLAN_FILE_OVERRIDE"
-
-# Create task directory if it doesn't exist
-mkdir -p "$TASK_DIR"
+# Validate files exist
+for file in "$OBSERVE" "$ORIENT" "$DECIDE" "$ACT"; do
+    if [ ! -f "$file" ]; then
+        echo "Error: File not found: $file"
+        exit 1
+    fi
+done
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 [ -n "$PROCEDURE" ] && echo "Procedure: $PROCEDURE"
@@ -223,26 +169,13 @@ echo "Orient:    $ORIENT"
 echo "Decide:    $DECIDE"
 echo "Act:       $ACT"
 echo "Branch:    $CURRENT_BRANCH"
-echo "Task:      $TASK_ID"
-echo "Task Dir:  $TASK_DIR"
-echo "Task File: $TASK_FILE"
-echo "Plan File: $PLAN_FILE"
 [ $MAX_ITERATIONS -gt 0 ] && echo "Max:       $MAX_ITERATIONS iterations"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-# Create interpolated prompt template
+# Create prompt template
 create_prompt() {
     cat <<EOF
 # OODA Loop Iteration
-
-## Context
-- Current branch: \`$CURRENT_BRANCH\`
-- Task ID: \`$TASK_ID\`
-- Task directory: \`$TASK_DIR\`
-- Task file: \`$TASK_FILE\`
-- Plan file: \`$PLAN_FILE\`
-
-Use these file paths when reading or writing task-related documents.
 
 ## OBSERVE
 $(cat "$OBSERVE")

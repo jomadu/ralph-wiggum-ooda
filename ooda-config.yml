@@ -1,11 +1,5 @@
 # OODA Configuration
-# Defines file path patterns and procedure compositions
-
-# File path patterns (support {task-id} interpolation)
-paths:
-  task_dir: "tasks/{task-id}"           # Base directory for task files
-  task_file: "{task_dir}/TASK.md"       # Task description (story/bug/feature)
-  plan_file: "{task_dir}/PLAN.md"       # Implementation plan
+# Defines procedure compositions
 
 # Procedure compositions (OODA phase combinations)
 procedures:
