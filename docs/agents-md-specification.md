@@ -32,26 +32,32 @@ Update: mv tasks/ready/<id>.md tasks/in-progress/
 Complete: mv tasks/in-progress/<id>.md tasks/done/
 ```
 
-### Story/Bug Input (if using story/bug incorporation procedures)
+### Story/Bug Input
 - **Input location** - Where agents read the story/bug description to be incorporated
+- **Input identifier** - How agents know which specific story/bug to read (e.g., env variable, command-line arg, fixed filename)
 - Used by `draft-plan-story-to-spec` and `draft-plan-bug-to-spec` procedures as the source material for planning
 
 **Examples:**
 ```
-# Single file at project root
+# Single file at project root (simplest)
 ./TASK.md
 
-# Beads issue
-bd show <id> --json  (title + description fields)
+# Beads issue (via env variable)
+bd show $TASK_ID --json  (title + description fields)
 
-# File per story
-stories/<id>.md
+# File per story (via env variable)
+stories/$TASK_ID.md
 
-# GitHub issue
+# GitHub issue (via env variable)
+gh issue view $TASK_ID --json
+
+# Command-line argument passed to rooda.sh
+./rooda.sh draft-plan-story-to-spec <task-id>
+```
 gh issue view <id> --json
 ```
 
-### Planning System (if using draft planning procedures)
+### Planning System
 - **Draft plan location** - Where agents write/read plans during convergence iterations
 - **Publishing mechanism** - How converged plans get imported into work tracking
 - Used by draft planning procedures to iterate toward a complete plan, then publish to work tracking
