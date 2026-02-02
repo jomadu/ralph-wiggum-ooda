@@ -6,19 +6,30 @@ AGENTS.md is the interface between agents and the repository. It defines how age
 
 ## What's in AGENTS.md?
 
-When an agent is prompted to update the work tracking system, AGENTS.md tells the agent how to update the work tracking system for that particular repository. Same for build/test/lint commands, and all the rest of the operational details.
-
 ## Required Sections
-
-### Task/Story/Bug Descriptions
-- Where to find task descriptions for story/bug incorporation procedures (if applicable)
-- Where to find or write plans during incorporation (if applicable)
 
 ### Work Tracking System
 - What system tracks work (beads, GitHub issues, linear, etc.)
 - How to query ready work
 - How to update status
 - How to mark complete
+
+### Story/Bug Incorporation (if using these procedures)
+- **Task file location** - Where agents read the story/bug description (e.g., `bd show <id> --json`, `tasks/<id>.md`, GitHub issue API)
+- **Plan file location** - Where agents write/read the incorporation plan during iteration (e.g., `tasks/<id>/plan.md`, not used if work tracking handles it)
+- Used by `plan-story-to-spec` and `plan-bug-to-spec` procedures to understand what needs incorporating and track planning progress
+
+**Example (beads):**
+```
+Task file: Issue description from `bd show <id> --json` (title + description fields)
+Plan file: Not used (beads tracks status directly)
+```
+
+**Example (file-based):**
+```
+Task file: tasks/<id>/description.md
+Plan file: tasks/<id>/plan.md
+```
 
 ### Build/Test/Lint Commands
 - Specific commands to run tests
