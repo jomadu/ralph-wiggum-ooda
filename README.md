@@ -19,27 +19,35 @@ chmod +x rooda.sh
 
 ```bash
 # 1. Bootstrap: create operational guide
-./rooda.sh bootstrap                              # Create AGENTS.md
+./rooda.sh bootstrap                                    # Create AGENTS.md
 
-# 2. Plan: incorporate story into specs
-./rooda.sh plan-story-to-spec --max-iterations 5  # Incorporate story into specs
+# 2. Draft plan: incorporate story into specs
+./rooda.sh draft-plan-story-to-spec --max-iterations 5  # Converge draft plan
 
-# 3. Build: write the specs
-./rooda.sh build --max-iterations 5               # Write specs
+# 3. Publish plan: import to work tracking
+./rooda.sh publish-plan                                 # File beads issues
 
-# 4. Plan: gap analysis from specs to implementation
-./rooda.sh plan-spec-to-impl                      # Gap analysis: specs to code
+# 4. Build: write the specs
+./rooda.sh build --max-iterations 5                     # Write specs
 
-# 5. Build: implement the specs
-./rooda.sh build --max-iterations 5               # Implement code
+# 5. Draft plan: gap analysis from specs to implementation
+./rooda.sh draft-plan-spec-to-impl                      # Converge draft plan
 
-# 6. Refactor implementation
-./rooda.sh plan-impl-refactor                     # Quality assessment of code
-./rooda.sh build --max-iterations 5               # Refactor code
+# 6. Publish plan: import to work tracking
+./rooda.sh publish-plan                                 # File beads issues
 
-# 7. Refactor specs
-./rooda.sh plan-spec-refactor                     # Quality assessment of specs
-./rooda.sh build --max-iterations 5               # Refine specs
+# 7. Build: implement the specs
+./rooda.sh build --max-iterations 5                     # Implement code
+
+# 8. Refactor implementation
+./rooda.sh draft-plan-impl-refactor                     # Quality assessment
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refactor code
+
+# 9. Refactor specs
+./rooda.sh draft-plan-spec-refactor                     # Quality assessment
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refine specs
 ```
 
 ## How It Works
@@ -106,18 +114,19 @@ This composition enables significant reuse. For example, `observe_plan_specs_imp
 
 The configuration-driven approach means you can create custom procedures without writing new code—just specify which existing prompt components to combine. Want a procedure that observes only specs, orients around quality assessment, decides on refactoring, and acts by writing a plan? Map those four files in the config. The separation of concerns across OODA phases makes different combinations naturally express different task types.
 
-## The 8 Procedures
+## The 9 Procedures
 
-| Procedure                       | ID                   | Description                                                        | Modifies Code | Iterations |
-| ------------------------------- | -------------------- | ------------------------------------------------------------------ | ------------- | ---------- |
-| Bootstrap Repository            | `bootstrap`          | Creates or updates AGENTS.md operational guide for the repository  | No            | 1          |
-| Build from Plan                 | `build`              | Implements tasks from plan (only procedure that modifies code)     | Yes           | 5          |
-| Plan Spec to Implementation     | `plan-spec-to-impl`  | Creates plan from gap analysis - what's in specs but not in code   | No            | 1          |
-| Plan Implementation to Spec     | `plan-impl-to-spec`  | Creates plan from gap analysis - what's in code but not in specs   | No            | 1          |
-| Plan Spec Refactoring           | `plan-spec-refactor` | Creates refactoring plan from quality assessment of specs          | No            | 1          |
-| Plan Implementation Refactoring | `plan-impl-refactor` | Creates refactoring plan from quality assessment of implementation | No            | 1          |
-| Plan Story to Spec              | `plan-story-to-spec` | Creates plan for incorporating story into specs                    | No            | 5          |
-| Plan Bug to Spec                | `plan-bug-to-spec`   | Creates plan for spec adjustments needed to drive bug fix          | No            | 3          |
+| Procedure                       | ID                       | Description                                                        | Modifies Code | Iterations |
+| ------------------------------- | ------------------------ | ------------------------------------------------------------------ | ------------- | ---------- |
+| Bootstrap Repository            | `bootstrap`              | Creates or updates AGENTS.md operational guide for the repository  | No            | 1          |
+| Build from Plan                 | `build`                  | Implements tasks from work tracking system (only procedure that modifies code) | Yes | 5 |
+| Draft Plan Spec to Implementation | `draft-plan-spec-to-impl` | Converges draft plan from gap analysis - what's in specs but not in code | No | 1 |
+| Draft Plan Implementation to Spec | `draft-plan-impl-to-spec` | Converges draft plan from gap analysis - what's in code but not in specs | No | 1 |
+| Draft Plan Spec Refactoring     | `draft-plan-spec-refactor` | Converges draft plan from quality assessment of specs | No | 1 |
+| Draft Plan Implementation Refactoring | `draft-plan-impl-refactor` | Converges draft plan from quality assessment of implementation | No | 1 |
+| Draft Plan Story to Spec        | `draft-plan-story-to-spec` | Converges draft plan for incorporating story into specs | No | 5 |
+| Draft Plan Bug to Spec          | `draft-plan-bug-to-spec` | Converges draft plan for spec adjustments needed to drive bug fix | No | 3 |
+| Publish Plan                    | `publish-plan`         | Publishes converged draft plan to work tracking system             | No            | 1          |
 
 ## Custom Procedures
 
@@ -176,57 +185,69 @@ Common sequences showing when to use which procedure.
 
 **Greenfield Project (Starting from Scratch)**
 ```bash
-./rooda.sh bootstrap                              # Create AGENTS.md
-./rooda.sh plan-story-to-spec --max-iterations 5  # Incorporate story into specs
-./rooda.sh build --max-iterations 5               # Write specs
-./rooda.sh plan-spec-to-impl                      # Gap analysis: specs to code
-./rooda.sh build --max-iterations 5               # Implement code
+./rooda.sh bootstrap                                    # Create AGENTS.md
+./rooda.sh draft-plan-story-to-spec --max-iterations 5  # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Write specs
+./rooda.sh draft-plan-spec-to-impl                      # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Implement code
 ```
 When: New project, no existing code or specs.
 
 **Brownfield Project (Existing Code, No Specs)**
 ```bash
-./rooda.sh bootstrap                              # Create AGENTS.md
-./rooda.sh plan-impl-to-spec                      # Gap analysis: code to specs
-./rooda.sh build --max-iterations 5               # Write specs
-./rooda.sh plan-spec-refactor                     # Quality assessment of specs
-./rooda.sh build --max-iterations 5               # Refine specs
+./rooda.sh bootstrap                                    # Create AGENTS.md
+./rooda.sh draft-plan-impl-to-spec                      # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Write specs
+./rooda.sh draft-plan-spec-refactor                     # Quality assessment
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refine specs
 ```
 When: Legacy codebase needs documentation.
 
 **Feature Development**
 ```bash
-./rooda.sh plan-story-to-spec --max-iterations 5  # Incorporate story into specs
-./rooda.sh build --max-iterations 5               # Write specs
-./rooda.sh plan-spec-to-impl                      # Gap analysis: specs to code
-./rooda.sh build --max-iterations 5               # Implement code
+./rooda.sh draft-plan-story-to-spec --max-iterations 5  # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Write specs
+./rooda.sh draft-plan-spec-to-impl                      # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Implement code
 ```
 When: Adding new functionality to existing project.
 
 **Bug Fix**
 ```bash
-./rooda.sh plan-bug-to-spec --max-iterations 3    # Adjust specs to drive fix
-./rooda.sh build --max-iterations 5               # Update specs
-./rooda.sh plan-spec-to-impl                      # Gap analysis: specs to code
-./rooda.sh build --max-iterations 5               # Fix code
+./rooda.sh draft-plan-bug-to-spec --max-iterations 3    # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Update specs
+./rooda.sh draft-plan-spec-to-impl                      # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Fix code
 ```
 When: Bug reveals gap in specifications.
 
 **Refactoring Cycle**
 ```bash
-./rooda.sh plan-impl-refactor                     # Quality assessment of code
-./rooda.sh build --max-iterations 5               # Refactor code
-./rooda.sh plan-impl-to-spec                      # Gap analysis: code to specs
-./rooda.sh build --max-iterations 5               # Update specs
+./rooda.sh draft-plan-impl-refactor                     # Quality assessment
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refactor code
+./rooda.sh draft-plan-impl-to-spec                      # Converge draft plan
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Update specs
 ```
 When: Code quality degrades, needs cleanup.
 
 **Continuous Improvement**
 ```bash
-./rooda.sh plan-spec-refactor                     # Quality assessment of specs
-./rooda.sh build --max-iterations 5               # Refine specs
-./rooda.sh plan-impl-refactor                     # Quality assessment of code
-./rooda.sh build --max-iterations 5               # Refactor code
+./rooda.sh draft-plan-spec-refactor                     # Quality assessment of specs
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refine specs
+./rooda.sh draft-plan-impl-refactor                     # Quality assessment of code
+./rooda.sh publish-plan                                 # File beads issues
+./rooda.sh build --max-iterations 5                     # Refactor code
 ```
 When: Regular maintenance, keeping both specs and implementation quality high.
 
