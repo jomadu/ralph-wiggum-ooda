@@ -14,21 +14,30 @@ AGENTS.md is the interface between agents and the repository. It defines how age
 - How to update status
 - How to mark complete
 
-### Story/Bug Incorporation (if using these procedures)
-- **Task file location** - Where agents read the story/bug description (e.g., `bd show <id> --json`, `tasks/<id>.md`, GitHub issue API)
-- **Plan file location** - Where agents write/read the incorporation plan during iteration (e.g., `tasks/<id>/plan.md`, not used if work tracking handles it)
-- Used by `plan-story-to-spec` and `plan-bug-to-spec` procedures to understand what needs incorporating and track planning progress
+### Story/Bug Input (if using story/bug incorporation procedures)
+- **Input location** - Where agents read the story/bug description to be incorporated (e.g., `bd show <id> --json`, `stories/<id>.md`, GitHub issue)
+- Used by `plan-story-to-spec` and `plan-bug-to-spec` procedures as the source material for planning
 
-**Example (beads):**
+### Planning System (if using draft planning procedures)
+- **Draft plan location** - Where agents write/read plans during convergence iterations (e.g., `plans/draft-<topic>.md`, `tasks/<id>/plan.md`)
+- **Publishing mechanism** - How converged plans get imported into work tracking (e.g., `bd create` commands, GitHub API, manual file creation)
+- Used by draft planning procedures to iterate toward a complete plan, then publish to work tracking
+
+**Workflow:**
+1. Draft procedures (`draft-plan-*`) iterate to converge on a plan in the draft location
+2. Publish procedure (`publish-plan`) imports the converged plan into work tracking system
+3. Build procedure (`build`) implements from work tracking system
+
+**Example (beads with draft plans):**
 ```
-Task file: Issue description from `bd show <id> --json` (title + description fields)
-Plan file: Not used (beads tracks status directly)
+Draft plan: plans/draft-<topic>.md
+Publishing: Agent runs `bd create` commands to file epics/issues with dependencies
 ```
 
-**Example (file-based):**
+**Example (file-based work tracking):**
 ```
-Task file: tasks/<id>/description.md
-Plan file: tasks/<id>/plan.md
+Draft plan: tasks/<id>/plan.md
+Publishing: Plan file becomes the work tracking (no import needed)
 ```
 
 ### Build/Test/Lint Commands
