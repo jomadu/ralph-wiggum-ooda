@@ -265,5 +265,5 @@ while true; do
     }
 
     ITERATION=$((ITERATION + 1))
-    echo -e "\n\n======================== LOOP $ITERATION ========================\n"
+    echo -e "\n\n======================== Starting iteration $ITERATION ========================\n"
 done
