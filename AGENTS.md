@@ -136,3 +136,9 @@ bd ready --json       # Verify beads integration works
 - Consumers copy from src/ to their project root (flat structure), while framework repo has internal organization
 - Config file paths remain prompts/*.md for consumer compatibility
 
+**2026-02-03:** Beads dependency format uses `--deps` flag with format `type:id` or just `id`:
+- Use `--deps blocks:issue-id` to indicate this issue is blocked by another issue
+- Priority format is numeric (0-4) or P0-P4, not words like high/medium/low
+- Multiple dependencies can be comma-separated: `--deps blocks:id1,blocks:id2`
+- Rationale: Discovered during publish-plan procedure when attempting to create issues with dependencies
+
