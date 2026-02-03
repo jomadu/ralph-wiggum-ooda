@@ -12,10 +12,20 @@
 #       summary: "Brief description"   (optional, for future help text generation)
 #       description: "Details"         (optional, for future help text generation)
 #
-# Path Resolution:
-#   All file paths (observe/orient/decide/act) are resolved relative to the
-#   script directory, not the current working directory. This allows rooda.sh
-#   to be invoked from any location while maintaining consistent path resolution.
+# IMPORTANT: Path Resolution Behavior
+#   All file paths (observe/orient/decide/act) are resolved RELATIVE TO THE
+#   SCRIPT DIRECTORY, not the current working directory.
+#
+#   This means:
+#   - If rooda.sh is in /path/to/ralph-wiggum-ooda/src/
+#   - And config specifies: observe: src/components/observe_bootstrap.md
+#   - The script resolves to: /path/to/ralph-wiggum-ooda/src/components/observe_bootstrap.md
+#   - Regardless of where you invoke rooda.sh from
+#
+#   Example: You can run from any directory:
+#     cd /tmp
+#     /path/to/ralph-wiggum-ooda/src/rooda.sh bootstrap
+#   And paths still resolve correctly relative to the script location.
 #
 # Optional Fields:
 #   display, summary, and description are reserved for future help text generation.
