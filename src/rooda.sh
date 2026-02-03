@@ -11,6 +11,37 @@
 #             --act prompts/act_plan.md \
 #             --max-iterations 1
 
+show_help() {
+    cat <<EOF
+Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
+   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
+
+Options:
+  <procedure>           Named procedure from config (bootstrap, build, etc.)
+  --config <file>       Path to config file (default: rooda-config.yml)
+  --observe <file>      Path to observe phase prompt
+  --orient <file>       Path to orient phase prompt
+  --decide <file>       Path to decide phase prompt
+  --act <file>          Path to act phase prompt
+  --max-iterations N    Maximum iterations (default: see below)
+  --help, -h            Show this help message
+
+Max Iterations Default Behavior (three-tier system):
+  1. Command-line --max-iterations takes precedence
+  2. Config default_iterations used if CLI not specified
+  3. Defaults to 0 (unlimited) if neither specified
+
+Examples:
+  ./rooda.sh bootstrap
+  ./rooda.sh build --max-iterations 5
+  ./rooda.sh --observe prompts/observe_specs.md \\
+            --orient prompts/orient_gap.md \\
+            --decide prompts/decide_gap_plan.md \\
+            --act prompts/act_plan.md \\
+            --max-iterations 1
+EOF
+}
+
 # Check for yq dependency
 if ! command -v yq &> /dev/null; then
     echo "Error: yq is required for YAML parsing"
@@ -29,6 +60,12 @@ PROCEDURE=""
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/rooda-config.yml"
 
+# Check for help flag first
+if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+    show_help
+    exit 0
+fi
+
 # First positional argument is procedure name (optional)
 if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
     PROCEDURE="$1"
@@ -37,6 +74,10 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
         --config)
             CONFIG_FILE="$2"
             shift 2
@@ -63,8 +104,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
-            echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+            show_help
             exit 1
             ;;
     esac
@@ -100,8 +140,7 @@ fi
 # Validate required arguments
 if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
     echo "Error: All four OODA phases required"
-    echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
-    echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+    show_help
     exit 1
 fi
 
@@ -117,14 +156,6 @@ done
 
 ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current)
-
-# Validate required arguments
-if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
-    echo "Error: All four OODA phases required"
-    echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
-    echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
-    exit 1
-fi
 
 # Validate files exist
 for file in "$OBSERVE" "$ORIENT" "$DECIDE" "$ACT"; do
