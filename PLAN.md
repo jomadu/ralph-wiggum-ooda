@@ -1,224 +1,355 @@
 # Draft Plan: Spec to Implementation Gap Analysis
 
-## Critical Gaps (P0)
+## Priority 1: Critical Gaps (Missing Core Functionality)
 
-### 1. Git Commit Strategy Specification Missing
-**Gap:** Specs describe git push after each iteration (iteration-loop.md, ai-cli-integration.md) but no spec defines when/how commits are created. Implementation only pushes, never commits.
+### 1. Implement Version Validation for yq Dependency
+**Gap:** external-dependencies.md specifies yq v4.0.0 minimum version requirement, but rooda.sh only checks if yq exists (line 15), not version compatibility.
 
-**Impact:** AI CLI must handle commits autonomously, but this critical requirement is not specified. Current implementation assumes kiro-cli commits changes, but this is not documented.
-
-**Tasks:**
-- Create `specs/git-workflow.md` spec defining commit strategy
-- Document when commits should occur (after successful iteration, after tests pass, etc.)
-- Specify commit message format and conventions
-- Define how AI CLI creates commits vs how rooda.sh pushes them
-- Clarify responsibility boundary between rooda.sh and kiro-cli
+**Impact:** Users with yq v3 will get cryptic YAML parsing errors instead of clear version mismatch message.
 
 **Acceptance Criteria:**
-- Spec clearly defines commit timing and responsibility
-- Spec documents commit message conventions
-- Spec explains push-only behavior in rooda.sh
+- Check yq version at startup
+- Warn if version < v4.0.0
+- Provide upgrade instructions
+
+**Implementation:**
+- Modify rooda.sh dependency check section (lines 15-19)
+- Extract version from `yq --version` output
+- Compare against minimum version 4.0.0
 
 ---
 
-## High Priority Gaps (P1)
+### 2. Implement Early Dependency Checks for kiro-cli and bd
+**Gap:** external-dependencies.md specifies kiro-cli and bd as required dependencies, but rooda.sh doesn't check for them at startup. Users discover missing tools only when procedures execute (late failure).
 
-### 2. Error Handling Not Specified or Implemented
-**Gap:** ai-cli-integration.md identifies lack of error handling as "Known Issue" but no spec defines error handling strategy. Implementation has no error checking for kiro-cli exit status.
-
-**Impact:** Loop continues after AI CLI failures, potentially pushing broken changes or looping indefinitely on repeated failures.
-
-**Tasks:**
-- Create `specs/error-handling.md` spec defining error handling strategy
-- Specify kiro-cli exit status checking
-- Define failure thresholds (N consecutive failures → abort)
-- Document error recovery strategies
-- Specify what errors are fatal vs recoverable
+**Impact:** Poor user experience - script starts, parses config, then fails mid-execution.
 
 **Acceptance Criteria:**
-- Spec defines error detection mechanisms
-- Spec specifies failure thresholds and abort conditions
-- Spec documents error recovery strategies
+- Check for kiro-cli at startup
+- Check for bd at startup (optional - only if procedure uses work tracking)
+- Provide installation instructions if missing
+- Exit with clear error before entering iteration loop
 
-### 3. Dependency Checking Incomplete
-**Gap:** external-dependencies.md specifies all dependencies but implementation only checks yq. kiro-cli and bd failures discovered at runtime, not startup.
-
-**Impact:** Users discover missing tools late in execution, wasting time and causing confusing errors.
-
-**Tasks:**
-- Implement startup checks for kiro-cli (verify command exists)
-- Implement startup checks for bd (verify command exists)
-- Add version validation for yq (ensure v4+, not v3)
-- Provide clear error messages with installation instructions
-- Update external-dependencies.md to document implemented checks
-
-**Acceptance Criteria:**
-- rooda.sh checks for kiro-cli at startup
-- rooda.sh checks for bd at startup
-- rooda.sh validates yq version >= 4.0.0
-- Error messages include installation instructions
-
-### 4. Safety and Sandboxing Not Specified
-**Gap:** README.md and ai-cli-integration.md mention sandboxing requirements (Docker, Fly Sprites, E2B) but no spec defines safety requirements or sandboxing strategy.
-
-**Impact:** Users may run framework in unsafe environments without understanding blast radius risks.
-
-**Tasks:**
-- Create `specs/safety-sandboxing.md` spec defining safety requirements
-- Document required isolation mechanisms
-- Specify minimum viable access principles
-- Define blast radius containment strategies
-- Document unsafe operations and their risks
-
-**Acceptance Criteria:**
-- Spec defines required isolation mechanisms
-- Spec documents blast radius containment
-- Spec provides concrete sandboxing examples
+**Implementation:**
+- Add dependency checks after yq validation
+- Use `command -v kiro-cli` and `command -v bd`
+- Display installation instructions per platform
 
 ---
 
-## Medium Priority Gaps (P2)
+### 3. Implement Error Handling for kiro-cli Failures
+**Gap:** ai-cli-integration.md and iteration-loop.md note that kiro-cli exit status is not checked. Script continues to git push even if AI CLI fails.
 
-### 5. Prompt Component Structure Not Specified
-**Gap:** prompt-composition.md documents how prompts are assembled but no spec defines the structure/format of individual component files.
-
-**Impact:** No guidance for creating custom OODA components. Users don't know what conventions to follow.
-
-**Tasks:**
-- Create `specs/prompt-component-format.md` spec defining component structure
-- Document markdown conventions for OODA phase files
-- Specify section header formats (## O1, ## R5, etc.)
-- Define naming conventions for component files
-- Provide examples of well-structured components
+**Impact:** Repeated failures without termination, pushing incomplete/invalid changes.
 
 **Acceptance Criteria:**
-- Spec defines component file structure
-- Spec documents naming conventions
-- Spec provides component examples
+- Check kiro-cli exit status after each iteration
+- Break loop after N consecutive failures (e.g., 3)
+- Display clear error message
+- Don't push changes if kiro-cli failed
 
-### 6. Procedure Metadata Not Fully Utilized
-**Gap:** configuration-schema.md defines display/summary/description fields but implementation doesn't use them. No help text generation, no procedure listing.
-
-**Impact:** Users can't discover available procedures or understand their purposes without reading config file.
-
-**Tasks:**
-- Implement `--help` flag showing available procedures
-- Implement `--list-procedures` flag showing all procedures with summaries
-- Generate help text from procedure metadata
-- Update cli-interface.md spec to document help functionality
-
-**Acceptance Criteria:**
-- `./rooda.sh --help` shows usage and available procedures
-- `./rooda.sh --list-procedures` shows all procedures with summaries
-- Help text generated from config metadata
-
-### 7. Iteration Timing and Progress Not Specified
-**Gap:** iteration-loop.md identifies "iteration timing" as area for improvement but no spec defines timing/progress requirements.
-
-**Impact:** Users have no visibility into iteration performance or progress during long-running procedures.
-
-**Tasks:**
-- Create `specs/iteration-progress.md` spec defining progress reporting
-- Specify elapsed time display per iteration
-- Define progress indicators during OODA phases
-- Document iteration summary format
-
-**Acceptance Criteria:**
-- Spec defines timing display requirements
-- Spec specifies progress indicator format
-- Spec documents iteration summary structure
+**Implementation:**
+- Capture exit status: `create_prompt | kiro-cli chat --no-interactive --trust-all-tools; EXIT_CODE=$?`
+- Track consecutive failures counter
+- Conditional git push based on success
 
 ---
 
-## Low Priority Gaps (P3)
+## Priority 2: High-Impact Gaps (Quality & Usability)
 
-### 8. Duplicate Validation Code
-**Gap:** cli-interface.md identifies duplicate validation blocks (lines 95-103 and 117-125) as "Known Issue" but no refactoring spec exists.
+### 4. Add Help Flag Support
+**Gap:** cli-interface.md notes "No `--help` or `-h` flag support. Users must trigger an error to see usage."
 
-**Impact:** Code duplication makes maintenance harder and increases bug risk.
-
-**Tasks:**
-- Refactor duplicate validation into single function
-- Update cli-interface.md to remove "Known Issue" note
-- Verify all validation paths still work correctly
+**Impact:** Poor discoverability - users can't easily learn how to use the tool.
 
 **Acceptance Criteria:**
-- Validation logic exists in single location
-- All invocation modes still validate correctly
-- cli-interface.md updated to reflect refactoring
+- `./rooda.sh --help` displays usage information
+- `./rooda.sh -h` displays usage information
+- Help text includes examples for both invocation modes
+- Help text lists available procedures from config
 
-### 9. Short Flag Support Missing
-**Gap:** cli-interface.md identifies lack of short flags as "Area for Improvement" but no spec defines short flag mappings.
-
-**Impact:** Verbose command lines for explicit flag invocation.
-
-**Tasks:**
-- Create `specs/cli-flags.md` spec defining short flag mappings
-- Implement short flags (-o, -r, -d, -a, -m, -c)
-- Update cli-interface.md with short flag documentation
-- Add short flag examples to README.md
-
-**Acceptance Criteria:**
-- Spec defines short flag mappings
-- Implementation supports short flags
-- Documentation includes short flag examples
-
-### 10. Version and Help Flags Missing
-**Gap:** cli-interface.md identifies missing --help and --version flags as "Areas for Improvement".
-
-**Impact:** Users must trigger errors to see usage, no way to check framework version.
-
-**Tasks:**
-- Implement `--version` flag showing rooda.sh version
-- Implement `--help` flag showing usage and procedures
-- Define version numbering scheme for framework
-- Update cli-interface.md with flag documentation
-
-**Acceptance Criteria:**
-- `./rooda.sh --version` shows version number
-- `./rooda.sh --help` shows comprehensive usage
-- Version scheme documented
+**Implementation:**
+- Add --help/-h case in argument parsing
+- Display usage, examples, and available procedures
+- Exit with status 0
 
 ---
 
-## Documentation Gaps (P2)
+### 5. Add Version Flag Support
+**Gap:** cli-interface.md notes "No `--version` flag to show script version."
 
-### 11. Spec Index Incomplete
-**Gap:** specs/README.md exists but external-dependencies.md is not listed in index.
-
-**Impact:** Spec is discoverable via filesystem but not via index.
-
-**Tasks:**
-- Add external-dependencies.md to specs/README.md index
-- Verify all other specs are indexed
-- Update spec index generation logic if automated
+**Impact:** Users can't determine which version they're running for troubleshooting.
 
 **Acceptance Criteria:**
-- All specs listed in specs/README.md
-- Index includes JTBD for each spec
+- `./rooda.sh --version` displays version number
+- Version matches git tag or commit hash
+- Exit with status 0
+
+**Implementation:**
+- Add VERSION variable at top of script
+- Add --version case in argument parsing
+- Display version and exit
 
 ---
 
-## Summary
+### 6. Implement Timeout Mechanism for AI CLI
+**Gap:** ai-cli-integration.md notes "No timeout: If kiro-cli hangs, the script waits indefinitely."
 
-**Total Gaps Identified:** 11
+**Impact:** Script can hang forever if AI CLI has issues.
 
-**By Priority:**
-- P0 (Critical): 1 gap
-- P1 (High): 3 gaps
-- P2 (Medium): 4 gaps
-- P3 (Low): 3 gaps
+**Acceptance Criteria:**
+- Set timeout for kiro-cli invocation (e.g., 10 minutes)
+- Kill process if timeout exceeded
+- Display timeout error message
+- Continue to next iteration or exit based on policy
 
-**By Type:**
-- Missing Specs: 6 gaps (git-workflow, error-handling, safety-sandboxing, prompt-component-format, iteration-progress, cli-flags)
-- Incomplete Implementation: 3 gaps (dependency checking, procedure metadata, duplicate validation)
-- Documentation: 2 gaps (spec index, help/version flags)
+**Implementation:**
+- Use `timeout` command wrapper: `timeout 600 kiro-cli chat ...`
+- Check exit code 124 (timeout)
+- Handle timeout as failure
 
-**Recommended Sequence:**
-1. Git commit strategy spec (P0) - Critical for understanding current behavior
-2. Error handling spec (P1) - Prevents loop failures
-3. Dependency checking implementation (P1) - Better user experience
-4. Safety/sandboxing spec (P1) - Critical for safe operation
-5. Prompt component format spec (P2) - Enables custom procedures
-6. Spec index update (P2) - Quick documentation fix
-7. Remaining P2/P3 gaps as time permits
+---
+
+### 7. Implement Prompt Size Validation
+**Gap:** ai-cli-integration.md notes "No prompt size validation: Large OODA phase files could exceed token limits."
+
+**Impact:** Silent truncation or failures when prompts are too large.
+
+**Acceptance Criteria:**
+- Calculate approximate token count before piping to AI
+- Warn if approaching token limits (e.g., 80% of 200K)
+- Display prompt size in characters and estimated tokens
+- Allow override with --force flag
+
+**Implementation:**
+- Count characters in assembled prompt
+- Estimate tokens (rough: chars / 4)
+- Display warning if > 160K tokens
+- Proceed with confirmation or --force
+
+---
+
+## Priority 3: Code Quality Improvements
+
+### 8. Remove Duplicate Validation Blocks
+**Gap:** cli-interface.md notes "Lines 95-103 and 117-125 contain identical validation logic."
+
+**Impact:** Code duplication makes maintenance harder.
+
+**Acceptance Criteria:**
+- Single validation function
+- Called once after argument parsing
+- No duplicate code
+
+**Implementation:**
+- Extract validation to function
+- Call after all argument parsing complete
+- Remove duplicate blocks at lines 95-103 and 117-125
+
+---
+
+### 9. Fix Iteration Display Off-by-One
+**Gap:** iteration-loop.md notes "Separator shows 'LOOP $ITERATION' after incrementing, displays next iteration number not the one that just completed."
+
+**Impact:** Confusing progress messages.
+
+**Acceptance Criteria:**
+- Display "Completed iteration N" after iteration finishes
+- Display "Starting iteration N" before iteration starts
+- Clear distinction between completed and upcoming
+
+**Implementation:**
+- Display message before incrementing counter
+- Or adjust display to show completed iteration number
+
+---
+
+### 10. Add Config File Structure Validation
+**Gap:** cli-interface.md notes "Script doesn't validate config file structure before querying with yq."
+
+**Impact:** Cryptic yq errors if config is malformed.
+
+**Acceptance Criteria:**
+- Validate YAML syntax before querying
+- Check for required top-level keys (procedures)
+- Provide clear error messages for malformed config
+
+**Implementation:**
+- Use `yq eval '.' config.yml` to validate syntax
+- Check for `.procedures` key existence
+- Display helpful error if validation fails
+
+---
+
+## Priority 4: Documentation Gaps
+
+### 11. Document Tested Version Combinations
+**Gap:** external-dependencies.md notes "No dependency matrix: Document tested version combinations."
+
+**Impact:** Users don't know which versions are compatible.
+
+**Acceptance Criteria:**
+- Document tested versions in external-dependencies.md
+- Include OS (macOS, Linux), yq version, kiro-cli version, bd version
+- Update after testing new combinations
+
+**Implementation:**
+- Add "Tested Combinations" section to spec
+- Create table with OS, tool versions, test date, status
+
+---
+
+### 12. Add Platform-Specific Installation Instructions
+**Gap:** external-dependencies.md notes "Installation commands assume macOS (brew) or Linux package managers. Windows/WSL users need different instructions."
+
+**Impact:** Windows users can't easily install dependencies.
+
+**Acceptance Criteria:**
+- Document Windows/WSL installation for all dependencies
+- Include alternative installation methods (binary downloads, cargo, npm)
+- Test instructions on Windows/WSL
+
+**Implementation:**
+- Expand installation sections in external-dependencies.md
+- Add Windows-specific commands
+- Add alternative installation methods
+
+---
+
+## Priority 5: Future Enhancements (Low Priority)
+
+### 13. Add Short Flag Alternatives
+**Gap:** cli-interface.md notes "No short flag alternatives (e.g., `-o` for `--observe`, `-m` for `--max-iterations`)."
+
+**Impact:** More typing required for common operations.
+
+**Acceptance Criteria:**
+- Support `-o` for `--observe`
+- Support `-r` for `--orient`
+- Support `-d` for `--decide`
+- Support `-a` for `--act`
+- Support `-m` for `--max-iterations`
+- Support `-c` for `--config`
+
+**Implementation:**
+- Add short flag cases in argument parsing
+- Update usage/help text
+
+---
+
+### 14. Add Verbose/Quiet Modes
+**Gap:** cli-interface.md notes "No control over output verbosity."
+
+**Impact:** Can't suppress or enhance output for different use cases.
+
+**Acceptance Criteria:**
+- `--verbose` flag shows detailed execution info
+- `--quiet` flag suppresses non-error output
+- Default mode shows standard progress
+
+**Implementation:**
+- Add VERBOSE and QUIET variables
+- Conditional echo statements based on mode
+- Add flags to argument parsing
+
+---
+
+### 15. Implement Resume Capability
+**Gap:** iteration-loop.md notes "No resume capability: Save iteration state to file, allowing resume after Ctrl+C or failure."
+
+**Impact:** Can't resume interrupted loops.
+
+**Acceptance Criteria:**
+- Save iteration state to .rooda-state file
+- `--resume` flag continues from saved state
+- Clear state on successful completion
+
+**Implementation:**
+- Write ITERATION, PROCEDURE, MAX_ITERATIONS to state file
+- Read state file on --resume
+- Clean up state file on completion
+
+---
+
+### 16. Add Dry-Run Mode
+**Gap:** iteration-loop.md notes "No dry-run mode: Support --dry-run flag to show what would execute without actually running the AI CLI."
+
+**Impact:** Can't preview execution without running.
+
+**Acceptance Criteria:**
+- `--dry-run` flag shows assembled prompt
+- Displays what would be executed
+- Exits without running kiro-cli
+
+**Implementation:**
+- Add --dry-run flag
+- Display prompt instead of piping to kiro-cli
+- Exit after display
+
+---
+
+### 17. Add Iteration Timing Display
+**Gap:** iteration-loop.md notes "No iteration timing: Display elapsed time per iteration to help users understand performance."
+
+**Impact:** Can't measure iteration performance.
+
+**Acceptance Criteria:**
+- Display start time before iteration
+- Display end time and duration after iteration
+- Show cumulative time for all iterations
+
+**Implementation:**
+- Capture start time with `date +%s`
+- Calculate duration after iteration
+- Display in progress messages
+
+---
+
+### 18. Add Progress Indicators During Execution
+**Gap:** iteration-loop.md notes "No progress indicators: Show which OODA phase is executing during long-running iterations."
+
+**Impact:** No visibility into what's happening during long iterations.
+
+**Acceptance Criteria:**
+- Display "Executing OBSERVE phase..."
+- Display "Executing ORIENT phase..."
+- Display "Executing DECIDE phase..."
+- Display "Executing ACT phase..."
+
+**Implementation:**
+- Requires kiro-cli to support phase callbacks or streaming output
+- Or add markers in prompt that AI echoes back
+- Parse output to detect phase transitions
+
+---
+
+## Non-Gaps (Specs Accurately Describe Implementation)
+
+The following specs accurately describe the current implementation with no gaps:
+
+- **prompt-composition.md** - create_prompt() function matches spec exactly (lines 143-159)
+- **configuration-schema.md** - rooda-config.yml structure matches spec, all 9 procedures defined correctly
+- **agents-md-format.md** - AGENTS.md follows specified structure with all required sections
+- **specification-system.md** - specs/ directory structure matches spec (README, TEMPLATE, individual specs)
+
+---
+
+## Implementation Notes
+
+**Prioritization Rationale:**
+- P1: Critical gaps that cause user-facing failures or data integrity issues
+- P2: High-impact gaps that significantly improve usability and reliability
+- P3: Code quality improvements that reduce technical debt
+- P4: Documentation gaps that help users but don't affect functionality
+- P5: Future enhancements that add convenience but aren't essential
+
+**Dependencies:**
+- Task 3 (error handling) should be implemented before task 6 (timeout) for consistent failure handling
+- Task 8 (remove duplication) should be done early to simplify subsequent changes
+- Task 11-12 (documentation) can be done in parallel with implementation tasks
+
+**Testing Strategy:**
+- Manual testing for each task (no automated test suite exists per AGENTS.md)
+- Verify with `shellcheck src/rooda.sh` after each change
+- Test both invocation modes (procedure-based and explicit flags)
+- Test error conditions (missing files, invalid config, etc.)
