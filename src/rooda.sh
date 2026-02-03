@@ -42,10 +42,23 @@ Examples:
 EOF
 }
 
-# Check for yq dependency
+# Check for required dependencies
 if ! command -v yq &> /dev/null; then
     echo "Error: yq is required for YAML parsing"
     echo "Install with: brew install yq"
+    exit 1
+fi
+
+if ! command -v kiro-cli &> /dev/null; then
+    echo "Error: kiro-cli is required for AI CLI integration"
+    echo "Install from: https://docs.aws.amazon.com/kiro/"
+    exit 1
+fi
+
+if ! command -v bd &> /dev/null; then
+    echo "Error: bd (beads) is required for work tracking"
+    echo "Install with: cargo install beads-cli"
+    echo "Or download from: https://github.com/jomadu/beads/releases"
     exit 1
 fi
 
