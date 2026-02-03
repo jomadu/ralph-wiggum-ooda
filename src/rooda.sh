@@ -340,11 +340,13 @@ if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; t
 fi
 
 # Validate files exist
-for file in "$OBSERVE" "$ORIENT" "$DECIDE" "$ACT"; do
+for phase in OBSERVE ORIENT DECIDE ACT; do
+    file="${!phase}"
     if [ ! -f "$file" ]; then
-        echo "Error: OODA phase file not found"
+        phase_lower=$(echo "$phase" | tr '[:upper:]' '[:lower:]')
+        echo "Error: ${phase} phase file not found"
         echo "  Path: $file"
-        echo "  Check that all four phase files exist (observe, orient, decide, act)"
+        echo "  Check that the ${phase_lower} phase file exists and path is correct"
         exit 1
     fi
 done
