@@ -34,7 +34,7 @@ Complete: mv tasks/in-progress/<id>.md tasks/done/
 
 ### Story/Bug Input
 - **Input location** - Where agents read the story/bug description to be incorporated
-- **Input identifier** - How agents know which specific story/bug to read (e.g., env variable, command-line arg, fixed filename)
+- **Input identifier** - How agents know which specific story/bug to read (e.g., env variable or fixed filename)
 - Used by `draft-plan-story-to-spec` and `draft-plan-bug-to-spec` procedures as the source material for planning
 
 **Examples:**
@@ -50,11 +50,6 @@ stories/$TASK_ID.md
 
 # GitHub issue (via env variable)
 gh issue view $TASK_ID --json
-
-# Command-line argument passed to rooda.sh
-./rooda.sh draft-plan-story-to-spec <task-id>
-```
-gh issue view <id> --json
 ```
 
 ### Planning System
@@ -69,6 +64,10 @@ gh issue view <id> --json
 
 **Examples:**
 ```
+# Simple PLAN.md (simplest)
+Draft plan: PLAN.md
+Publishing: Agent runs work tracking commands to create issues from PLAN.md
+
 # Beads with draft plans
 Draft plan: plans/draft-<topic>.md
 Publishing: Agent runs `bd create` commands to file epics/issues with dependencies
