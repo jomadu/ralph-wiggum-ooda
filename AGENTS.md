@@ -197,7 +197,7 @@ bd ready --json       # Verify beads integration works
 - Rationale: Empirical testing during ralph-wiggum-ooda-cuy validation revealed this gap between config resolution (works) and OODA file resolution (broken)
 
 **2026-02-03 14:07:** Bootstrap validation confirms continued operational status:
-- yq installed and working - YAML parsing functional
+- yq installed and working (v4.52.2) - YAML parsing functional
 - shellcheck installed and working - linting passes cleanly
 - All 25 prompt components present in src/components/
 - Beads work tracking operational (2 ready tasks: ralph-wiggum-ooda-abj, ralph-wiggum-ooda-4qd)
