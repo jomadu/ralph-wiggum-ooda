@@ -397,6 +397,9 @@ while true; do
         break
     fi
 
+    # Execute AI CLI - exit status intentionally ignored per ai-cli-integration.md
+    # Design: Script continues to git push regardless of kiro-cli success/failure
+    # Rationale: Allows loop to self-correct through empirical feedback in subsequent iterations
     create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
     if ! git push origin "$CURRENT_BRANCH" 2>&1; then
