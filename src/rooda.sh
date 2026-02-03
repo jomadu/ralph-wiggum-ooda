@@ -100,8 +100,8 @@ fi
 # Validate required arguments
 if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
     echo "Error: All four OODA phases required"
-    echo "Usage: ./rooda.sh <task-id> <procedure> [--config <file>] [--max-iterations N] [--task-file <file>] [--plan-file <file>]"
-    echo "   OR: ./rooda.sh <task-id> --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
+    echo "Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]"
+    echo "   OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]"
     exit 1
 fi
 
