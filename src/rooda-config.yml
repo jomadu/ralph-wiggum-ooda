@@ -1,3 +1,27 @@
+# OODA Loop Procedure Configuration
+#
+# Structure:
+#   procedures:
+#     procedure-name:
+#       observe: path/to/observe.md    (required)
+#       orient: path/to/orient.md      (required)
+#       decide: path/to/decide.md      (required)
+#       act: path/to/act.md            (required)
+#       default_iterations: N          (optional, defaults to 0 if not specified)
+#       display: "Name"                (optional, for future help text generation)
+#       summary: "Brief description"   (optional, for future help text generation)
+#       description: "Details"         (optional, for future help text generation)
+#
+# Path Resolution:
+#   All file paths (observe/orient/decide/act) are resolved relative to the
+#   script directory, not the current working directory. This allows rooda.sh
+#   to be invoked from any location while maintaining consistent path resolution.
+#
+# Optional Fields:
+#   display, summary, and description are reserved for future help text generation.
+#   They do not affect procedure execution. default_iterations defaults to 0
+#   (unlimited) if not specified.
+
 procedures:
   bootstrap:
     display: "Bootstrap Repository"
