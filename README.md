@@ -15,6 +15,34 @@ cp -r ralph-wiggum-ooda/src/components ./prompts
 chmod +x rooda.sh
 ```
 
+### For Existing Installations
+
+If you previously installed ralph-wiggum-ooda, your installation is unaffected. The files you copied to your project root remain valid and functional.
+
+**To update to the latest version:**
+
+1. **Pull latest changes:**
+   ```bash
+   cd /path/to/ralph-wiggum-ooda
+   git pull origin main
+   ```
+
+2. **Copy updated files to your project:**
+   ```bash
+   cd /path/to/your-project
+   cp /path/to/ralph-wiggum-ooda/src/rooda.sh .
+   cp /path/to/ralph-wiggum-ooda/src/rooda-config.yml .
+   cp -r /path/to/ralph-wiggum-ooda/src/components ./prompts
+   chmod +x rooda.sh
+   ```
+
+3. **Update AGENTS.md:**
+   ```bash
+   ./rooda.sh bootstrap --max-iterations 1
+   ```
+
+Your existing work tracking, specs, and implementation remain unchanged. Only the framework files are updated.
+
 ## Basic Workflow
 
 ```bash
