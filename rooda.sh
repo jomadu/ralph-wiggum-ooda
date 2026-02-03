@@ -11,41 +11,12 @@
 #             --act prompts/act_plan.md \
 #             --max-iterations 1
 
-# Parse YAML (minimal parser for our simple structure)
-parse_yaml() {
-    local file=$1
-    local section=$2
-    local field=$3
-    local in_section=false
-    
-    while IFS= read -r line; do
-        # Skip comments and empty lines
-        [[ "$line" =~ ^[[:space:]]*# ]] && continue
-        [[ -z "${line// }" ]] && continue
-        
-        # Check if we're entering the target section
-        if [[ "$line" =~ ^${section}: ]]; then
-            in_section=true
-            continue
-        fi
-        
-        # Check if we've entered a different top-level section
-        if [[ "$line" =~ ^[a-z_-]+: ]] && [[ ! "$line" =~ ^${section}: ]]; then
-            in_section=false
-            continue
-        fi
-        
-        # If we're in the target section, look for the field
-        if [ "$in_section" = true ]; then
-            if [[ "$line" =~ ^[[:space:]]+${field}:[[:space:]]*(.+)$ ]]; then
-                echo "${BASH_REMATCH[1]}"
-                return 0
-            fi
-        fi
-    done < "$file"
-    
-    return 1
-}
+# Check for yq dependency
+if ! command -v yq &> /dev/null; then
+    echo "Error: yq is required for YAML parsing"
+    echo "Install with: brew install yq"
+    exit 1
+fi
 
 # Parse arguments
 OBSERVE=""
@@ -104,26 +75,20 @@ if [ -n "$PROCEDURE" ]; then
         exit 1
     fi
     
-    OBSERVE=$(parse_yaml "$CONFIG_FILE" "procedures" "observe")
-    ORIENT=$(parse_yaml "$CONFIG_FILE" "procedures" "orient")
-    DECIDE=$(parse_yaml "$CONFIG_FILE" "procedures" "decide")
-    ACT=$(parse_yaml "$CONFIG_FILE" "procedures" "act")
+    OBSERVE=$(yq eval ".procedures.$PROCEDURE.observe" "$CONFIG_FILE")
+    ORIENT=$(yq eval ".procedures.$PROCEDURE.orient" "$CONFIG_FILE")
+    DECIDE=$(yq eval ".procedures.$PROCEDURE.decide" "$CONFIG_FILE")
+    ACT=$(yq eval ".procedures.$PROCEDURE.act" "$CONFIG_FILE")
     
-    # Need to parse within the specific procedure
-    OBSERVE=$(parse_yaml "$CONFIG_FILE" "$PROCEDURE" "observe")
-    ORIENT=$(parse_yaml "$CONFIG_FILE" "$PROCEDURE" "orient")
-    DECIDE=$(parse_yaml "$CONFIG_FILE" "$PROCEDURE" "decide")
-    ACT=$(parse_yaml "$CONFIG_FILE" "$PROCEDURE" "act")
-    
-    if [ -z "$OBSERVE" ] || [ -z "$ORIENT" ] || [ -z "$DECIDE" ] || [ -z "$ACT" ]; then
+    if [ "$OBSERVE" = "null" ] || [ "$ORIENT" = "null" ] || [ "$DECIDE" = "null" ] || [ "$ACT" = "null" ]; then
         echo "Error: Procedure '$PROCEDURE' not found in $CONFIG_FILE"
         exit 1
     fi
     
     # Use default iterations if not specified
     if [ $MAX_ITERATIONS -eq 0 ]; then
-        DEFAULT_ITER=$(parse_yaml "$CONFIG_FILE" "$PROCEDURE" "default_iterations")
-        [ -n "$DEFAULT_ITER" ] && MAX_ITERATIONS=$DEFAULT_ITER
+        DEFAULT_ITER=$(yq eval ".procedures.$PROCEDURE.default_iterations" "$CONFIG_FILE")
+        [ "$DEFAULT_ITER" != "null" ] && MAX_ITERATIONS=$DEFAULT_ITER
     fi
 fi
 
