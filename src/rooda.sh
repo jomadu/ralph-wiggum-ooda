@@ -374,6 +374,9 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 
 # Create prompt template
 create_prompt() {
+    # Assemble four OODA phase prompt files into single executable prompt
+    # Uses heredoc (<<EOF) to create template with embedded command substitution
+    # Each $(cat "$VAR") is evaluated when heredoc executes, inserting file contents
     cat <<EOF
 # OODA Loop Iteration
 
