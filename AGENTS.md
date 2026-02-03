@@ -155,3 +155,10 @@ bd ready --json       # Verify beads integration works
 - Repository structure matches documented patterns (src/, specs/, docs/ separation)
 - Rationale: Empirical verification during bootstrap iteration confirms AGENTS.md accuracy
 
+**2026-02-03:** Created generate-spec-index.sh for automated specs/README.md generation:
+- Script extracts JTBD from each spec file using awk pattern matching
+- Generates index with links to individual specs
+- Excludes README.md, TEMPLATE.md, and specification-system.md from listing
+- Note: agents-md-format.md lacks "## Job to be Done" section, shows "(No JTBD specified)"
+- Rationale: Automates index maintenance per specification-system.md requirements
+
