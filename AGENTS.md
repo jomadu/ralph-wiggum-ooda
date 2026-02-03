@@ -58,13 +58,15 @@ bd sync
 
 **Lint:** 
 ```bash
-shellcheck rooda.sh  # Lint bash script
+shellcheck rooda.sh  # Lint bash script (if installed)
 ```
+
+**Note:** shellcheck may not be installed on all systems. Install with `brew install shellcheck` on macOS.
 
 **Verification:**
 ```bash
-./rooda.sh --help  # Verify script runs
-bd ready --json    # Verify beads integration works
+./rooda.sh bootstrap  # Verify script runs (use explicit flags due to YAML parser issue)
+bd ready --json       # Verify beads integration works
 ```
 
 ## Specification Definition
@@ -124,4 +126,6 @@ bd ready --json    # Verify beads integration works
 **2026-02-03:** Beads integration is working correctly. The `bd ready --json` command returns structured JSON with issue details. Work tracking commands are operational.
 
 **2026-02-03:** There's an open issue (ralph-wiggum-ooda-i2c) about YAML parser in rooda.sh not properly handling procedure lookups. Workaround exists using explicit flags. This should be fixed to support the documented `./rooda.sh bootstrap` syntax.
+
+**2026-02-03:** shellcheck is not installed on this system. The lint command will fail until shellcheck is installed via `brew install shellcheck`. This is optional for framework operation but recommended for bash script quality.
 
