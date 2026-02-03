@@ -212,3 +212,9 @@ bd ready --json       # Verify beads integration works
 - Clear error messages for incompatible versions with upgrade instructions
 - Rationale: Prevents cryptic YAML parsing errors from yq v3, ensures all tools meet minimum requirements per external-dependencies.md specification
 
+**2026-02-03 14:35:** Validation document created for --trust-all-tools flag (ralph-wiggum-ooda-y9p):
+- Created VALIDATION-ralph-wiggum-ooda-y9p.md with 4 test cases
+- Test cases cover file read, file write, command execution, and full OODA loop
+- Manual validation is appropriate testing methodology for this framework
+- Rationale: Per AGENTS.md operational learnings, validation documents serve as regression test documentation for bash script repository
+
