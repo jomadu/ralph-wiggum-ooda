@@ -259,10 +259,17 @@ while true; do
 
     create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
-    git push origin "$CURRENT_BRANCH" || {
-        echo "Failed to push. Creating remote branch..."
-        git push -u origin "$CURRENT_BRANCH"
-    }
+    if ! git push origin "$CURRENT_BRANCH" 2>&1; then
+        if git push -u origin "$CURRENT_BRANCH" 2>&1; then
+            echo "Created remote branch and pushed successfully"
+        else
+            echo "Error: Failed to push to remote"
+            echo "Possible causes: authentication failure, network issue, or merge conflict"
+            echo "Fix the issue and the next iteration will attempt to push again"
+            echo "Press Ctrl+C to stop, or Enter to continue..."
+            read -r
+        fi
+    fi
 
     ITERATION=$((ITERATION + 1))
     echo -e "\n\n======================== Starting iteration $ITERATION ========================\n"
