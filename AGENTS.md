@@ -142,7 +142,12 @@ bd ready --json       # Verify beads integration works
 - Multiple dependencies can be comma-separated: `--deps blocks:id1,blocks:id2`
 - Rationale: Discovered during publish-plan procedure when attempting to create issues with dependencies
 
-**2026-02-03:** Bootstrap verification confirms all systems operational:
+**2026-02-03:** Bootstrap validation added to act_bootstrap.md:
+- Step A2 now validates AGENTS.md structure against required sections
+- Missing sections trigger warnings in Operational Learnings
+- Guidance provided for incomplete sections
+- Required sections: Work Tracking, Story/Bug Input, Planning System, Build/Test/Lint, Spec Definition, Impl Definition, Quality Criteria
+- Rationale: Ensures AGENTS.md completeness per agents-md-format.md specification
 - yq dependency installed and working (required for YAML parsing in rooda.sh)
 - shellcheck installed and linting passes cleanly on src/rooda.sh
 - All 25 prompt components present in src/components/
