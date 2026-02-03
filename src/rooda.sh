@@ -352,16 +352,6 @@ done
 ITERATION=0
 CURRENT_BRANCH=$(git branch --show-current)
 
-# Validate files exist
-for file in "$OBSERVE" "$ORIENT" "$DECIDE" "$ACT"; do
-    if [ ! -f "$file" ]; then
-        echo "Error: OODA phase file not found"
-        echo "  Path: $file"
-        echo "  Check that all four phase files exist (observe, orient, decide, act)"
-        exit 1
-    fi
-done
-
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 [ -n "$PROCEDURE" ] && echo "Procedure: $PROCEDURE"
 echo "Observe:   $OBSERVE"
