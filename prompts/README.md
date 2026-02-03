@@ -2,7 +2,7 @@
 
 ## Procedure Breakdown by Phase
 
-### Bootstrap {bootstrap}
+### Bootstrap (`bootstrap`)
 
 **OBSERVE**
 - Study repository structure (file tree, languages, build files)
@@ -26,7 +26,7 @@
 
 ---
 
-### Build from Plan {build}
+### Build from Plan (`build`)
 
 **OBSERVE**
 - Study AGENTS.md (how to build/test, what is specification/implementation)
@@ -54,7 +54,7 @@
 
 ---
 
-### Plan Spec to Implementation {plan-spec-to-impl}
+### Plan Spec to Implementation (`plan-spec-to-impl`)
 
 **OBSERVE**
 - Study AGENTS.md (what is specification/implementation)
@@ -80,7 +80,7 @@
 
 ---
 
-### Plan Implementation to Spec {plan-impl-to-spec}
+### Plan Implementation to Spec (`plan-impl-to-spec`)
 
 **OBSERVE**
 - Study AGENTS.md (what is specification/implementation)
@@ -106,7 +106,7 @@
 
 ---
 
-### Plan Spec Refactoring {plan-spec-refactor}
+### Plan Spec Refactoring (`plan-spec-refactor`)
 
 **OBSERVE**
 - Study AGENTS.md (what is specification, quality criteria definitions)
@@ -130,7 +130,7 @@
 
 ---
 
-### Plan Implementation Refactoring {plan-impl-refactor}
+### Plan Implementation Refactoring (`plan-impl-refactor`)
 
 **OBSERVE**
 - Study AGENTS.md (what is implementation, quality criteria definitions)
@@ -154,7 +154,7 @@
 
 ---
 
-### Plan Story to Spec {plan-story-to-spec}
+### Plan Story to Spec (`plan-story-to-spec`)
 
 **OBSERVE**
 - Study AGENTS.md (what is specification/implementation)
@@ -183,7 +183,7 @@
 
 ---
 
-### Plan Bug to Spec {plan-bug-to-spec}
+### Plan Bug to Spec (`plan-bug-to-spec`)
 
 **OBSERVE**
 - Study AGENTS.md (what is specification/implementation)
