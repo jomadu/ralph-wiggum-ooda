@@ -242,14 +242,52 @@ if [ -n "$PROCEDURE" ]; then
     validate_config "$CONFIG_FILE" "$PROCEDURE"
     
     # Only load from config if not already set via explicit flags
-    [ -z "$OBSERVE" ] && OBSERVE=$(yq eval ".procedures.$PROCEDURE.observe" "$CONFIG_FILE")
-    [ -z "$ORIENT" ] && ORIENT=$(yq eval ".procedures.$PROCEDURE.orient" "$CONFIG_FILE")
-    [ -z "$DECIDE" ] && DECIDE=$(yq eval ".procedures.$PROCEDURE.decide" "$CONFIG_FILE")
-    [ -z "$ACT" ] && ACT=$(yq eval ".procedures.$PROCEDURE.act" "$CONFIG_FILE")
+    if [ -z "$OBSERVE" ]; then
+        OBSERVE=$(yq eval ".procedures.$PROCEDURE.observe" "$CONFIG_FILE" 2>&1) || {
+            echo "Error: Failed to query 'observe' field from config"
+            echo "  Procedure: $PROCEDURE"
+            echo "  Config: $CONFIG_FILE"
+            echo "  Check that procedure has valid 'observe' field"
+            exit 1
+        }
+    fi
+    if [ -z "$ORIENT" ]; then
+        ORIENT=$(yq eval ".procedures.$PROCEDURE.orient" "$CONFIG_FILE" 2>&1) || {
+            echo "Error: Failed to query 'orient' field from config"
+            echo "  Procedure: $PROCEDURE"
+            echo "  Config: $CONFIG_FILE"
+            echo "  Check that procedure has valid 'orient' field"
+            exit 1
+        }
+    fi
+    if [ -z "$DECIDE" ]; then
+        DECIDE=$(yq eval ".procedures.$PROCEDURE.decide" "$CONFIG_FILE" 2>&1) || {
+            echo "Error: Failed to query 'decide' field from config"
+            echo "  Procedure: $PROCEDURE"
+            echo "  Config: $CONFIG_FILE"
+            echo "  Check that procedure has valid 'decide' field"
+            exit 1
+        }
+    fi
+    if [ -z "$ACT" ]; then
+        ACT=$(yq eval ".procedures.$PROCEDURE.act" "$CONFIG_FILE" 2>&1) || {
+            echo "Error: Failed to query 'act' field from config"
+            echo "  Procedure: $PROCEDURE"
+            echo "  Config: $CONFIG_FILE"
+            echo "  Check that procedure has valid 'act' field"
+            exit 1
+        }
+    fi
     
     # Use default iterations if not specified
     if [ "$MAX_ITERATIONS" -eq 0 ]; then
-        DEFAULT_ITER=$(yq eval ".procedures.$PROCEDURE.default_iterations" "$CONFIG_FILE")
+        DEFAULT_ITER=$(yq eval ".procedures.$PROCEDURE.default_iterations" "$CONFIG_FILE" 2>&1) || {
+            echo "Error: Failed to query 'default_iterations' field from config"
+            echo "  Procedure: $PROCEDURE"
+            echo "  Config: $CONFIG_FILE"
+            echo "  This field is optional - check config structure"
+            exit 1
+        }
         [ "$DEFAULT_ITER" != "null" ] && MAX_ITERATIONS=$DEFAULT_ITER
     fi
 fi
