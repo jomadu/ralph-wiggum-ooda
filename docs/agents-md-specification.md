@@ -33,22 +33,21 @@ Complete: mv tasks/in-progress/<id>.md tasks/done/
 ```
 
 ### Story/Bug Input
-- **Input location** - Where agents read the story/bug description to be incorporated
-- **Input identifier** - How agents know which specific story/bug to read (e.g., env variable or fixed filename)
-- Used by `draft-plan-story-to-spec` and `draft-plan-bug-to-spec` procedures as the source material for planning
+Where agents read the story/bug description for `draft-plan-story-to-spec` and `draft-plan-bug-to-spec` procedures.
 
-**Examples:**
+**Fixed file (simplest):**
 ```
-# Single file at project root (simplest)
-./TASK.md
+TASK.md at project root
+```
 
-# Beads issue (via env variable)
-bd show $TASK_ID --json  (title + description fields)
-
-# File per story (via env variable)
+**Environment variable pointing to file:**
+```
 stories/$TASK_ID.md
+```
 
-# GitHub issue (via env variable)
+**Environment variable with command:**
+```
+bd show $TASK_ID --json  # Use title + description fields
 gh issue view $TASK_ID --json
 ```
 
