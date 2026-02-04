@@ -1,16 +1,16 @@
 #!/bin/bash
 VERSION="0.1.0"
-# Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
-#    OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
+# Usage: ./rooda.sh <procedure> [-c <file>] [-m N]
+#    OR: ./rooda.sh -o <file> -r <file> -d <file> -a <file> [-m N]
 # Examples:
 #   ./rooda.sh build
-#   ./rooda.sh build --max-iterations 5
-#   ./rooda.sh build --config custom-config.yml
-#   ./rooda.sh --observe prompts/observe_specs.md \
-#             --orient prompts/orient_gap.md \
-#             --decide prompts/decide_gap_plan.md \
-#             --act prompts/act_plan.md \
-#             --max-iterations 1
+#   ./rooda.sh build -m 5
+#   ./rooda.sh build -c custom-config.yml
+#   ./rooda.sh -o prompts/observe_specs.md \
+#             -r prompts/orient_gap.md \
+#             -d prompts/decide_gap_plan.md \
+#             -a prompts/act_plan.md \
+#             -m 1
 
 show_help() {
     cat <<EOF
@@ -18,15 +18,15 @@ Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
    OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
 
 Options:
-  <procedure>           Named procedure from config (bootstrap, build, etc.)
-  --config <file>       Path to config file (default: rooda-config.yml)
-  --version             Show version number
-  --observe <file>      Path to observe phase prompt
-  --orient <file>       Path to orient phase prompt
-  --decide <file>       Path to decide phase prompt
-  --act <file>          Path to act phase prompt
-  --max-iterations N    Maximum iterations (default: see below)
-  --help, -h            Show this help message
+  <procedure>              Named procedure from config (bootstrap, build, etc.)
+  -c, --config <file>      Path to config file (default: rooda-config.yml)
+  --version                Show version number
+  -o, --observe <file>     Path to observe phase prompt
+  -r, --orient <file>      Path to orient phase prompt
+  -d, --decide <file>      Path to decide phase prompt
+  -a, --act <file>         Path to act phase prompt
+  -m, --max-iterations N   Maximum iterations (default: see below)
+  --help, -h               Show this help message
 
 Max Iterations Default Behavior (three-tier system):
   1. Command-line --max-iterations takes precedence
@@ -35,12 +35,12 @@ Max Iterations Default Behavior (three-tier system):
 
 Examples:
   ./rooda.sh bootstrap
-  ./rooda.sh build --max-iterations 5
-  ./rooda.sh --observe prompts/observe_specs.md \\
-            --orient prompts/orient_gap.md \\
-            --decide prompts/decide_gap_plan.md \\
-            --act prompts/act_plan.md \\
-            --max-iterations 1
+  ./rooda.sh build -m 5
+  ./rooda.sh -o prompts/observe_specs.md \\
+            -r prompts/orient_gap.md \\
+            -d prompts/decide_gap_plan.md \\
+            -a prompts/act_plan.md \\
+            -m 1
 EOF
 }
 
@@ -251,27 +251,27 @@ while [[ $# -gt 0 ]]; do
             show_help
             exit 0
             ;;
-        --config)
+        --config|-c)
             CONFIG_FILE="$2"
             shift 2
             ;;
-        --observe)
+        --observe|-o)
             OBSERVE="$2"
             shift 2
             ;;
-        --orient)
+        --orient|-r)
             ORIENT="$2"
             shift 2
             ;;
-        --decide)
+        --decide|-d)
             DECIDE="$2"
             shift 2
             ;;
-        --act)
+        --act|-a)
             ACT="$2"
             shift 2
             ;;
-        --max-iterations)
+        --max-iterations|-m)
             MAX_ITERATIONS="$2"
             shift 2
             ;;
