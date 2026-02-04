@@ -1,19 +1,62 @@
 # AI CLI Integration
 
 ## Job to be Done
-Execute OODA loop prompts through an AI CLI tool that can read files, modify code, run commands, and interact with the repository autonomously.
+Execute OODA loop prompts through a configurable AI CLI tool that can read files, modify code, run commands, and interact with the repository autonomously.
 
 ## Activities
-1. Pipe assembled OODA prompt to AI CLI via stdin
-2. Pass flags to enable autonomous operation (no interactive prompts)
-3. Trust all tool invocations without permission prompts
-4. Allow AI to read/write files, execute commands, and commit changes
-5. Capture AI CLI exit status for error handling
+1. Resolve AI CLI command from configuration (flag > config > default)
+2. Pipe assembled OODA prompt to AI CLI via stdin
+3. Pass flags to enable autonomous operation (no interactive prompts)
+4. Trust all tool invocations without permission prompts
+5. Allow AI to read/write files, execute commands, and commit changes
+6. Capture AI CLI exit status for error handling
+
+## Configuration
+
+### ai_cli_command Field
+
+The AI CLI command can be configured at the root level of `rooda-config.yml`:
+
+```yaml
+ai_cli_command: "kiro-cli chat --no-interactive --trust-all-tools"
+
+procedures:
+  bootstrap:
+    # ... procedure config
+```
+
+**Field properties:**
+- **Type:** String
+- **Location:** Root level of rooda-config.yml (not per-procedure)
+- **Purpose:** Specify which AI CLI tool to use for all procedures
+- **Default:** `kiro-cli chat --no-interactive --trust-all-tools`
+- **Validation:** Must be valid shell command
+
+### --ai-cli Flag
+
+Override the AI CLI command for a single execution:
+
+```bash
+./rooda.sh build --ai-cli "claude-cli --autonomous"
+```
+
+**Precedence rules:**
+1. `--ai-cli` flag (highest priority)
+2. `ai_cli_command` in rooda-config.yml
+3. Default: `kiro-cli chat --no-interactive --trust-all-tools`
+
+### Backward Compatibility
+
+Existing installations continue to work without changes. The default AI CLI command remains `kiro-cli chat --no-interactive --trust-all-tools`, ensuring backward compatibility for users who don't specify configuration.
 
 ## Acceptance Criteria
-- [x] Prompt piped to kiro-cli via stdin
-- [x] --no-interactive flag disables interactive prompts
-- [x] --trust-all-tools flag bypasses permission prompts
+- [x] Prompt piped to AI CLI via stdin
+- [x] AI CLI command configurable via rooda-config.yml
+- [x] AI CLI command overridable via --ai-cli flag
+- [x] Precedence: flag > config > default
+- [x] Default remains kiro-cli for backward compatibility
+- [x] --no-interactive flag (or equivalent) disables interactive prompts
+- [x] --trust-all-tools flag (or equivalent) bypasses permission prompts
 - [x] AI can read files from repository
 - [x] AI can write/modify files in repository
 - [x] AI can execute bash commands
@@ -22,16 +65,27 @@ Execute OODA loop prompts through an AI CLI tool that can read files, modify cod
 
 ## Data Structures
 
+### AI CLI Command Resolution
+```bash
+# Resolved from: --ai-cli flag > ai_cli_command config > default
+AI_CLI_COMMAND="${AI_CLI_FLAG:-${AI_CLI_CONFIG:-kiro-cli chat --no-interactive --trust-all-tools}}"
+```
+
 ### AI CLI Invocation
 ```bash
-create_prompt | kiro-cli chat --no-interactive --trust-all-tools
+create_prompt | $AI_CLI_COMMAND
 ```
 
 **Components:**
 - `create_prompt` - Function that assembles OODA prompt from four phase files
-- `kiro-cli chat` - AI CLI command for chat-based interaction
-- `--no-interactive` - Flag to disable interactive prompts (no user input required)
-- `--trust-all-tools` - Flag to bypass permission prompts for tool invocations
+- `$AI_CLI_COMMAND` - Resolved AI CLI command (configurable)
+- Default: `kiro-cli chat --no-interactive --trust-all-tools`
+
+**Common AI CLI tools:**
+- `kiro-cli chat --no-interactive --trust-all-tools` (default)
+- `claude-cli --autonomous --trust-tools`
+- `aider --yes --auto-commits`
+- Custom wrapper scripts
 
 ### Prompt Format
 ```markdown
@@ -52,16 +106,29 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
 ## Algorithm
 
-1. Assemble OODA prompt using `create_prompt` function
-2. Pipe prompt to kiro-cli via stdin
-3. kiro-cli reads prompt and executes OODA phases
-4. AI reads files, analyzes situation, makes decisions
-5. AI executes actions (modify files, run commands, commit changes)
-6. kiro-cli exits (status ignored by script)
-7. Script continues to git push and next iteration
+1. Resolve AI CLI command from configuration
+   - Check for --ai-cli flag (highest priority)
+   - Check for ai_cli_command in rooda-config.yml
+   - Fall back to default: `kiro-cli chat --no-interactive --trust-all-tools`
+2. Assemble OODA prompt using `create_prompt` function
+3. Pipe prompt to AI CLI via stdin
+4. AI CLI reads prompt and executes OODA phases
+5. AI reads files, analyzes situation, makes decisions
+6. AI executes actions (modify files, run commands, commit changes)
+7. AI CLI exits (status ignored by script)
+8. Script continues to git push and next iteration
 
 **Pseudocode:**
 ```bash
+# Resolve AI CLI command
+if [ -n "$AI_CLI_FLAG" ]; then
+    AI_CLI_COMMAND="$AI_CLI_FLAG"
+elif [ -n "$AI_CLI_CONFIG" ]; then
+    AI_CLI_COMMAND="$AI_CLI_CONFIG"
+else
+    AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"
+fi
+
 create_prompt() {
     cat <<EOF
 # OODA Loop Iteration
@@ -81,7 +148,7 @@ EOF
 }
 
 # Execute AI CLI
-create_prompt | kiro-cli chat --no-interactive --trust-all-tools
+create_prompt | $AI_CLI_COMMAND
 # Exit status not checked - script continues regardless
 ```
 
@@ -89,20 +156,26 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
 | Condition | Expected Behavior |
 |-----------|-------------------|
-| kiro-cli not installed | Command fails, script exits with error |
-| kiro-cli exits with error | Script continues to git push (no error handling) |
+| AI CLI not installed | Command fails, script exits with error |
+| AI CLI exits with error | Script continues to git push (no error handling) |
 | AI refuses to execute action | Iteration completes, next iteration may retry |
 | AI modifies unexpected files | Changes committed and pushed (no validation) |
 | AI executes dangerous command | Command runs (sandboxing required for safety) |
-| Prompt exceeds token limit | kiro-cli may truncate or fail (no size validation) |
-| Network failure during AI call | kiro-cli fails, script continues (no retry logic) |
+| Prompt exceeds token limit | AI CLI may truncate or fail (no size validation) |
+| Network failure during AI call | AI CLI fails, script continues (no retry logic) |
+| Invalid AI CLI command in config | Command fails at runtime, script exits |
+| --ai-cli flag with invalid command | Command fails at runtime, script exits |
+| AI CLI doesn't support stdin | Script fails, no fallback mechanism |
 
 ## Dependencies
 
-- kiro-cli - AI CLI tool (must be installed and in PATH)
-- kiro-cli chat command - Chat-based interaction mode
-- --no-interactive flag support - Must be supported by kiro-cli version
-- --trust-all-tools flag support - Must be supported by kiro-cli version
+- AI CLI tool (configurable, defaults to kiro-cli)
+- AI CLI must support:
+  - Reading prompts from stdin
+  - Non-interactive operation mode
+  - Tool invocation without permission prompts
+  - File read/write capabilities
+  - Command execution capabilities
 
 ## Implementation Mapping
 
@@ -117,7 +190,7 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
 ## Examples
 
-### Example 1: Successful Iteration
+### Example 1: Default AI CLI (kiro-cli)
 
 **Input:**
 ```bash
@@ -128,7 +201,7 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 ```
 [AI reads files, analyzes, makes decisions, executes actions]
 [AI commits changes]
-[kiro-cli exits with status 0]
+[AI CLI exits with status 0]
 ```
 
 **Verification:**
@@ -136,23 +209,66 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 - Git commits created by AI
 - Script continues to next iteration
 
-### Example 2: AI CLI Not Installed
+### Example 2: Custom AI CLI via Config
+
+**Config (rooda-config.yml):**
+```yaml
+ai_cli_command: "claude-cli --autonomous --trust-tools"
+
+procedures:
+  build:
+    # ... procedure config
+```
 
 **Input:**
 ```bash
-create_prompt | kiro-cli chat --no-interactive --trust-all-tools
+./rooda.sh build
 ```
 
 **Expected Output:**
 ```
-bash: kiro-cli: command not found
+[Prompt piped to claude-cli]
+[AI executes OODA loop]
+```
+
+**Verification:**
+- claude-cli invoked instead of kiro-cli
+- Iteration completes successfully
+
+### Example 3: Override via --ai-cli Flag
+
+**Input:**
+```bash
+./rooda.sh build --ai-cli "aider --yes --auto-commits"
+```
+
+**Expected Output:**
+```
+[Prompt piped to aider]
+[AI executes OODA loop]
+```
+
+**Verification:**
+- aider invoked (flag overrides config and default)
+- Iteration completes successfully
+
+### Example 4: AI CLI Not Installed
+
+**Input:**
+```bash
+./rooda.sh build --ai-cli "nonexistent-cli"
+```
+
+**Expected Output:**
+```
+bash: nonexistent-cli: command not found
 ```
 
 **Verification:**
 - Script exits with error
 - No iteration executed
 
-### Example 3: AI Refuses Action
+### Example 5: AI Refuses Action
 
 **Input:**
 ```bash
@@ -163,7 +279,7 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 ```
 [AI analyzes situation]
 [AI responds: "I cannot complete this action because..."]
-[kiro-cli exits]
+[AI CLI exits]
 ```
 
 **Verification:**
@@ -175,49 +291,58 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 
 **Design Rationale:**
 
-The AI CLI integration is designed for autonomous operation with minimal human intervention. The `--no-interactive` and `--trust-all-tools` flags are critical for enabling the loop to run unattended.
+The AI CLI integration is designed for autonomous operation with minimal human intervention. Configuration support enables users to choose their preferred AI CLI tool while maintaining backward compatibility with kiro-cli as the default.
+
+**Configuration Flexibility:**
+
+The three-tier precedence system (flag > config > default) provides flexibility:
+1. **--ai-cli flag** - Quick experimentation or one-off overrides
+2. **ai_cli_command config** - Project-specific AI CLI preference
+3. **Default (kiro-cli)** - Backward compatibility for existing users
 
 **Security Implications:**
 
-The `--trust-all-tools` flag bypasses all permission prompts, allowing the AI to execute arbitrary commands and modify any files. This is inherently risky and requires sandboxed execution environments (Docker, Fly Sprites, E2B) to limit blast radius.
+The AI CLI must support autonomous operation (no interactive prompts, no permission prompts for tool invocations). This is inherently risky and requires sandboxed execution environments (Docker, Fly Sprites, E2B) to limit blast radius.
 
 **Error Handling:**
 
-The script does not check kiro-cli exit status. This design choice allows the loop to continue even if the AI encounters errors or refuses actions. The assumption is that subsequent iterations can self-correct through empirical feedback.
+The script does not check AI CLI exit status. This design choice allows the loop to continue even if the AI encounters errors or refuses actions. The assumption is that subsequent iterations can self-correct through empirical feedback.
 
-**Alternative AI CLIs:**
+**AI CLI Requirements:**
 
-While the implementation uses kiro-cli, the specification is designed to be compatible with any AI CLI that supports:
+Any AI CLI tool can be used if it supports:
 - Reading prompts from stdin
-- Non-interactive operation
+- Non-interactive operation mode
 - Tool invocation without permission prompts
 - File read/write capabilities
 - Command execution capabilities
 
 **Token Limits:**
 
-The script does not validate prompt size before piping to kiro-cli. Large OODA phase files or extensive file contents could exceed token limits. The AI CLI is responsible for handling this (truncation, error, or chunking).
+The script does not validate prompt size before piping to AI CLI. Large OODA phase files or extensive file contents could exceed token limits. The AI CLI is responsible for handling this (truncation, error, or chunking).
 
 ## Known Issues
 
-**No error handling:** Script continues to git push even if kiro-cli fails. This could result in pushing incomplete or invalid changes.
+**No error handling:** Script continues to git push even if AI CLI fails. This could result in pushing incomplete or invalid changes.
 
-**No retry logic:** If kiro-cli fails due to transient issues (network, rate limits), the iteration is lost. No automatic retry mechanism exists.
+**No retry logic:** If AI CLI fails due to transient issues (network, rate limits), the iteration is lost. No automatic retry mechanism exists.
 
-**No validation:** Script does not validate that kiro-cli supports required flags before invocation. Incompatible versions will fail at runtime.
+**No validation:** Script does not validate that AI CLI command is valid or that the tool supports required capabilities before invocation. Incompatible tools will fail at runtime.
 
-**No timeout:** If kiro-cli hangs, the script waits indefinitely. No timeout mechanism exists.
+**No timeout:** If AI CLI hangs, the script waits indefinitely. No timeout mechanism exists.
 
 ## Areas for Improvement
 
-**Dependency checking:** Add validation that kiro-cli is installed and supports required flags before starting loop.
+**Dependency checking:** Add validation that configured AI CLI is installed and accessible before starting loop.
 
-**Error handling:** Check kiro-cli exit status and handle failures gracefully (retry, skip push, abort loop).
+**Capability detection:** Detect if AI CLI supports required features (stdin, non-interactive mode, tool invocation) and provide clear error messages if not.
+
+**Error handling:** Check AI CLI exit status and handle failures gracefully (retry, skip push, abort loop).
 
 **Timeout mechanism:** Add timeout for AI CLI invocation to prevent indefinite hangs.
 
-**Prompt size validation:** Check assembled prompt size before piping to kiro-cli, warn if approaching token limits.
+**Prompt size validation:** Check assembled prompt size before piping to AI CLI, warn if approaching token limits.
 
-**Alternative CLI support:** Document how to use other AI CLIs (Claude CLI, OpenAI CLI, etc.) with appropriate flag mappings.
+**AI CLI profiles:** Support multiple AI CLI configurations (e.g., "fast" vs "thorough" models) selectable per procedure or via flag.
 
-**Version requirements:** Specify minimum kiro-cli version required for compatibility.
+**Version requirements:** Document minimum version requirements for supported AI CLI tools.
