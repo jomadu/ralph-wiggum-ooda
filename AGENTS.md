@@ -61,7 +61,7 @@ bd ready --json
 
 ## Implementation Definition
 
-**Location:** `src/rooda.sh`, `src/prompts/*.md`, and `docs/*.md`
+**Location:** `src/rooda.sh`, `src/prompts/*.md`, `docs/*.md`, and `scripts/*.sh`
 
 **Patterns:**
 - `src/rooda.sh` - Main loop script (root `rooda.sh` is wrapper/symlink)
