@@ -347,7 +347,7 @@ Limit blast radius through isolation, not through hoping the AI won't do somethi
 - [Specs System](specs/specification-system.md) - How to structure specifications
 - [Spec Template](specs/TEMPLATE.md) - Template for new specs
 - [AGENTS.md Specification](specs/agents-md-format.md) - Complete AGENTS.md format
-- [Prompts README](src/README.md) - Detailed prompt composition breakdown
+- [Component Authoring](specs/component-authoring.md) - Detailed prompt composition breakdown
 
 ---
 

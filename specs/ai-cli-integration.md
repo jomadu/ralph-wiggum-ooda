@@ -111,7 +111,7 @@ create_prompt | kiro-cli chat --no-interactive --trust-all-tools
 - `src/rooda.sh` - Line 169 implements AI CLI invocation
 
 **Related specs:**
-- `../src/README.md` - Defines how OODA phases are assembled
+- `component-authoring.md` - Defines how OODA phases are assembled
 - `iteration-loop.md` - Defines loop execution behavior
 - `cli-interface.md` - Defines command-line argument parsing
 

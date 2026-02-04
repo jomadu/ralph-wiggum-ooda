@@ -110,7 +110,7 @@ function DocumentationFlow(user_need):
 - `docs/ralph-loop.md` - Original Ralph Loop methodology by Geoff Huntley
 - `docs/beads.md` - Work tracking system documentation
 - `docs/README.md` - Index of detailed documentation
-- `src/README.md` - Developer reference for prompt composition (not user-facing)
+- `component-authoring.md` - Developer reference for prompt composition (not user-facing)
 
 **Related specs:**
 - `specification-system.md` - Defines how specs are structured (not user-facing)
@@ -173,7 +173,7 @@ User has specific workflow not covered by built-in procedures.
 1. README.md "Custom Procedures" section explains two approaches
 2. Example shows editing rooda-config.yml
 3. Example shows using command-line flags
-4. Links to src/README.md for prompt composition details
+4. Links to component-authoring.md for prompt composition details
 
 **Verification:**
 - Both approaches are documented with working examples
@@ -198,7 +198,7 @@ User has specific workflow not covered by built-in procedures.
 - docs/: User-facing, detailed guides, concepts, extended examples
 - specs/: Developer-facing, requirements, specifications
 - AGENTS.md: Agent-facing, operational guide
-- src/README.md: Developer-facing, prompt composition reference
+- component-authoring.md: Developer-facing, prompt composition reference
 
 ## Known Issues
 
