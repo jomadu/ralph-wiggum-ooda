@@ -16,6 +16,9 @@ Execute OODA loop prompts through an AI CLI tool that can read files, modify cod
 ### [cli-interface.md](cli-interface.md)
 Enable users to invoke OODA loop procedures through a command-line interface, supporting both named procedures from configuration and explicit OODA phase file specification.
 
+### [component-system.md](component-system.md)
+Enable agents to execute procedures through composable, reusable prompt components that maintain consistency across iterations while allowing flexible procedure definitions.
+
 ### [configuration-schema.md](configuration-schema.md)
 Enable users to define custom OODA loop procedures by mapping procedure names to composable prompt component files, supporting both predefined framework procedures and user-defined custom procedures.
 
