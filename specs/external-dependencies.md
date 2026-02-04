@@ -176,6 +176,13 @@ function check_dependencies():
             print error_message(dependency)
             print installation_instructions(dependency)
             exit 1
+        
+        if version_required(dependency):
+            version = extract_version(dependency)
+            if version < minimum_version:
+                print error_message(dependency, version, minimum_version)
+                print upgrade_instructions(dependency)
+                exit 1
     
     for each optional_dependency:
         if not command_exists(dependency):
@@ -187,16 +194,16 @@ function check_dependencies():
 
 **Current Implementation:**
 - rooda.sh checks for yq at startup (required)
+- rooda.sh validates yq version >= 4.0.0 (lines 109-113)
 - rooda.sh checks for kiro-cli at startup (default, but can be modified)
 - rooda.sh checks for bd at startup (project-specific, can be removed if using different work tracking)
-- No version validation
 
 ## Edge Cases
 
 | Condition | Expected Behavior |
 |-----------|-------------------|
 | yq not installed | Script exits with error and installation instructions |
-| yq v3 installed (incompatible) | Script may fail with cryptic YAML parsing errors |
+| yq v3 installed (incompatible) | Script exits with error: "yq version 4.0.0 or higher required (found X.X.X)" and upgrade instructions |
 | kiro-cli not installed | Script exits with error (default behavior, can be modified for other AI CLIs) |
 | bd not installed | Script exits with error (can be removed if using different work tracking) |
 | shellcheck not installed | Lint command fails but documented as optional |
@@ -206,6 +213,7 @@ function check_dependencies():
 
 **Source files:**
 - `src/rooda.sh` (lines 15-19) - yq dependency check
+- `src/rooda.sh` (lines 113-120) - yq version validation (requires v4.0.0+)
 - `src/rooda.sh` (line 161) - kiro-cli invocation
 - `AGENTS.md` - Documents bd commands and shellcheck usage
 
@@ -251,7 +259,7 @@ Install with: brew install yq
 - Script exits with status 1
 - Error message provides installation instructions
 
-### Example 3: Version Check (Not Implemented)
+### Example 3: Version Check (Implemented)
 
 **Input:**
 ```bash
@@ -260,8 +268,16 @@ yq --version
 ./rooda.sh bootstrap
 ```
 
-**Expected Behavior:**
-Script should detect incompatible yq v3 and warn user, but currently does not validate version.
+**Expected Output:**
+```
+Error: yq version 4.0.0 or higher required (found 3.4.1)
+Upgrade with: brew upgrade yq
+```
+
+**Verification:**
+- Script exits with status 1
+- Error message shows detected version and required minimum
+- Provides upgrade instructions
 
 ## Notes
 
@@ -284,20 +300,17 @@ Script should detect incompatible yq v3 and warn user, but currently does not va
 
 ## Known Issues
 
-1. **No version validation:** Script checks if yq exists but not if it's v4+. Users with yq v3 will get cryptic YAML parsing errors.
+1. **Dependency checks assume defaults:** Script checks for kiro-cli and bd at startup, but these are configurable. Projects using alternatives need to modify rooda.sh dependency checks.
 
-2. **Dependency checks assume defaults:** Script checks for kiro-cli and bd at startup, but these are configurable. Projects using alternatives need to modify rooda.sh dependency checks.
+2. **Platform-specific instructions:** Installation commands assume macOS (brew) or Linux package managers. Windows/WSL users need different instructions.
 
-3. **Platform-specific instructions:** Installation commands assume macOS (brew) or Linux package managers. Windows/WSL users need different instructions.
-
-4. **No automated installer:** Users must manually install all dependencies. No bootstrap script to automate setup.
+3. **No automated installer:** Users must manually install all dependencies. No bootstrap script to automate setup.
 
 ## Areas for Improvement
 
-1. **Add version validation:** Check yq version and warn if < v4.0.0
-2. **Configurable dependency checks:** Allow projects to disable kiro-cli/bd checks via config if using alternatives
-3. **Automated installer:** Provide setup script that installs all dependencies
-4. **Platform detection:** Detect OS and provide appropriate installation commands
-5. **Dependency matrix:** Document tested version combinations
-6. **Docker image:** Provide pre-configured container with all dependencies
-7. **AI CLI abstraction:** Create adapter layer so different AI CLIs can be swapped without modifying rooda.sh
+1. **Configurable dependency checks:** Allow projects to disable kiro-cli/bd checks via config if using alternatives
+2. **Automated installer:** Provide setup script that installs all dependencies
+3. **Platform detection:** Detect OS and provide appropriate installation commands
+4. **Dependency matrix:** Document tested version combinations
+5. **Docker image:** Provide pre-configured container with all dependencies
+6. **AI CLI abstraction:** Create adapter layer so different AI CLIs can be swapped without modifying rooda.sh
