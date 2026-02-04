@@ -70,9 +70,8 @@ if ! command -v yq &> /dev/null; then
 fi
 
 if ! command -v kiro-cli &> /dev/null; then
-    echo "Error: kiro-cli is required for AI CLI integration"
-    echo "Install from: https://docs.aws.amazon.com/kiro/"
-    exit 1
+    # kiro-cli check moved to after argument parsing (conditional on AI_CLI_COMMAND)
+    :
 fi
 
 if ! command -v bd &> /dev/null; then
@@ -96,9 +95,8 @@ fi
 KIRO_VERSION=$(kiro-cli --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
 KIRO_MAJOR=$(echo "$KIRO_VERSION" | cut -d. -f1)
 if [ "$KIRO_MAJOR" -lt 1 ]; then
-    echo "Error: kiro-cli version 1.0.0 or higher required (found $KIRO_VERSION)"
-    echo "Upgrade from: https://docs.aws.amazon.com/kiro/"
-    exit 1
+    # kiro-cli version check moved to after argument parsing (conditional on AI_CLI_COMMAND)
+    :
 fi
 
 BD_VERSION=$(bd --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
@@ -224,6 +222,7 @@ ACT=""
 MAX_ITERATIONS=0
 PROCEDURE=""
 VERBOSE=0  # 0=default, 1=verbose, -1=quiet
+AI_CLI_COMMAND="kiro-cli"  # Default AI CLI, configurable via --ai-cli or config
 # Resolve config file relative to script location
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/rooda-config.yml"
@@ -278,6 +277,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --max-iterations|-m)
             MAX_ITERATIONS="$2"
+            shift 2
+            ;;
+        --ai-cli)
+            AI_CLI_COMMAND="$2"
             shift 2
             ;;
         --verbose)
@@ -357,6 +360,29 @@ if [ -n "$PROCEDURE" ]; then
         }
         [ "$DEFAULT_ITER" != "null" ] && MAX_ITERATIONS=$DEFAULT_ITER
     fi
+    
+    # Query ai_cli_command from config if not set via --ai-cli flag
+    if [ "$AI_CLI_COMMAND" = "kiro-cli" ]; then
+        CONFIG_AI_CLI=$(yq eval ".procedures.$PROCEDURE.ai_cli_command" "$CONFIG_FILE" 2>&1)
+        [ "$CONFIG_AI_CLI" != "null" ] && [ -n "$CONFIG_AI_CLI" ] && AI_CLI_COMMAND="$CONFIG_AI_CLI"
+    fi
+fi
+
+# Check AI CLI availability and version (only if using kiro-cli)
+if [ "$AI_CLI_COMMAND" = "kiro-cli" ]; then
+    if ! command -v kiro-cli &> /dev/null; then
+        echo "Error: kiro-cli is required for AI CLI integration"
+        echo "Install from: https://docs.aws.amazon.com/kiro/"
+        exit 1
+    fi
+    
+    KIRO_VERSION=$(kiro-cli --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    KIRO_MAJOR=$(echo "$KIRO_VERSION" | cut -d. -f1)
+    if [ "$KIRO_MAJOR" -lt 1 ]; then
+        echo "Error: kiro-cli version 1.0.0 or higher required (found $KIRO_VERSION)"
+        echo "Upgrade from: https://docs.aws.amazon.com/kiro/"
+        exit 1
+    fi
 fi
 
 # Validate required arguments
@@ -424,16 +450,16 @@ while true; do
     # Show full prompt in verbose mode
     if [ "$VERBOSE" -eq 1 ]; then
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "Full prompt being sent to kiro-cli:"
+        echo "Full prompt being sent to AI CLI:"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         create_prompt
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     fi
 
     # Execute AI CLI - exit status intentionally ignored per ai-cli-integration.md
-    # Design: Script continues to git push regardless of kiro-cli success/failure
+    # Design: Script continues to git push regardless of AI CLI success/failure
     # Rationale: Allows loop to self-correct through empirical feedback in subsequent iterations
-    create_prompt | kiro-cli chat --no-interactive --trust-all-tools
+    create_prompt | $AI_CLI_COMMAND
 
     if ! git push origin "$CURRENT_BRANCH" 2>&1; then
         if git push -u origin "$CURRENT_BRANCH" 2>&1; then
