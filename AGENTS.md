@@ -64,10 +64,11 @@ bd ready --json
 **Location:** `src/rooda.sh`, `src/prompts/*.md`, and `docs/*.md`
 
 **Patterns:**
-- `src/rooda.sh` - Main loop script
+- `src/rooda.sh` - Main loop script (root `rooda.sh` is wrapper/symlink)
 - `src/rooda-config.yml` - Procedure configuration
-- `src/prompts/*.md` - OODA prompt components
+- `src/prompts/*.md` - OODA prompt components (25 files)
 - `docs/*.md` - User-facing documentation
+- `scripts/*.sh` - Utility scripts
 
 **Exclude:**
 - `.beads/*` (work tracking database)
