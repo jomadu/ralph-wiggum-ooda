@@ -97,7 +97,7 @@ if procedure_specified:
 
 **Related specs:**
 - `cli-interface.md` - Defines how procedure names are parsed from CLI
-- `prompt-composition.md` - Defines structure of prompt component files
+- `../src/README.md` - Defines structure of prompt component files
 - `iteration-loop.md` - Defines how default_iterations affects loop behavior
 
 ## Examples

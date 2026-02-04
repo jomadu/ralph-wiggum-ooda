@@ -126,6 +126,7 @@ EOF
 - `src/rooda.sh` (lines 143-159) - create_prompt() function
 
 **Related specs:**
+- `src/README.md` - Prompt composition system
 - `specs/configuration-schema.md` - Procedure configuration
 
 ## Examples

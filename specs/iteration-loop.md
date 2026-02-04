@@ -92,7 +92,7 @@ done
 
 **Related specs:**
 - `cli-interface.md` - Defines how MAX_ITERATIONS is set from CLI or config
-- `prompt-composition.md` - Defines create_prompt() function behavior
+- `../src/README.md` - Defines create_prompt() function behavior
 - `ai-cli-integration.md` - Defines kiro-cli invocation (to be created)
 
 ## Examples
