@@ -1,4 +1,5 @@
 #!/bin/bash
+VERSION="0.1.0"
 # Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
 #    OR: ./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
 # Examples:
@@ -19,6 +20,7 @@ Usage: ./rooda.sh <procedure> [--config <file>] [--max-iterations N]
 Options:
   <procedure>           Named procedure from config (bootstrap, build, etc.)
   --config <file>       Path to config file (default: rooda-config.yml)
+  --version             Show version number
   --observe <file>      Path to observe phase prompt
   --orient <file>       Path to orient phase prompt
   --decide <file>       Path to decide phase prompt
@@ -227,6 +229,12 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
     exit 0
 fi
 
+# Check for version flag
+if [[ "$1" == "--version" ]]; then
+    echo "rooda.sh version $VERSION"
+    exit 0
+fi
+
 # First positional argument is procedure name (optional)
 if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
     PROCEDURE="$1"
@@ -235,6 +243,10 @@ fi
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        --version)
+            echo "rooda.sh version $VERSION"
+            exit 0
+            ;;
         --help|-h)
             show_help
             exit 0
