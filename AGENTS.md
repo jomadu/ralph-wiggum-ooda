@@ -109,3 +109,5 @@ bd ready --json
 
 **2026-02-03:** Quality assessment re-executed. Same results as previous iteration: Criteria 1, 2, 3, and 5 pass. Criterion 4 fails (command examples not verified). Refactoring plan regenerated in PLAN.md with identical 5-task structure. No operational learnings - quality criteria remain accurate, verification process still undefined, no changes to AGENTS.md needed.
 
+**2026-02-03:** Quality assessment iteration identified new failure: agents-md-format.md does not follow spec template structure. Missing "Job to be Done", "Acceptance Criteria", and "Examples" sections (uses "Purpose" instead). This causes criteria 1, 2, and 3 to fail. Criterion 4 (command examples verified) continues to fail - no verification process defined. Criterion 5 passes. Refactoring plan updated in PLAN.md with 5 prioritized tasks: (1) fix agents-md-format.md structure, (2) define verification process, (3) execute verification pass, (4) mark non-executable examples, (5) automate verification. Critical path: fix agents-md-format.md structure (Task 1) to achieve criteria 1-3 compliance.
+
