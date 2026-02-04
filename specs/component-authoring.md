@@ -333,7 +333,7 @@ Execute test commands from AGENTS.md:
 - **A3:** Implement using parallel subagents (only 1 subagent for build/tests)
 - **A4:** Run tests per AGENTS.md (backpressure)
 - **A5:** Update work tracking per AGENTS.md (mark complete/update status)
-- **A6:** Update AGENTS.md if learned something new (capture the why, keep it up to date)
+- **A6:** Incorporate learnings into AGENTS.md (update commands/paths/criteria in place, add inline rationale, no dated diary entries)
 - **A7:** Commit when tests pass
 - **A8:** Write draft plan file per AGENTS.md with prioritized bullet-point task list
 - **A9:** Execute work tracking commands per AGENTS.md to create issues from draft plan
@@ -360,7 +360,7 @@ Execute test commands from AGENTS.md:
 
 **Backpressure is Mandatory** - Act components that modify code must run tests and only commit when passing. No exceptions.
 
-**Capture the Why** - When updating AGENTS.md, components must instruct agents to document rationale, not just changes. Why this command? Why this location? What was learned?
+**Incorporate Learnings, Don't Append** - When updating AGENTS.md, components must instruct agents to incorporate learnings into existing sections (commands, paths, criteria) with inline rationale, not append dated diary entries. Exception: significant architectural decisions may warrant dated entries if historical context matters.
 
 **Parallel Subagents for Scale** - Act components should use parallel subagents for independent work, but only 1 subagent for build/test operations to avoid conflicts.
 

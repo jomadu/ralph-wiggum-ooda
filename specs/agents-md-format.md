@@ -168,12 +168,22 @@ AGENTS.md is a working hypothesis about how the project operates. It should be u
 - Quality criteria don't match project needs
 - New patterns or conventions are discovered
 
-### Capture the Why
-When updating AGENTS.md, include rationale:
-- Why this command instead of another
-- Why these file paths
-- Why these quality criteria
-- What was learned that prompted the update
+### Incorporate Learnings, Don't Append Diary Entries
+When updating AGENTS.md:
+- **Incorporate into existing sections** - Update commands, paths, or criteria directly where they live
+- **Include inline rationale** - Brief comment explaining why (e.g., "# Using npm test instead of jest directly - works with project setup")
+- **No dated diary entries** - Don't append "YYYY-MM-DD: discovered X" logs
+- **Exception:** Significant architectural decisions may warrant dated entries if historical context matters
+
+**Examples:**
+```markdown
+# Good: Incorporated learning
+**Test:** npm test  # Changed from jest - works with project's custom config
+
+# Bad: Diary entry
+**Operational Learnings**
+**2026-02-03:** Changed test command from jest to npm test because jest didn't work with project config.
+```
 
 ### Keep It Up to Date
 - **Agents update** when they discover errors or learn new operational details during any procedure

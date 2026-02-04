@@ -1,51 +1,89 @@
-# Specification Refactoring Plan
+# Plan: Rename components/ to prompts/
 
-## Quality Assessment Results
+## Goal
+Eliminate naming discrepancy between framework (`src/components/`) and consumer projects (`prompts/`) by using `prompts/` consistently everywhere.
 
-**Criterion 1: All specs have "Job to be Done" section** - **FAIL**
-- agents-md-format.md uses "## Purpose" instead of "## Job to be Done"
-- All other 8 specs (excluding TEMPLATE.md, README.md, specification-system.md) have "## Job to be Done"
+## Tasks
 
-**Criterion 2: All specs have "Acceptance Criteria" section** - **FAIL**
-- agents-md-format.md missing "## Acceptance Criteria" section
-- All other 8 specs have "## Acceptance Criteria"
+### 1. Rename directory
+- Rename `src/components/` to `src/prompts/`
+- Priority: High (blocks other tasks)
+- Dependencies: None
 
-**Criterion 3: All specs have "Examples" section** - **FAIL**
-- agents-md-format.md missing "## Examples" section
-- All other 8 specs have "## Examples"
+### 2. Update src/rooda-config.yml (38 references)
+- Replace all `src/components/*.md` paths with `src/prompts/*.md`
+- Verify all procedure definitions reference correct paths
+- Priority: High (blocks testing)
+- Dependencies: Task 1
 
-**Criterion 4: All command examples in specs are verified working** - **FAIL**
-- 44 bash code blocks identified across 8 specs
-- No verification process defined
-- No empirical testing performed
-- No distinction between executable commands and pseudocode/illustrative examples
+### 3. Update specs/component-authoring.md (26 references)
+- Replace `src/components/` with `src/prompts/`
+- Update terminology from "components" to "prompts" where referring to the files
+- Keep "component" when referring to OODA phase components conceptually
+- Priority: Medium
+- Dependencies: Task 1
 
-**Criterion 5: No specs marked as DEPRECATED without replacement** - **PASS**
-- component-system.md marked DEPRECATED, replacement is component-authoring.md
-- prompt-composition.md marked DEPRECATED, replacement is component-authoring.md
-- Both deprecated specs correctly reference replacement
+### 4. Update specs/cli-interface.md (16 references)
+- Replace example paths from `src/components/` to `src/prompts/`
+- Priority: Medium
+- Dependencies: Task 1
 
-## Refactoring Tasks
+### 5. Update src/README.md (12 references)
+- Title: "Procedures and Components Specification" → "Procedures and Prompts Specification"
+- Replace `src/components/` references with `src/prompts/`
+- Update section headers if needed
+- Priority: Medium
+- Dependencies: Task 1
 
-### Task 1: Fix agents-md-format.md Structure
-**Impact:** Criteria 1, 2, 3 all fail due to this single spec
-**Effort:** Low
-**Risk:** Low - structural change only
+### 6. Update specs/configuration-schema.md (5 references)
+- Replace example paths from `src/components/` to `src/prompts/`
+- Priority: Medium
+- Dependencies: Task 1
 
-**Actions:**
-- Rename "## Purpose" section to "## Job to be Done"
-- Add "## Acceptance Criteria" section with checkboxes for required AGENTS.md sections
-- Add "## Examples" section with sample AGENTS.md files for different project types
+### 7. Update README.md (5 references)
+- Change installation: `cp -r ralph-wiggum-ooda/src/components ./prompts` → `cp -r ralph-wiggum-ooda/src/prompts ./prompts`
+- Update explanation text about component composition
+- Update sample repository structure diagram
+- Priority: High (user-facing)
+- Dependencies: Task 1
 
-**Acceptance Criteria:**
-- agents-md-format.md has "## Job to be Done" section
-- agents-md-format.md has "## Acceptance Criteria" section
-- agents-md-format.md has "## Examples" section
-- Content from "## Purpose" preserved in "## Job to be Done"
+### 8. Update specs/agents-md-format.md (4 references)
+- Remove "Path Conventions" section entirely
+- Update any remaining references to `src/components/`
+- Simplify documentation now that naming is consistent
+- Priority: Medium
+- Dependencies: Task 1
 
-## Summary
+### 9. Update AGENTS.md (2 references)
+- Implementation Definition: `src/components/*.md` → `src/prompts/*.md`
+- Priority: Medium
+- Dependencies: Task 1
 
-- **Criteria failing:** 4 of 5 (criteria 1, 2, 3, 4)
-- **Criteria passing:** 1 of 5 (criterion 5)
-- **Root cause:** agents-md-format.md doesn't follow template (affects 3 criteria)
-- **Action:** Task 1 (fix agents-md-format.md structure) - highest impact, lowest effort
+### 10. Verify functionality
+- Run `shellcheck src/rooda.sh` to verify no errors
+- Run `./rooda.sh bootstrap --max-iterations 1` to test
+- Confirm script loads prompts correctly
+- Check for any errors referencing old paths
+- Priority: High (validation)
+- Dependencies: Tasks 1-9
+
+### 11. Final grep verification
+- Run `grep -ri "components" .` excluding .git and .beads
+- Verify only conceptual uses remain (not path references)
+- Update any missed references
+- Priority: Low (cleanup)
+- Dependencies: Task 10
+
+## Success Criteria
+- [ ] Directory renamed from `src/components/` to `src/prompts/`
+- [ ] All 128 references updated across 14 files
+- [ ] shellcheck passes
+- [ ] Bootstrap procedure runs successfully
+- [ ] No path references to old `components/` name remain
+- [ ] Installation instructions are simpler and clearer
+- [ ] "Path Conventions" section removed from agents-md-format.md
+
+## Notes
+- .beads/issues.jsonl and git logs contain historical references - leave unchanged
+- Keep "component" terminology when referring to OODA phase composition conceptually
+- Only change "components" to "prompts" when referring to the directory or files

@@ -52,13 +52,13 @@ Update the work tracking system:
 - Use commands specified in AGENTS.md
 - Document what was accomplished
 
-## A6: Update AGENTS.md if Learned Something New
+## A6: Incorporate Learnings into AGENTS.md
 
 If operational learnings occurred:
-- Update AGENTS.md with new information
-- Capture the why - document rationale
-- Keep it up to date
-- Examples: commands that didn't work, better patterns discovered, new conventions
+- **Incorporate into existing sections** - Update commands, paths, or criteria where they live
+- **Add inline rationale** - Brief comment explaining why (e.g., "# Using X instead of Y - reason")
+- **Don't append diary entries** - No dated logs like "YYYY-MM-DD: discovered X"
+- Examples: command failed → update command with working version; path incorrect → fix path; pattern discovered → update definition
 
 ## A7: Commit When Tests Pass
 

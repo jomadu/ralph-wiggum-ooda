@@ -80,7 +80,7 @@ bd ready --json
 - All specs have "Job to be Done" section (PASS/FAIL)
 - All specs have "Acceptance Criteria" section (PASS/FAIL)
 - All specs have "Examples" section (PASS/FAIL)
-- All command examples in specs are verified working (PASS/FAIL)
+- All command examples in specs are verified working (PASS/FAIL)  # Verification process: execute commands, validate output; distinguish executable vs pseudocode
 - No specs marked as DEPRECATED without replacement (PASS/FAIL)
 
 **For implementation:**
@@ -95,23 +95,5 @@ bd ready --json
 - Documentation contradicts script behavior
 - Script fails on documented use cases
 
-## Operational Learnings
-
-**2025-02-03:** Updated quality criteria from subjective assessments to boolean PASS/FAIL checks. Previous criteria ("Clarity: Can a new user understand?", "Maintainability: Is bash code readable?") were not actionable for automated quality assessment. New criteria provide clear thresholds that can be verified empirically.
-
-**2026-02-03:** Quality criterion "All command examples in specs are verified working" requires verification process definition. Command examples should be empirically tested by executing them and validating output. Distinguish between executable commands (./rooda.sh, yq, bd, kiro-cli) that must work as documented, and pseudocode/illustrative examples that should be clearly marked as non-executable. Verification ensures specs remain accurate as implementation evolves.
-
-**2026-02-03:** Quality criterion "All command examples in specs are verified working" requires verification process definition. Command examples should be empirically tested by executing them and validating output. Distinguish between executable commands (./rooda.sh, yq, bd, kiro-cli) that must work as documented, and pseudocode/illustrative examples that should be clearly marked as non-executable. Verification ensures specs remain accurate as implementation evolves.
-
-**2026-02-03:** Quality assessment of specifications completed. Criteria 1-3 and 5 pass. Criterion 4 fails: command examples exist but verification process not defined and examples not empirically tested. Refactoring plan created in PLAN.md to address: (1) define verification process, (2) execute verification on all specs, (3) mark non-executable examples clearly, (4) create verification tracking system, (5) automate verification where possible. Priority is defining verification process and executing initial verification pass.
-
-**2026-02-03:** Quality assessment iteration completed. Systematic evaluation of all 9 specifications against boolean criteria. Results: Criteria 1 (Job to be Done sections), 2 (Acceptance Criteria sections), 3 (Examples sections), and 5 (DEPRECATED specs have replacements) all pass. Criterion 4 (command examples verified working) fails: 44 bash code blocks identified across 8 specs, no verification process defined, no empirical testing performed, no distinction between executable commands and pseudocode. Refactoring plan written to PLAN.md with 5 prioritized tasks. Critical path: define verification process (Task 1) before executing verification pass (Task 2).
-
-**2026-02-03:** Quality assessment re-executed. Same results as previous iteration: Criteria 1, 2, 3, and 5 pass. Criterion 4 fails (command examples not verified). Refactoring plan regenerated in PLAN.md with identical 5-task structure. No operational learnings - quality criteria remain accurate, verification process still undefined, no changes to AGENTS.md needed.
-
-**2026-02-03:** Quality assessment iteration identified new failure: agents-md-format.md does not follow spec template structure. Missing "Job to be Done", "Acceptance Criteria", and "Examples" sections (uses "Purpose" instead). This causes criteria 1, 2, and 3 to fail. Criterion 4 (command examples verified) continues to fail - no verification process defined. Criterion 5 passes. Refactoring plan updated in PLAN.md with 5 prioritized tasks: (1) fix agents-md-format.md structure, (2) define verification process, (3) execute verification pass, (4) mark non-executable examples, (5) automate verification. Critical path: fix agents-md-format.md structure (Task 1) to achieve criteria 1-3 compliance.
-
-**2026-02-03:** Quality assessment re-executed. Same structural failure in agents-md-format.md (criteria 1, 2, 3 fail). Criterion 4 continues to fail (no verification process). Criterion 5 passes. DEPRECATED specs (component-system.md, prompt-composition.md) correctly have replacement (component-authoring.md) and follow template structure. Refactoring plan regenerated in PLAN.md with identical 5-task structure and detailed findings per criterion. No changes to AGENTS.md needed - quality criteria remain accurate and boolean.
-
-**2026-02-03:** Quality assessment iteration completed. Systematic evaluation confirms: Criteria 1, 2, 3 fail due to agents-md-format.md using "## Purpose" instead of "## Job to be Done" and missing "## Acceptance Criteria" and "## Examples" sections. Criterion 4 fails: 44 bash code blocks across 8 specs, no verification process defined, no empirical testing, no distinction between executable commands and pseudocode. Criterion 5 passes: DEPRECATED specs (component-system.md, prompt-composition.md) correctly reference replacement (component-authoring.md). Refactoring plan written to PLAN.md with 5 prioritized tasks. Critical path: Task 1 (fix agents-md-format.md structure) has highest impact and lowest effort, addressing 3 of 4 failing criteria. Task 2 (define verification process) is prerequisite for Task 3 (execute verification pass).
+**Note:** Quality criteria evolved from subjective assessments to boolean PASS/FAIL checks for automated verification.
 
