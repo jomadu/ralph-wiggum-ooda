@@ -29,5 +29,8 @@ Enable users to install and verify all required external tools before running ra
 Execute OODA loop procedures through controlled iteration cycles that clear context between runs, preventing LLM degradation while maintaining file-based state continuity.
 
 ### [user-documentation.md](user-documentation.md)
+Enable users to understand and effectively use the ralph-wiggum-ooda framework through clear, accessible documentation that guides them from installation through advanced usage.
+
+### [user-documentation.md](user-documentation.md)
 Enable users to understand, install, and effectively use the ralph-wiggum-ooda framework through clear, actionable documentation that progressively discloses complexity.
 
