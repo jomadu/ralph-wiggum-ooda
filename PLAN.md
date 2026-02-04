@@ -1,155 +1,249 @@
 # Draft Plan: Spec to Implementation Gap Analysis
 
-## Priority 1: Critical Missing Features
+## Priority 1: Implement --ai-cli Flag Support
 
-### 1. AI CLI Configuration Support (ai_cli_command)
-**Gap:** Specs define `ai_cli_command` field in rooda-config.yml with three-tier precedence (--ai-cli flag > config > default), but implementation hardcodes kiro-cli
+**Gap:** `cli-interface.md` and `ai-cli-integration.md` specify --ai-cli flag to override AI CLI command, but implementation has no --ai-cli argument parsing or AI_CLI_COMMAND variable.
 
-**Evidence:**
-- `ai-cli-integration.md` and `configuration-schema.md` specify ai_cli_command field
-- rooda-config.yml has no ai_cli_command field
-- rooda.sh has no --ai-cli flag parsing
-- rooda.sh line 436 hardcodes: `kiro-cli chat --no-interactive --trust-all-tools`
+**Current State:**
+- rooda.sh hardcodes `kiro-cli chat --no-interactive --trust-all-tools` at line 443
+- No --ai-cli flag in argument parser (lines 218-289)
+- No AI_CLI_COMMAND variable initialization or resolution
 
-**Tasks:**
-- Add ai_cli_command field to rooda-config.yml root level (optional, defaults to kiro-cli)
-- Add --ai-cli flag to argument parser (lines 245-285)
+**Required Changes:**
 - Add AI_CLI_COMMAND variable initialization
-- Query config for ai_cli_command when procedure specified (lines 286-340)
-- Implement three-tier precedence: flag > config > default
-- Replace hardcoded kiro-cli invocation with $AI_CLI_COMMAND variable (line 436)
-- Update show_help() to document --ai-cli flag
+- Add --ai-cli flag parsing in argument parser
+- Query ai_cli_command from config if procedure specified
+- Implement precedence: --ai-cli flag > config ai_cli_command > default
+- Replace hardcoded kiro-cli invocation with $AI_CLI_COMMAND variable
 
-**Acceptance:**
-- rooda-config.yml has ai_cli_command field at root level
-- ./rooda.sh build --ai-cli "custom-cli" uses custom-cli instead of kiro-cli
-- Config ai_cli_command overrides default but not --ai-cli flag
+**Acceptance Criteria:**
+- `./rooda.sh build --ai-cli "custom-cli"` uses custom-cli instead of kiro-cli
+- Config ai_cli_command field overrides default when no flag specified
 - Default remains kiro-cli for backward compatibility
+- Precedence order enforced correctly
+
+**Dependencies:** None
 
 ---
 
-### 2. Dependency Philosophy Alignment
-**Gap:** Specs say only yq is required (kiro-cli configurable, bd project-specific), but implementation requires all three
+## Priority 2: Implement ai_cli_command Config Field Support
 
-**Evidence:**
-- `external-dependencies.md` states "Minimal Required, Maximum Flexibility" philosophy
-- rooda.sh lines 60-88 exit if kiro-cli or bd not installed
-- Contradicts spec: "kiro-cli (default, configurable)" and "bd (project-specific, optional)"
+**Gap:** `configuration-schema.md` and `ai-cli-integration.md` specify ai_cli_command as root-level config field, but implementation doesn't query or use this field.
 
-**Tasks:**
-- Make kiro-cli check conditional on ai_cli_command not being set to alternative
-- Make bd check conditional or remove entirely (work tracking is project-specific)
-- Add comments explaining dependency philosophy
-- Update error messages to reflect optional nature
+**Current State:**
+- rooda-config.yml has no ai_cli_command field
+- rooda.sh doesn't query .ai_cli_command from config
+- No validation of ai_cli_command field type
 
-**Acceptance:**
-- Script runs with only yq installed if ai_cli_command points to installed alternative
-- Script provides helpful error only when trying to use missing tool
-- Dependency checks align with "only yq required" philosophy
+**Required Changes:**
+- Add ai_cli_command field to rooda-config.yml (optional, defaults to kiro-cli)
+- Query .ai_cli_command from config when procedure specified
+- Validate field is string type if present
+- Use config value when --ai-cli flag not specified
 
-**Dependencies:** Implement after task #1 (needs ai_cli_command support)
+**Acceptance Criteria:**
+- Config with ai_cli_command: "claude-cli" uses claude-cli for all procedures
+- Config without ai_cli_command defaults to kiro-cli
+- Invalid ai_cli_command type produces clear error
+- validate_config function checks ai_cli_command structure
 
----
-
-## Priority 2: Documentation Sync (Specs Outdated)
-
-### 3. Update cli-interface.md Spec
-**Gap:** Spec lists help/version/short-flags/verbose as "Areas for Improvement" but they're implemented
-
-**Evidence:**
-- rooda.sh lines 233-242 handle --help, --version
-- rooda.sh lines 255-277 support short flags (-c, -o, -r, -d, -a, -m, -h)
-- rooda.sh lines 278-284 handle --verbose, --quiet
-- rooda.sh lines 426-432 implement verbose mode
-
-**Tasks:**
-- Move implemented features from "Areas for Improvement" to acceptance criteria
-- Mark acceptance criteria as [x] completed
-- Add examples for --help, --version, --verbose, --quiet flags
-- Update "Known Issues" section to remove implemented items
-
-**Acceptance:**
-- cli-interface.md accurately reflects current implementation
-- All implemented features documented with examples
-- No contradictions between spec and code
+**Dependencies:** Priority 1 (--ai-cli flag support)
 
 ---
 
-### 4. Update ai-cli-integration.md Examples
-**Gap:** Spec shows examples with ai_cli_command configuration that doesn't exist yet
+## Priority 3: Remove Hardcoded Dependency Checks
 
-**Evidence:**
-- Examples show ai_cli_command in config (not implemented)
-- Examples show --ai-cli flag usage (not implemented)
-- Examples show precedence resolution (not implemented)
+**Gap:** `external-dependencies.md` specifies only yq is required, kiro-cli and bd are configurable/optional, but implementation hardcodes checks for all three at startup.
 
-**Tasks:**
-- Add note to examples: "Requires task #1 implementation"
-- Or update examples to show current hardcoded behavior
-- Update after task #1 is complete
+**Current State:**
+- Lines 72-86: Hardcoded kiro-cli dependency check with exit on failure
+- Lines 88-97: Hardcoded bd dependency check with exit on failure
+- Lines 99-113: Version validation for kiro-cli and bd
 
-**Acceptance:**
-- Examples match implementation reality
-- No misleading examples showing unimplemented features
+**Required Changes:**
+- Remove kiro-cli dependency check (configurable via ai_cli_command)
+- Remove bd dependency check (project-specific work tracking)
+- Keep yq dependency check (required for config parsing)
+- Document that AI CLI and work tracking tools are project-specific
 
-**Dependencies:** Update after task #1 (AI CLI configuration)
+**Acceptance Criteria:**
+- Script runs without kiro-cli installed if using different AI CLI
+- Script runs without bd installed if using different work tracking
+- yq check remains and exits with clear error if missing
+- AGENTS.md updated to clarify dependency philosophy
 
----
-
-### 5. Update external-dependencies.md
-**Gap:** Spec describes dependency philosophy that implementation contradicts
-
-**Evidence:**
-- Spec: "kiro-cli (default, configurable)" but implementation requires it
-- Spec: "bd (project-specific, optional)" but implementation requires it
-- Philosophy section contradicts actual behavior
-
-**Tasks:**
-- Update dependency tables to reflect current requirements
-- Or note that philosophy will be implemented in task #2
-- Ensure consistency between spec and implementation
-
-**Acceptance:**
-- Spec accurately describes which dependencies are required vs optional
-- Philosophy section matches implementation behavior
-
-**Dependencies:** Update after task #2 (dependency philosophy)
+**Dependencies:** Priority 2 (ai_cli_command config support)
 
 ---
 
-## Priority 3: Spec Clarifications (Already Implemented)
+## Priority 4: Add Short Flag Support
 
-### 6. Document Implemented Features
-**Gap:** Specs note several features as "missing" that are actually implemented
+**Gap:** `cli-interface.md` examples show short flags (-o, -r, -d, -a, -m, -c, -h) but implementation only supports long flags (--observe, --orient, etc).
 
-**Already Implemented:**
-- Help flag support (--help, -h)
-- Version flag support (--version)
-- Short flag alternatives (-c, -o, -r, -d, -a, -m, -h)
-- Verbose/quiet modes (--verbose, --quiet)
-- Config validation function (validate_config)
-- Git push error handling
+**Current State:**
+- Argument parser has cases for long flags only
+- No short flag alternatives defined
+- Help text doesn't document short flags
 
-**Tasks:**
-- Update specs to reflect these implementations
-- Remove from "Known Issues" or "Areas for Improvement"
-- Add to acceptance criteria as [x] completed
+**Required Changes:**
+- Add short flag cases to argument parser: -o, -r, -d, -a, -m, -c, -h
+- Update show_help to document short flags
+- Test all short flags work identically to long flags
 
-**Acceptance:**
-- Specs accurately document all implemented features
-- No features listed as missing that actually exist
+**Acceptance Criteria:**
+- `-o file.md` works identically to `--observe file.md`
+- `-m 5` works identically to `--max-iterations 5`
+- `-h` works identically to `--help`
+- Help text shows both short and long forms
+
+**Dependencies:** None
 
 ---
 
-## Summary
+## Priority 5: Implement Substep Numbering in act_build.md
 
-**Implementation tasks (2):**
-1. AI CLI configuration support (ai_cli_command + --ai-cli flag)
-2. Dependency philosophy alignment (make kiro-cli/bd optional)
+**Gap:** `component-authoring.md` documents substep numbering (A3, A3.5, A3.6, A4) as valid pattern, but act_build.md may not follow this structure.
 
-**Documentation tasks (3):**
-3. Update cli-interface.md (implemented features)
-4. Update ai-cli-integration.md (after task #1)
-5. Update external-dependencies.md (after task #2)
+**Current State:** Need to verify act_build.md structure
 
-**Key insight:** Implementation is ahead of specs in many areas (help, version, verbose, validation), but behind in AI CLI configuration. Priority is to implement missing features, then sync all documentation.
+**Required Changes:**
+- Review act_build.md for substep usage
+- Ensure substeps follow documented pattern (A3, A3.5, A3.6, A4)
+- Verify conditional steps clearly marked
+- Confirm backpressure steps properly labeled
+
+**Acceptance Criteria:**
+- act_build.md uses substep numbering where appropriate
+- Conditional steps have "If X Modified" markers
+- Critical warnings use **bold** emphasis
+- Backpressure concept in step names
+
+**Dependencies:** None
+
+---
+
+## Priority 6: Add Cross-Document Link Validation
+
+**Gap:** `user-documentation.md` acceptance criteria includes "All cross-document links work correctly" but no validation mechanism exists.
+
+**Current State:**
+- No automated link checking
+- Links may break when files renamed
+- Quality criteria doesn't include link validation
+
+**Required Changes:**
+- Add script to validate markdown links in docs/ and specs/
+- Check internal links (relative paths) resolve correctly
+- Check external links return 200 status
+- Add to quality criteria: "All cross-document links work correctly (PASS/FAIL)"
+
+**Acceptance Criteria:**
+- Script validates all markdown links in repository
+- Broken internal links reported with file and line number
+- Broken external links reported (with timeout handling)
+- Can be run as part of quality assessment procedures
+
+**Dependencies:** None
+
+---
+
+## Priority 7: Document Verbose/Quiet Modes
+
+**Gap:** Implementation has --verbose and --quiet flags (lines 283-289) but specs don't document these features.
+
+**Current State:**
+- rooda.sh implements VERBOSE variable (0=default, 1=verbose, -1=quiet)
+- --verbose shows full prompt before execution
+- --quiet suppresses progress output
+- No documentation in cli-interface.md or user-documentation.md
+
+**Required Changes:**
+- Add --verbose and --quiet to cli-interface.md data structures
+- Document behavior in cli-interface.md examples
+- Add to README.md usage examples
+- Update show_help to include these flags
+
+**Acceptance Criteria:**
+- cli-interface.md documents --verbose and --quiet flags
+- Examples show verbose mode displaying full prompt
+- Examples show quiet mode suppressing progress
+- Help text includes these options
+
+**Dependencies:** None
+
+---
+
+## Priority 8: Implement Help Text Generation from Config
+
+**Gap:** `configuration-schema.md` specifies display, summary, description fields for procedures but notes "reserved for future help text generation" - not yet implemented.
+
+**Current State:**
+- Config has display/summary/description fields
+- show_help function doesn't use these fields
+- No procedure listing command
+
+**Required Changes:**
+- Add --list-procedures flag to show available procedures
+- Query config for all procedure names
+- Display procedure name, display field, and summary
+- Consider --help <procedure> for detailed description
+
+**Acceptance Criteria:**
+- `./rooda.sh --list-procedures` shows all available procedures
+- Output includes procedure name and summary from config
+- `./rooda.sh --help bootstrap` shows detailed description
+- Graceful handling if display/summary/description missing
+
+**Dependencies:** None
+
+---
+
+## Priority 9: Add Validation for Prompt File Structure
+
+**Gap:** `component-authoring.md` documents prompt file structure (phase header, step codes, prose) but no validation ensures files follow this structure.
+
+**Current State:**
+- No automated validation of prompt files
+- Malformed prompts may cause confusing AI behavior
+- No linting for step code consistency
+
+**Required Changes:**
+- Add script to validate prompt file structure
+- Check for phase header: `# [Phase]: [Purpose]`
+- Check for step headers: `## [Code]: [Name]`
+- Validate step codes match phase (O1-O15, R1-R22, D1-D15, A1-A9)
+- Add to quality criteria for implementation
+
+**Acceptance Criteria:**
+- Script validates all prompt files in src/prompts/
+- Reports missing phase headers
+- Reports invalid step codes
+- Reports step codes that don't match phase
+- Can be run as part of quality assessment
+
+**Dependencies:** None
+
+---
+
+## Priority 10: Document Version Flag
+
+**Gap:** Implementation has --version flag (lines 237-240, 251-254) but cli-interface.md lists this as "Areas for Improvement" suggesting it's not implemented.
+
+**Current State:**
+- rooda.sh implements --version flag
+- VERSION variable defined (need to verify)
+- cli-interface.md incorrectly states "No --version flag"
+
+**Required Changes:**
+- Update cli-interface.md to document --version flag
+- Verify VERSION variable is defined in rooda.sh
+- Add example to cli-interface.md showing version output
+- Update "Areas for Improvement" to remove this item
+
+**Acceptance Criteria:**
+- cli-interface.md documents --version flag
+- Example shows expected output format
+- VERSION variable properly defined in script
+- "Areas for Improvement" section updated
+
+**Dependencies:** None
