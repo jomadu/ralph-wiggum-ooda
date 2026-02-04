@@ -1,89 +1,71 @@
-# Plan: Rename components/ to prompts/
+# Implementation Plan
 
-## Goal
-Eliminate naming discrepancy between framework (`src/components/`) and consumer projects (`prompts/`) by using `prompts/` consistently everywhere.
+## Task 1: Create user-documentation.md spec
 
-## Tasks
+**Priority:** High
+**Effort:** Low
+**Dependencies:** None
 
-### 1. Rename directory
-- Rename `src/components/` to `src/prompts/`
-- Priority: High (blocks other tasks)
-- Dependencies: None
+Define specification for user-facing documentation in `docs/`.
 
-### 2. Update src/rooda-config.yml (38 references)
-- Replace all `src/components/*.md` paths with `src/prompts/*.md`
-- Verify all procedure definitions reference correct paths
-- Priority: High (blocks testing)
-- Dependencies: Task 1
+**Acceptance Criteria:**
+- Spec follows TEMPLATE.md structure (Job to be Done, Activities, Acceptance Criteria, Examples)
+- Defines what constitutes user-facing documentation vs specifications
+- Specifies data flow: specs → implementation → docs
+- Establishes acceptance criteria for documentation quality
+- Defines structure: what goes in README vs docs/ vs specs/
+- Includes examples of good vs bad documentation
 
-### 3. Update specs/component-authoring.md (26 references)
-- Replace `src/components/` with `src/prompts/`
-- Update terminology from "components" to "prompts" where referring to the files
-- Keep "component" when referring to OODA phase components conceptually
-- Priority: Medium
-- Dependencies: Task 1
+**Files to create:**
+- `specs/user-documentation.md`
 
-### 4. Update specs/cli-interface.md (16 references)
-- Replace example paths from `src/components/` to `src/prompts/`
-- Priority: Medium
-- Dependencies: Task 1
+## Task 2: Update specs/README.md to include user-documentation.md
 
-### 5. Update src/README.md (12 references)
-- Title: "Procedures and Components Specification" → "Procedures and Prompts Specification"
-- Replace `src/components/` references with `src/prompts/`
-- Update section headers if needed
-- Priority: Medium
-- Dependencies: Task 1
+**Priority:** Medium
+**Effort:** Low
+**Dependencies:** Task 1
 
-### 6. Update specs/configuration-schema.md (5 references)
-- Replace example paths from `src/components/` to `src/prompts/`
-- Priority: Medium
-- Dependencies: Task 1
+Add new spec to the index.
 
-### 7. Update README.md (5 references)
-- Change installation: `cp -r ralph-wiggum-ooda/src/components ./prompts` → `cp -r ralph-wiggum-ooda/src/prompts ./prompts`
-- Update explanation text about component composition
-- Update sample repository structure diagram
-- Priority: High (user-facing)
-- Dependencies: Task 1
+**Acceptance Criteria:**
+- specs/README.md lists user-documentation.md with extracted JTBD
+- Follows existing README structure
 
-### 8. Update specs/agents-md-format.md (4 references)
-- Remove "Path Conventions" section entirely
-- Update any remaining references to `src/components/`
-- Simplify documentation now that naming is consistent
-- Priority: Medium
-- Dependencies: Task 1
+**Files to modify:**
+- `specs/README.md`
 
-### 9. Update AGENTS.md (2 references)
-- Implementation Definition: `src/components/*.md` → `src/prompts/*.md`
-- Priority: Medium
-- Dependencies: Task 1
+## Task 3: Add documentation quality criteria to AGENTS.md
 
-### 10. Verify functionality
-- Run `shellcheck src/rooda.sh` to verify no errors
-- Run `./rooda.sh bootstrap --max-iterations 1` to test
-- Confirm script loads prompts correctly
-- Check for any errors referencing old paths
-- Priority: High (validation)
-- Dependencies: Tasks 1-9
+**Priority:** Medium
+**Effort:** Low
+**Dependencies:** Task 1
 
-### 11. Final grep verification
-- Run `grep -ri "components" .` excluding .git and .beads
-- Verify only conceptual uses remain (not path references)
-- Update any missed references
-- Priority: Low (cleanup)
-- Dependencies: Task 10
+Incorporate documentation quality criteria into Quality Criteria section.
 
-## Success Criteria
-- [ ] Directory renamed from `src/components/` to `src/prompts/`
-- [ ] All 128 references updated across 14 files
-- [ ] shellcheck passes
-- [ ] Bootstrap procedure runs successfully
-- [ ] No path references to old `components/` name remain
-- [ ] Installation instructions are simpler and clearer
-- [ ] "Path Conventions" section removed from agents-md-format.md
+**Acceptance Criteria:**
+- Quality Criteria section includes boolean checks for documentation
+- Examples: "All docs/ files have clear purpose (PASS/FAIL)", "All examples in docs are verified working (PASS/FAIL)"
+- Criteria reference user-documentation.md spec
 
-## Notes
-- .beads/issues.jsonl and git logs contain historical references - leave unchanged
-- Keep "component" terminology when referring to OODA phase composition conceptually
-- Only change "components" to "prompts" when referring to the directory or files
+**Files to modify:**
+- `AGENTS.md`
+
+## Task 4: Verify existing docs/ files against new spec
+
+**Priority:** Low
+**Effort:** Medium
+**Dependencies:** Task 1, Task 3
+
+Audit current documentation for compliance.
+
+**Acceptance Criteria:**
+- Each doc in docs/ evaluated against acceptance criteria
+- Gaps documented (missing purpose, broken examples, contradictions)
+- Results inform whether refactoring plan needed
+
+**Files to audit:**
+- `docs/ooda-loop.md`
+- `docs/ralph-loop.md`
+- `docs/beads.md`
+- `docs/README.md`
+- `README.md` (root)
