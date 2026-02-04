@@ -1,151 +1,164 @@
 # Draft Plan: Spec to Implementation Gap Analysis
 
-## Critical Gaps (Missing Core Features)
+## Priority 1: Critical Gaps (Missing Core Features)
 
-### 1. Iteration Loop Control - Acceptance Criteria Incomplete
-**Gap:** Spec `iteration-loop.md` has 3 unchecked acceptance criteria but implementation exists
-- [ ] Loop executes until max iterations reached or Ctrl+C pressed (IMPLEMENTED - lines 392-414)
-- [ ] Iteration counter increments correctly (IMPLEMENTED - line 411)
-- [ ] Max iterations of 0 means unlimited (IMPLEMENTED - lines 393-396)
-- [ ] Max iterations defaults to procedure config or 0 if not specified (IMPLEMENTED - lines 323-332)
-- [ ] Progress displayed between iterations (IMPLEMENTED - line 413)
-- [ ] Git push happens after each iteration (IMPLEMENTED - lines 403-410)
+### Dependency Version Validation
+**Gap:** external-dependencies.md specifies version requirements (yq v4+, kiro-cli 1.0+, bd 0.1+) but rooda.sh only checks if yq exists, not version compatibility.
 
-**Action:** Update spec acceptance criteria to mark as checked - all features are implemented
+**Current State:** Lines 56-62 check for yq presence but not version. Users with yq v3 get cryptic YAML parsing errors.
 
-### 2. CLI Interface - Acceptance Criteria Incomplete
-**Gap:** Spec `cli-interface.md` has all acceptance criteria unchecked but implementation exists
-- [ ] Procedure-based invocation loads OODA files from config (IMPLEMENTED - lines 273-322)
-- [ ] Explicit flag invocation accepts four OODA phase files directly (IMPLEMENTED - lines 235-268)
-- [ ] Explicit flags override config-based procedure settings (IMPLEMENTED - lines 286-320)
-- [ ] Config file resolves relative to script location (IMPLEMENTED - lines 220-221)
-- [ ] Missing files produce clear error messages (IMPLEMENTED - lines 343-352)
-- [ ] Invalid arguments produce usage help (IMPLEMENTED - lines 266-268)
-- [ ] Max iterations can be specified or defaults to procedure config (IMPLEMENTED - lines 323-332)
+**Implementation:** rooda.sh lines 63-106 already implement version validation for all three tools (yq, kiro-cli, bd) with clear error messages and upgrade instructions.
 
-**Action:** Update spec acceptance criteria to mark as checked - all features are implemented
+**Status:** ✅ IMPLEMENTED - Gap closed
 
-### 3. Configuration Schema - Acceptance Criteria Incomplete
-**Gap:** Spec `configuration-schema.md` has all acceptance criteria unchecked but implementation exists
-- [ ] YAML structure supports nested procedure definitions (IMPLEMENTED - rooda-config.yml)
-- [ ] Required fields validated at runtime (IMPLEMENTED - validate_config function lines 108-211)
-- [ ] Optional fields supported (IMPLEMENTED - lines 323-332 for default_iterations)
-- [ ] yq queries successfully extract procedure configuration (IMPLEMENTED - lines 286-322)
-- [ ] Missing procedures return clear error messages (IMPLEMENTED - validate_config)
-- [ ] File paths resolved relative to script directory (IMPLEMENTED - lines 220-221)
+### Early Dependency Checks for kiro-cli and bd
+**Gap:** external-dependencies.md notes "Late failure for kiro-cli/bd: Script doesn't check for kiro-cli or bd at startup."
 
-**Action:** Update spec acceptance criteria to mark as checked - all features are implemented
+**Current State:** rooda.sh lines 63-106 implement checks for kiro-cli and bd at startup with installation instructions.
 
-### 4. AI CLI Integration - Acceptance Criteria Incomplete
-**Gap:** Spec `ai-cli-integration.md` has most acceptance criteria unchecked but implementation exists
-- [ ] Prompt piped to kiro-cli via stdin (IMPLEMENTED - line 402)
-- [ ] --no-interactive flag disables interactive prompts (IMPLEMENTED - line 402)
-- [ ] --trust-all-tools flag bypasses permission prompts (IMPLEMENTED - line 402)
-- [ ] AI can read files from repository (IMPLEMENTED - kiro-cli capability)
-- [ ] AI can write/modify files in repository (IMPLEMENTED - kiro-cli capability)
-- [ ] AI can execute bash commands (IMPLEMENTED - kiro-cli capability)
-- [ ] AI can commit changes to git (IMPLEMENTED - kiro-cli capability)
-- [ ] Script continues to next iteration regardless of AI CLI exit status (IMPLEMENTED - no error check after line 402)
+**Status:** ✅ IMPLEMENTED - Gap closed
 
-**Action:** Update spec acceptance criteria to mark as checked - all features are implemented
+### Config Structure Validation
+**Gap:** configuration-schema.md notes "Config validation could be more comprehensive (validate file paths exist at config load time)."
 
-### 5. External Dependencies - Acceptance Criteria Incomplete
-**Gap:** Spec `external-dependencies.md` has 1 unchecked criterion but implementation exists
-- [x] All external dependencies documented (yq, kiro-cli, bd) (DOCUMENTED in spec)
-- [x] Version requirements specified where applicable (DOCUMENTED in spec)
-- [x] Installation instructions provided per platform (DOCUMENTED in spec)
-- [ ] Dependency checking implemented in rooda.sh for critical tools (IMPLEMENTED - lines 53-106)
+**Current State:** rooda.sh lines 108-211 implement comprehensive validate_config() function that:
+- Validates YAML parseability
+- Checks procedures key exists
+- Validates procedure exists in config
+- Checks all four OODA fields present and non-empty
+- Provides fuzzy matching suggestions for typos
 
-**Action:** Update spec acceptance criteria to mark as checked - dependency checking is fully implemented with version validation
+**Status:** ✅ IMPLEMENTED - Gap closed
 
-## High-Impact Gaps (Documentation Accuracy)
+### Help Flag Support
+**Gap:** cli-interface.md "Areas for Improvement" notes "Help flag: No --help or -h flag support."
 
-### 6. User Documentation - Acceptance Criteria Incomplete
-**Gap:** Spec `user-documentation.md` has all acceptance criteria unchecked
-- [ ] README.md contains installation instructions, basic workflow, and links to detailed docs (EXISTS)
-- [ ] docs/ directory contains detailed guides for concepts, workflows, and troubleshooting (EXISTS - 4 files)
-- [ ] All code examples in documentation are verified working (NEEDS VERIFICATION)
-- [ ] Documentation matches actual script behavior (NEEDS VERIFICATION)
-- [ ] Each procedure has usage examples with expected outcomes (NEEDS VERIFICATION)
-- [ ] Common error scenarios have troubleshooting guidance (EXISTS in README.md)
-- [ ] Documentation follows progressive disclosure (EXISTS in README.md)
-- [ ] Links between documents work correctly (NEEDS VERIFICATION)
+**Current State:** rooda.sh lines 14-43 implement show_help() function, lines 225-226 and 238-240 handle --help/-h flags.
 
-**Action:** Verify all code examples work, check documentation accuracy, verify cross-document links, then update acceptance criteria
+**Status:** ✅ IMPLEMENTED - Gap closed
 
-### 7. Component Authoring - Acceptance Criteria Incomplete
-**Gap:** Spec `component-authoring.md` has all acceptance criteria unchecked but implementation exists
-- [ ] Prompt file structure documented (DOCUMENTED in spec)
-- [ ] Step code patterns explained (DOCUMENTED in spec)
-- [ ] Complete common steps reference provided (DOCUMENTED in spec)
-- [ ] Prompt assembly algorithm documented (DOCUMENTED in spec)
-- [ ] Authoring guidelines included (DOCUMENTED in spec)
-- [ ] Real examples from actual prompt files shown (DOCUMENTED in spec)
-- [ ] Dual purpose of step codes clarified (DOCUMENTED in spec)
+## Priority 2: Documentation Gaps
 
-**Action:** Update spec acceptance criteria to mark as checked - all documentation exists in spec
+### Missing Prompt Composition Documentation
+**Gap:** component-authoring.md references "prompt-composition.md" spec but this file doesn't exist. README.md links to "src/README.md" for prompt composition details but that file doesn't exist.
 
-### 8. AGENTS.md Format - Acceptance Criteria Incomplete
-**Gap:** Spec `agents-md-format.md` has all acceptance criteria unchecked but implementation exists
-- [ ] AGENTS.md contains Work Tracking System section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Story/Bug Input section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Planning System section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Build/Test/Lint Commands section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Specification Definition section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Implementation Definition section (IMPLEMENTED in AGENTS.md)
-- [ ] AGENTS.md contains Quality Criteria section (IMPLEMENTED in AGENTS.md)
-- [ ] All commands in AGENTS.md are empirically verified to work (NEEDS VERIFICATION)
-- [ ] AGENTS.md is updated when operational learnings occur (PROCESS - not verifiable)
-- [ ] AGENTS.md includes rationale for key decisions (IMPLEMENTED - inline comments exist)
+**Affected Specs:**
+- component-authoring.md line references "Related specs: prompt-composition.md"
+- README.md "Learn More" section links to non-existent documentation
 
-**Action:** Verify all commands in AGENTS.md work, then update acceptance criteria
+**Impact:** Users and developers cannot understand how prompts are assembled from components.
 
-## Low-Priority Gaps (Nice-to-Have)
+**Task:** Create documentation explaining create_prompt() function and OODA phase assembly.
 
-### 9. Iteration Loop - Known Issue Documentation
-**Gap:** Spec documents known issues that could be addressed
-- No kiro-cli error handling (documented as intentional design)
-- Git push failures silent for non-missing-branch errors (documented as known issue)
-- Iteration display off-by-one (documented as known issue)
+**Acceptance Criteria:**
+- Document how create_prompt() combines four files
+- Explain heredoc template mechanism
+- Show example of assembled prompt structure
+- Link from README.md and component-authoring.md
 
-**Action:** Consider implementing error handling improvements if they become problematic in practice
+### Incomplete Acceptance Criteria in Specs
+**Gap:** Multiple specs have unchecked acceptance criteria boxes indicating incomplete implementation verification.
 
-### 10. CLI Interface - Known Issue Documentation
-**Gap:** Spec documents duplicate validation blocks (lines 95-103 and 117-125)
-- Duplicate validation logic exists in implementation
+**Specs with incomplete criteria:**
+- cli-interface.md: 7 unchecked items (procedure invocation, explicit flags, config resolution, error handling)
+- iteration-loop.md: 5 unchecked items (loop termination, iteration counter, progress display)
+- configuration-schema.md: 4 unchecked items (YAML structure, field validation, error messages)
+- user-documentation.md: 8 unchecked items (README structure, docs/ guides, working examples)
+- ai-cli-integration.md: 8 unchecked items (stdin piping, flags, file operations, error handling)
+- agents-md-format.md: 4 unchecked items (required sections, empirical verification, updates, rationale)
+- component-authoring.md: 7 unchecked items (file structure, step codes, assembly, guidelines)
 
-**Action:** Refactor to eliminate duplication (low priority - works correctly)
+**Task:** Verify each acceptance criterion against implementation and check boxes where implemented.
 
-### 11. External Dependencies - Known Issues
-**Gap:** Spec documents issues that could be addressed
-- No version validation for yq v3 vs v4 (PARTIALLY IMPLEMENTED - version check exists lines 82-88)
-- Late failure for kiro-cli/bd (FIXED - checks added lines 54-80)
-- Platform-specific instructions (IMPLEMENTED - platform detection lines 45-51)
-- No automated installer (documented as improvement area)
+**Acceptance Criteria:**
+- Review each spec's acceptance criteria
+- Test functionality empirically
+- Check boxes for implemented features
+- Document gaps for unimplemented features
 
-**Action:** Most issues already addressed; automated installer remains as future enhancement
+### Missing Cross-Document Links
+**Gap:** user-documentation.md quality criteria states "All cross-document links work correctly (PASS/FAIL)" but no verification has occurred.
 
-## No Gaps Found (Specs Match Implementation)
+**Task:** Audit all markdown links in README.md, docs/, and specs/ to ensure they resolve correctly.
 
-### 12. Configuration Schema
-- All required features implemented
-- validate_config function provides comprehensive validation
-- Error messages are clear and actionable
+**Acceptance Criteria:**
+- All links in README.md resolve
+- All links in docs/ resolve
+- All links in specs/ resolve
+- Broken links documented or fixed
 
-### 13. Prompt Composition (create_prompt function)
-- Implemented exactly as specified
-- Uses heredoc with command substitution
-- Assembles four OODA phase files correctly
+## Priority 3: Quality Improvements
 
-### 14. Git Push Logic
-- Implemented with fallback branch creation
-- Error handling for authentication/network issues
-- User prompt to continue on failure
+### AI CLI Error Handling
+**Gap:** ai-cli-integration.md "Known Issues" notes "No error handling: Script continues to git push even if kiro-cli fails."
+
+**Current State:** rooda.sh line 397 intentionally ignores kiro-cli exit status per design decision documented in comments.
+
+**Status:** ⚠️ DESIGN DECISION - Not a gap, but documented as intentional behavior for self-correction through iteration.
+
+### Git Push Error Handling
+**Gap:** iteration-loop.md "Known Issues" notes "Git push failures: If git push fails for reasons other than missing remote branch, the error is silent."
+
+**Current State:** rooda.sh lines 399-409 implement enhanced git push error handling with:
+- Attempt standard push
+- Fallback to create remote branch
+- Error message with troubleshooting guidance
+- User prompt to continue or abort
+
+**Status:** ✅ IMPLEMENTED - Gap closed
+
+### Iteration Display Clarity
+**Gap:** iteration-loop.md "Known Issues" notes "Iteration display off-by-one: The separator shows 'LOOP $ITERATION' after incrementing."
+
+**Current State:** rooda.sh line 412 displays "Starting iteration $ITERATION" which correctly shows the next iteration number.
+
+**Status:** ✅ IMPLEMENTED - Gap closed
+
+## Priority 4: Low-Priority Enhancements
+
+### Version Flag
+**Gap:** cli-interface.md "Areas for Improvement" notes "Version flag: No --version flag to show script version."
+
+**Task:** Add --version flag to display script version.
+
+**Acceptance Criteria:**
+- --version flag displays version number
+- Version number sourced from single location (config or constant)
+- Help text documents --version flag
+
+### Verbose/Quiet Modes
+**Gap:** cli-interface.md "Areas for Improvement" notes "Verbose/quiet modes: No control over output verbosity."
+
+**Task:** Add --verbose and --quiet flags to control output.
+
+**Acceptance Criteria:**
+- --verbose shows detailed execution information
+- --quiet suppresses non-error output
+- Default verbosity remains unchanged
+
+### Short Flags
+**Gap:** cli-interface.md "Areas for Improvement" notes "Short flags: No short flag alternatives (e.g., -o for --observe)."
+
+**Task:** Add short flag alternatives for common options.
+
+**Acceptance Criteria:**
+- -o for --observe
+- -r for --orient  
+- -d for --decide
+- -a for --act
+- -m for --max-iterations
+- -c for --config
+- Help text documents short flags
 
 ## Summary
 
-**Critical:** 5 specs need acceptance criteria updated to reflect implemented features
-**High-Impact:** 3 specs need verification and acceptance criteria updates
-**Low-Priority:** 3 specs document known issues that could be addressed as improvements
+**Critical Gaps:** 0 remaining (all implemented)
+**Documentation Gaps:** 3 tasks
+**Quality Improvements:** 0 remaining (all implemented or design decisions)
+**Low-Priority Enhancements:** 3 tasks
 
-**No missing implementation found** - all specified features are implemented. The gaps are primarily in spec maintenance (unchecked acceptance criteria) and verification (testing that examples work).
+**Next Steps:**
+1. Create prompt composition documentation
+2. Verify and check acceptance criteria boxes in specs
+3. Audit cross-document links
+4. Consider low-priority enhancements based on user feedback
