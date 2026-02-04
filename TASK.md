@@ -1,50 +1,82 @@
-# Task: Consolidate src/README.md into Specs
+# Task: Make rooda.sh Agnostic of External Tools
 
-## Goal
-Remove `src/README.md` by folding its content into existing specs, eliminating the developer/user documentation split.
+## Story
 
-## Background
-`src/README.md` currently documents the prompt composition system (`create_prompt()` function, prompt file structure, assembly process). This content belongs in specs, not as a separate developer reference. Multiple specs reference `src/README.md`:
+As a user of ralph-wiggum-ooda, I want the framework to be agnostic of specific external tools so that I can use it with different AI CLI tools and work tracking systems without modifying the core script.
 
-- `user-documentation.md` (3 references)
-- `iteration-loop.md` (1 reference)
-- `configuration-schema.md` (1 reference)
-- `ai-cli-integration.md` (1 reference)
-- `component-authoring.md` (1 reference)
+## Desired Changes
 
-## Approach
+### 1. AI CLI Tool Agnosticism
 
-### 1. Merge Content into component-authoring.md
-`specs/component-authoring.md` already covers prompt authoring. Add sections for:
-- The `create_prompt()` function implementation
-- How prompt files are assembled into final prompt
-- The heredoc mechanism and command substitution
-- Assembled prompt structure
+**Current State:**
+- rooda.sh has hardcoded dependency on `kiro-cli`
+- Script checks for kiro-cli at startup and exits if not found
+- Prompt is piped to `kiro-cli chat --no-interactive --trust-all-tools`
 
-### 2. Update Cross-References
-Replace all `src/README.md` references with `component-authoring.md`:
-- `user-documentation.md` line 113, 176, 201
-- `iteration-loop.md` line 95
-- `configuration-schema.md` line 100
-- `ai-cli-integration.md` line 114
-- `component-authoring.md` line 129
+**Desired State:**
+- rooda.sh should be agnostic of which AI CLI tool is used
+- Users should be able to specify the AI CLI command via:
+  - Configuration file (e.g., `ai_cli_command: "kiro-cli chat --no-interactive --trust-all-tools"`)
+  - CLI flag (e.g., `--ai-cli "claude-cli --no-prompt"`)
+- Script should not check for kiro-cli specifically at startup
+- Default to kiro-cli for backward compatibility if not specified
 
-### 3. Update AGENTS.md
-Remove `src/README.md` from implementation definition since it will no longer exist.
+**Benefits:**
+- Users can use Claude CLI, OpenAI CLI, or any other AI tool
+- Framework becomes more portable and flexible
+- Removes hard dependency on AWS-specific tooling
 
-### 4. Delete src/README.md
-Once content is merged and references updated, delete the file.
+**Examples:**
+```bash
+# Using Claude CLI
+./rooda.sh build --ai-cli "claude-cli --no-prompt"
 
-### 5. Move audit-links.sh to scripts/
-Create `scripts/` directory and move `audit-links.sh` into it. Update any references or documentation that mentions the script location.
+# Using custom AI tool via config
+# rooda-config.yml:
+ai_cli_command: "my-ai-tool --batch-mode"
+```
+
+### 2. Work Tracking System Agnosticism
+
+**Current State:**
+- rooda.sh has hardcoded dependency on `bd` (beads)
+- Script checks for bd at startup and exits if not found
+- Not every project uses beads for work tracking
+
+**Desired State:**
+- rooda.sh should not check for bd at startup
+- Work tracking system is defined in AGENTS.md (already the case for usage)
+- Dependency checking should be optional or removed entirely
+- Let procedures fail gracefully if work tracking commands don't work
+
+**Benefits:**
+- Projects using GitHub Issues, Linear, Jira, or file-based tracking can use rooda
+- Framework doesn't impose work tracking system choice
+- Reduces installation friction
+
+**Rationale:**
+- AGENTS.md already defines the work tracking system per project
+- Not all procedures require work tracking (bootstrap, some planning procedures)
+- Dependency checking should happen when commands are actually used, not at startup
 
 ## Acceptance Criteria
-- [ ] All content from `src/README.md` incorporated into `component-authoring.md`
-- [ ] All cross-references updated to point to `component-authoring.md`
-- [ ] `src/README.md` deleted
-- [ ] AGENTS.md implementation definition updated
-- [ ] No broken links in specs or docs
-- [ ] `component-authoring.md` maintains coherent flow with new content
-- [ ] `scripts/` directory created
-- [ ] `audit-links.sh` moved to `scripts/audit-links.sh`
-- [ ] Any references to `audit-links.sh` updated with new path
+
+- [ ] rooda.sh accepts `--ai-cli` flag to specify AI CLI command
+- [ ] rooda-config.yml supports `ai_cli_command` field for default AI CLI
+- [ ] rooda.sh defaults to kiro-cli if no AI CLI specified (backward compatibility)
+- [ ] rooda.sh does not check for kiro-cli at startup
+- [ ] rooda.sh does not check for bd at startup
+- [ ] Documentation updated to explain AI CLI configuration
+- [ ] Examples provided for common AI CLI tools (kiro-cli, claude-cli, etc.)
+- [ ] AGENTS.md specification updated to clarify work tracking is project-specific
+
+## Notes
+
+**Minimal Dependency Philosophy:**
+The only truly required dependency should be `yq` (for config parsing). Everything else should be configurable or optional based on what the project actually uses.
+
+**Backward Compatibility:**
+Existing installations should continue to work without changes. Default to kiro-cli if no AI CLI specified.
+
+**Error Messages:**
+When AI CLI or work tracking commands fail, error messages should be helpful and point to AGENTS.md or configuration options.
