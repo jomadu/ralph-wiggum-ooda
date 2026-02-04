@@ -102,62 +102,6 @@ EOF
 
 ### Prompt Assembly Mechanism
 
-**Location:** `src/rooda.sh` lines 370-389
-
-**Implementation:**
-```bash
-create_prompt() {
-    # Assemble four OODA phase prompt files into single executable prompt
-    # Uses heredoc (<<EOF) to create template with embedded command substitution
-    # Each $(cat "$VAR") is evaluated when heredoc executes, inserting file contents
-    cat <<EOF
-# OODA Loop Iteration
-
-## OBSERVE
-$(cat "$OBSERVE")
-
-## ORIENT
-$(cat "$ORIENT")
-
-## DECIDE
-$(cat "$DECIDE")
-
-## ACT
-$(cat "$ACT")
-EOF
-}
-```
-
-**How it works:**
-
-1. Uses bash heredoc (`<<EOF`) to create a multi-line template
-2. Embeds command substitution `$(cat "$VAR")` within the heredoc
-3. When heredoc executes, each `$(cat)` command runs and inserts file contents
-4. Variables ($OBSERVE, $ORIENT, $DECIDE, $ACT) contain paths to prompt files
-5. Output is valid markdown with clear section headers
-
-**Assembled Prompt Structure:**
-
-The output follows this structure:
-
-```markdown
-# OODA Loop Iteration
-
-## OBSERVE
-[Contents of observe prompt file]
-
-## ORIENT
-[Contents of orient prompt file]
-
-## DECIDE
-[Contents of decide prompt file]
-
-## ACT
-[Contents of act prompt file]
-```
-
-### Prompt Assembly Mechanism
-
 The `create_prompt()` function in `src/rooda.sh` (lines 397-416) implements the prompt assembly algorithm using bash heredoc and command substitution.
 
 **Implementation:**
