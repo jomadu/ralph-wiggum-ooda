@@ -33,9 +33,7 @@ bd sync
 ## Story/Bug Input
 
 **For draft-plan-story-to-spec and draft-plan-bug-to-spec procedures:**
-- Use `bd show $TASK_ID --json` to read story/bug description
-- Extract `title` and `description` fields from JSON output
-- Task ID should be provided via environment variable or command-line argument
+- Stories and bugs are documented in `TASK.md`
 
 ## Planning System
 
