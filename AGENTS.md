@@ -75,7 +75,7 @@ bd ready --json
 - `src/rooda-config.yml` - Procedure configuration
 - `src/prompts/*.md` - OODA prompt components (25 files: observe, orient, decide, act variants)
 - `docs/*.md` - User-facing documentation (4 files)
-- `scripts/*.sh` - Utility scripts (audit-links.sh)
+- `scripts/*.sh` - Utility scripts (audit-links.sh, validate-prompts.sh)
 
 **Exclude:**
 - `.beads/*` (work tracking database)
@@ -94,6 +94,7 @@ bd ready --json
 **For implementation:**
 - shellcheck passes with no errors (PASS/FAIL)
 - All procedures in config have corresponding component files (PASS/FAIL)
+- All prompt files follow structure per component-authoring.md (PASS/FAIL)  # Verify with: ./scripts/validate-prompts.sh
 - Script executes bootstrap procedure successfully (PASS/FAIL)
 - Script executes on macOS without errors (PASS/FAIL)
 - Script executes on Linux without errors (PASS/FAIL)
