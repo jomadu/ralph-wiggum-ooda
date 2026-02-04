@@ -14,6 +14,8 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 - [x] Procedure-based invocation loads OODA files from config
 - [x] Explicit flag invocation accepts four OODA phase files directly
 - [x] Explicit flags override config-based procedure settings
+- [x] --ai-cli flag overrides config ai_cli_command
+- [x] Precedence: --ai-cli flag > config ai_cli_command > default
 - [x] Config file resolves relative to script location
 - [x] Missing files produce clear error messages
 - [x] Invalid arguments produce usage help
@@ -24,10 +26,10 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 ### Command-Line Arguments
 ```bash
 # Procedure-based invocation
-./rooda.sh <procedure> [--config <file>] [--max-iterations N]
+./rooda.sh <procedure> [--config <file>] [--max-iterations N] [--ai-cli <command>]
 
 # Explicit flag invocation
-./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N]
+./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N] [--ai-cli <command>]
 ```
 
 **Arguments:**
@@ -38,16 +40,18 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 - `--decide <file>` - Path to decide phase prompt
 - `--act <file>` - Path to act phase prompt
 - `--max-iterations N` - Maximum iterations (default: from config or 0 for unlimited)
+- `--ai-cli <command>` - AI CLI command to use (overrides config, default: kiro-cli chat --no-interactive --trust-all-tools)
 
 ## Algorithm
 
 1. Check for yq dependency, exit if missing
-2. Initialize variables (OBSERVE, ORIENT, DECIDE, ACT, MAX_ITERATIONS, PROCEDURE, CONFIG_FILE)
+2. Initialize variables (OBSERVE, ORIENT, DECIDE, ACT, MAX_ITERATIONS, PROCEDURE, CONFIG_FILE, AI_CLI_COMMAND)
 3. Resolve CONFIG_FILE relative to script location
 4. Parse first positional argument as PROCEDURE if not flag
-5. Parse remaining arguments in while loop
+5. Parse remaining arguments in while loop (including --ai-cli)
 6. If PROCEDURE specified:
    - Validate config file exists
+   - Query config for ai_cli_command if not specified via --ai-cli flag
    - Query config for procedure OODA files using yq
    - Exit if procedure not found
    - Load default_iterations if MAX_ITERATIONS not specified
@@ -75,12 +79,22 @@ while has_args:
         --decide: DECIDE = next_arg
         --act: ACT = next_arg
         --max-iterations: MAX_ITERATIONS = next_arg
+        --ai-cli: AI_CLI_COMMAND = next_arg
         default: error "Unknown option"
 
 # Resolve from config if procedure specified
 if PROCEDURE:
     if not exists(CONFIG_FILE):
         error "Config not found"
+    
+    # Resolve AI CLI command (flag > config > default)
+    if not AI_CLI_COMMAND:
+        AI_CLI_CONFIG = yq(".ai_cli_command", CONFIG_FILE)
+        if AI_CLI_CONFIG:
+            AI_CLI_COMMAND = AI_CLI_CONFIG
+        else:
+            AI_CLI_COMMAND = "kiro-cli chat --no-interactive --trust-all-tools"
+    
     OBSERVE = yq(".procedures.$PROCEDURE.observe", CONFIG_FILE)
     ORIENT = yq(".procedures.$PROCEDURE.orient", CONFIG_FILE)
     DECIDE = yq(".procedures.$PROCEDURE.decide", CONFIG_FILE)
@@ -110,6 +124,9 @@ for file in [OBSERVE, ORIENT, DECIDE, ACT]:
 | OODA phase file missing | Error "File not found: path", exit 1 |
 | Only some OODA phases specified | Error "All four OODA phases required", exit 1 |
 | Explicit flags with procedure | Explicit flags take precedence, procedure ignored |
+| --ai-cli flag specified | Overrides config ai_cli_command and default |
+| --ai-cli with invalid command | Command fails at runtime when invoked |
+| ai_cli_command not in config | Defaults to kiro-cli chat --no-interactive --trust-all-tools |
 | --max-iterations 0 | Unlimited iterations (loop until Ctrl+C) |
 | --max-iterations not specified | Use default_iterations from config, or 0 if not in config |
 
@@ -242,7 +259,33 @@ Error: Procedure 'nonexistent' not found in /path/to/rooda-config.yml
 - Script exits with status 1
 - Error message includes procedure name and config path
 
-### Example 6: Missing OODA Phase File
+### Example 6: Override AI CLI via Flag
+
+**Input:**
+```bash
+./rooda.sh build --ai-cli "claude-cli --autonomous --trust-tools"
+```
+
+**Expected Output:**
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Procedure: build
+Observe:   src/prompts/observe_plan_specs_impl.md
+Orient:    src/prompts/orient_build.md
+Decide:    src/prompts/decide_build.md
+Act:       src/prompts/act_build.md
+AI CLI:    claude-cli --autonomous --trust-tools
+Branch:    main
+Max:       5 iterations
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**Verification:**
+- Procedure loaded from config
+- --ai-cli flag overrides config ai_cli_command and default
+- claude-cli used instead of kiro-cli
+
+### Example 7: Missing OODA Phase File
 
 **Input:**
 ```bash

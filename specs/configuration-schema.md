@@ -13,15 +13,20 @@ Enable users to define custom OODA loop procedures by mapping procedure names to
 ## Acceptance Criteria
 - [x] YAML structure supports nested procedure definitions
 - [x] Required fields (observe, orient, decide, act) validated at runtime
-- [x] Optional fields (display, summary, description, default_iterations) supported
+- [x] Optional fields (display, summary, description, default_iterations, ai_cli_command) supported
 - [x] yq queries successfully extract procedure configuration
+- [x] yq queries successfully extract ai_cli_command
 - [x] Missing procedures return clear error messages
 - [x] File paths resolved relative to script directory
+- [x] ai_cli_command validated as string type
+- [x] ai_cli_command defaults to kiro-cli when not specified
 
 ## Data Structures
 
 ### Configuration File Structure
 ```yaml
+ai_cli_command: "kiro-cli chat --no-interactive --trust-all-tools"
+
 procedures:
   procedure-name:
     display: "Human Readable Name"
@@ -34,7 +39,10 @@ procedures:
     default_iterations: 5
 ```
 
-**Fields:**
+**Root-level fields:**
+- `ai_cli_command` - AI CLI command to use for all procedures (optional, defaults to `kiro-cli chat --no-interactive --trust-all-tools`)
+
+**Procedure fields:**
 - `procedures` - Top-level map of procedure definitions (required)
 - `procedure-name` - Unique identifier for procedure, kebab-case (required)
 - `display` - Human-readable name for UI/help text (optional)
@@ -50,14 +58,21 @@ procedures:
 
 1. Parse command-line arguments to extract procedure name
 2. Resolve config file path relative to script directory
-3. Query config using yq: `.procedures.$PROCEDURE.observe|orient|decide|act`
-4. Validate all four OODA phase paths are non-null
-5. Extract default_iterations if max-iterations not specified via CLI
-6. Return error if procedure not found or required fields missing
+3. Query config for ai_cli_command: `.ai_cli_command`
+4. Query config for procedure OODA files: `.procedures.$PROCEDURE.observe|orient|decide|act`
+5. Validate all four OODA phase paths are non-null
+6. Extract default_iterations if max-iterations not specified via CLI
+7. Return error if procedure not found or required fields missing
 
 **Pseudocode:**
 ```bash
 if procedure_specified:
+    # Query AI CLI command
+    ai_cli_config = yq eval ".ai_cli_command" config
+    if ai_cli_config != null:
+        AI_CLI_COMMAND = ai_cli_config
+    
+    # Query procedure OODA files
     observe = yq eval ".procedures.$PROCEDURE.observe" config
     orient = yq eval ".procedures.$PROCEDURE.orient" config
     decide = yq eval ".procedures.$PROCEDURE.decide" config
@@ -149,7 +164,34 @@ procedures:
 - default_iterations defaults to 0 (infinite loop)
 - No display/summary/description required
 
-### Example 3: Missing Procedure Error
+### Example 3: Custom AI CLI Configuration
+
+**Input:**
+```yaml
+ai_cli_command: "claude-cli --autonomous --trust-tools"
+
+procedures:
+  build:
+    display: "Build from Plan"
+    summary: "Implements tasks from plan"
+    observe: src/prompts/observe_plan_specs_impl.md
+    orient: src/prompts/orient_build.md
+    decide: src/prompts/decide_build.md
+    act: src/prompts/act_build.md
+    default_iterations: 5
+```
+
+**Query:**
+```bash
+yq eval ".ai_cli_command" rooda-config.yml
+# Returns: claude-cli --autonomous --trust-tools
+```
+
+**Verification:**
+- All procedures use claude-cli instead of default kiro-cli
+- AI CLI command resolved from config at runtime
+
+### Example 4: Missing Procedure Error
 
 **Input:**
 ```bash
