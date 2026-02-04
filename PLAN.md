@@ -1,74 +1,130 @@
 # Specification Refactoring Plan
 
-## Priority 1: Verify Command Examples in Specifications
+## Quality Assessment Results
 
-**Impact:** HIGH - Incorrect command examples mislead users and cause runtime failures
+### Criterion 1: All specs have "Job to be Done" section
+**Status:** PASS
+- external-dependencies.md: ✓
+- cli-interface.md: ✓
+- iteration-loop.md: ✓
+- component-system.md: ✓ (deprecated)
+- configuration-schema.md: ✓
+- ai-cli-integration.md: ✓
+- agents-md-format.md: N/A (format spec, not JTBD-based)
+- component-authoring.md: ✓
+- prompt-composition.md: ✓ (deprecated)
 
-**Tasks:**
-- Verify all bash command examples in external-dependencies.md work as documented
-- Verify all bash command examples in cli-interface.md work as documented
-- Verify all bash command examples in iteration-loop.md work as documented
-- Verify all bash command examples in configuration-schema.md work as documented
-- Verify all bash command examples in ai-cli-integration.md work as documented
-- Verify all bash command examples in component-authoring.md work as documented
-- Verify all bash command examples in agents-md-format.md work as documented
-- Verify all bash command examples in component-system.md work as documented (deprecated but retained)
-- Verify all bash command examples in prompt-composition.md work as documented (deprecated but retained)
+### Criterion 2: All specs have "Acceptance Criteria" section
+**Status:** PASS
+- All specs contain "Acceptance Criteria" sections with checkboxes
+
+### Criterion 3: All specs have "Examples" section
+**Status:** PASS
+- All specs contain "Examples" sections with numbered examples
+
+### Criterion 4: All command examples in specs are verified working
+**Status:** FAIL
+- Per AGENTS.md operational learning (2026-02-03), this criterion requires verification process definition
+- Command examples exist but have not been empirically tested
+- No verification process currently defined or executed
+- Examples include: `./rooda.sh bootstrap`, `bd ready --json`, `yq eval`, `kiro-cli chat`, etc.
+
+### Criterion 5: No specs marked as DEPRECATED without replacement
+**Status:** PASS
+- component-system.md: DEPRECATED with replacement (component-authoring.md)
+- prompt-composition.md: DEPRECATED with replacement (component-authoring.md)
+- Both deprecated specs explicitly reference their replacement
+
+### Human Markers Found
+- No TODO, FIXME, or HACK markers found in spec files (only in R19 step definition text)
+
+## Overall Assessment
+**Refactoring Required:** YES (Criterion 4 fails)
+
+## Refactoring Tasks
+
+### 1. Define Command Verification Process
+**Priority:** Critical
+**Impact:** High - ensures specs remain accurate as implementation evolves
+**Effort:** Medium
+
+Create verification process that:
+- Identifies executable commands vs pseudocode/illustrative examples
+- Distinguishes commands that must work (./rooda.sh, yq, bd, kiro-cli) from examples
+- Defines how to mark non-executable examples clearly
+- Establishes verification workflow (manual or automated)
+- Documents verification results
 
 **Acceptance Criteria:**
-- All command examples execute successfully or are marked as pseudocode/illustrative
-- Commands that reference actual implementation (./rooda.sh, yq, bd, kiro-cli) are verified working
-- Pseudocode examples are clearly marked as non-executable
-- Any broken commands are corrected or removed
+- Verification process documented in AGENTS.md or separate verification spec
+- Clear distinction between executable and illustrative examples
+- Process can be executed to validate all command examples
 
-**Effort:** MEDIUM - Requires running each command and validating output
+### 2. Execute Command Verification on All Specs
+**Priority:** Critical
+**Impact:** High - validates current spec accuracy
+**Effort:** High
 
-**Risk:** LOW - Verification only, no structural changes to specs
-
-## Priority 2: Document Command Verification Process
-
-**Impact:** MEDIUM - Prevents future drift between specs and implementation
-
-**Tasks:**
-- Add "Command Verification" section to AGENTS.md quality criteria
-- Document how to verify command examples (manual execution, automated testing)
-- Define what constitutes "verified working" (exit code 0, expected output, no errors)
-- Clarify distinction between executable commands and pseudocode examples
+Systematically verify all command examples in:
+- external-dependencies.md (yq, kiro-cli, bd, shellcheck, git commands)
+- cli-interface.md (./rooda.sh invocations with various flags)
+- iteration-loop.md (loop control examples)
+- configuration-schema.md (yq queries)
+- ai-cli-integration.md (kiro-cli invocation)
+- component-authoring.md (create_prompt function)
 
 **Acceptance Criteria:**
-- AGENTS.md contains clear guidance on command verification
-- Future spec authors know how to verify command examples
-- Quality criteria checking includes command verification step
+- All executable commands tested empirically
+- Non-working commands corrected or marked as illustrative
+- Verification results documented
+- Specs updated with corrections
 
-**Effort:** LOW - Documentation update only
+### 3. Mark Non-Executable Examples Clearly
+**Priority:** High
+**Impact:** Medium - prevents confusion about what should work
+**Effort:** Low
 
-**Risk:** LOW - Clarifies existing process
-
-## Priority 3: Add Verification Markers to Specs
-
-**Impact:** LOW - Improves transparency but doesn't affect functionality
-
-**Tasks:**
-- Consider adding verification markers to command examples (e.g., "✓ Verified 2026-02-03")
-- Evaluate if verification markers add value or create maintenance burden
-- If valuable, add markers to all verified commands
+Add clear markers to pseudocode and illustrative examples:
+- Use "Pseudocode:" prefix for algorithm descriptions
+- Use "Illustrative:" prefix for conceptual examples
+- Use "Example (not executable):" for hypothetical scenarios
+- Ensure executable examples have no such markers
 
 **Acceptance Criteria:**
-- Decision made on whether to use verification markers
-- If using markers, all verified commands are marked
-- If not using markers, rationale documented
+- All non-executable examples clearly marked
+- Executable examples have no confusion markers
+- Consistent marking pattern across all specs
 
-**Effort:** LOW - Simple annotation if adopted
+### 4. Create Verification Tracking System
+**Priority:** Medium
+**Impact:** Medium - enables ongoing verification
+**Effort:** Medium
 
-**Risk:** LOW - Optional enhancement
+Establish system to track verification status:
+- Add verification metadata to specs (last verified date, status)
+- Create verification checklist or tracking file
+- Define re-verification triggers (spec updates, implementation changes)
+- Document verification ownership
 
-## Notes
+**Acceptance Criteria:**
+- Verification status visible for each spec
+- Re-verification process defined
+- Ownership assigned
 
-**Why Command Verification Failed:**
-The quality criterion "All command examples in specs are verified working" is boolean (PASS/FAIL), but no verification process was established when specs were created. Command examples were written based on implementation understanding but not empirically tested.
+### 5. Automate Command Verification Where Possible
+**Priority:** Low
+**Impact:** High - reduces manual verification burden
+**Effort:** High
 
-**Scope:**
-This plan focuses on specification quality only. Implementation quality criteria (shellcheck, procedure execution, cross-platform compatibility) are separate and not assessed here.
+Create automated verification tooling:
+- Extract executable commands from specs
+- Execute commands in test environment
+- Validate expected outputs
+- Report verification failures
+- Integrate with CI/CD if applicable
 
-**Deprecated Specs:**
-component-system.md and prompt-composition.md are deprecated but retained for historical reference. Their command examples should still be verified to ensure historical accuracy.
+**Acceptance Criteria:**
+- Automated verification script exists
+- Can be run on-demand or in CI
+- Reports clear pass/fail results
+- Covers majority of executable commands
