@@ -101,5 +101,7 @@ bd ready --json
 
 **2026-02-03:** Quality criterion "All command examples in specs are verified working" requires verification process definition. Command examples should be empirically tested by executing them and validating output. Distinguish between executable commands (./rooda.sh, yq, bd, kiro-cli) that must work as documented, and pseudocode/illustrative examples that should be clearly marked as non-executable. Verification ensures specs remain accurate as implementation evolves.
 
+**2026-02-03:** Quality criterion "All command examples in specs are verified working" requires verification process definition. Command examples should be empirically tested by executing them and validating output. Distinguish between executable commands (./rooda.sh, yq, bd, kiro-cli) that must work as documented, and pseudocode/illustrative examples that should be clearly marked as non-executable. Verification ensures specs remain accurate as implementation evolves.
+
 **2026-02-03:** Quality assessment of specifications completed. Criteria 1-3 and 5 pass. Criterion 4 fails: command examples exist but verification process not defined and examples not empirically tested. Refactoring plan created in PLAN.md to address: (1) define verification process, (2) execute verification on all specs, (3) mark non-executable examples clearly, (4) create verification tracking system, (5) automate verification where possible. Priority is defining verification process and executing initial verification pass.
 

@@ -1,130 +1,89 @@
-# Specification Refactoring Plan
+# Specification Quality Refactoring Plan
 
 ## Quality Assessment Results
 
-### Criterion 1: All specs have "Job to be Done" section
-**Status:** PASS
-- external-dependencies.md: ✓
-- cli-interface.md: ✓
-- iteration-loop.md: ✓
-- component-system.md: ✓ (deprecated)
-- configuration-schema.md: ✓
-- ai-cli-integration.md: ✓
-- agents-md-format.md: N/A (format spec, not JTBD-based)
-- component-authoring.md: ✓
-- prompt-composition.md: ✓ (deprecated)
+**Criterion 1: All specs have "Job to be Done" section** - PASS
+- All 8 active specs contain "## Job to be Done" section
+- Deprecated specs (component-system.md, prompt-composition.md) excluded from assessment
 
-### Criterion 2: All specs have "Acceptance Criteria" section
-**Status:** PASS
-- All specs contain "Acceptance Criteria" sections with checkboxes
+**Criterion 2: All specs have "Acceptance Criteria" section** - PASS
+- All 8 active specs contain "## Acceptance Criteria" section
+- Criteria use checkbox format `- [ ]` or `- [x]`
 
-### Criterion 3: All specs have "Examples" section
-**Status:** PASS
-- All specs contain "Examples" sections with numbered examples
+**Criterion 3: All specs have "Examples" section** - PASS
+- All 8 active specs contain "## Examples" section
+- Examples include input/output/verification patterns
 
-### Criterion 4: All command examples in specs are verified working
-**Status:** FAIL
-- Per AGENTS.md operational learning (2026-02-03), this criterion requires verification process definition
-- Command examples exist but have not been empirically tested
-- No verification process currently defined or executed
-- Examples include: `./rooda.sh bootstrap`, `bd ready --json`, `yq eval`, `kiro-cli chat`, etc.
+**Criterion 4: All command examples in specs are verified working** - FAIL
+- No verification process defined
+- Command examples exist but not empirically tested
+- Cannot distinguish executable vs illustrative examples
 
-### Criterion 5: No specs marked as DEPRECATED without replacement
-**Status:** PASS
-- component-system.md: DEPRECATED with replacement (component-authoring.md)
-- prompt-composition.md: DEPRECATED with replacement (component-authoring.md)
-- Both deprecated specs explicitly reference their replacement
+**Criterion 5: No specs marked as DEPRECATED without replacement** - PASS
+- component-system.md: DEPRECATED, replaced by component-authoring.md ✓
+- prompt-composition.md: DEPRECATED, replaced by component-authoring.md ✓
+- Both deprecated specs reference their replacement
 
-### Human Markers Found
-- No TODO, FIXME, or HACK markers found in spec files (only in R19 step definition text)
+## Refactoring Tasks (Priority Order)
 
-## Overall Assessment
-**Refactoring Required:** YES (Criterion 4 fails)
-
-## Refactoring Tasks
-
-### 1. Define Command Verification Process
-**Priority:** Critical
-**Impact:** High - ensures specs remain accurate as implementation evolves
-**Effort:** Medium
-
-Create verification process that:
-- Identifies executable commands vs pseudocode/illustrative examples
-- Distinguishes commands that must work (./rooda.sh, yq, bd, kiro-cli) from examples
-- Defines how to mark non-executable examples clearly
-- Establishes verification workflow (manual or automated)
-- Documents verification results
-
-**Acceptance Criteria:**
-- Verification process documented in AGENTS.md or separate verification spec
-- Clear distinction between executable and illustrative examples
-- Process can be executed to validate all command examples
-
-### 2. Execute Command Verification on All Specs
-**Priority:** Critical
-**Impact:** High - validates current spec accuracy
-**Effort:** High
-
-Systematically verify all command examples in:
-- external-dependencies.md (yq, kiro-cli, bd, shellcheck, git commands)
-- cli-interface.md (./rooda.sh invocations with various flags)
-- iteration-loop.md (loop control examples)
-- configuration-schema.md (yq queries)
-- ai-cli-integration.md (kiro-cli invocation)
-- component-authoring.md (create_prompt function)
-
-**Acceptance Criteria:**
-- All executable commands tested empirically
-- Non-working commands corrected or marked as illustrative
-- Verification results documented
-- Specs updated with corrections
-
-### 3. Mark Non-Executable Examples Clearly
-**Priority:** High
-**Impact:** Medium - prevents confusion about what should work
+### 1. Define Command Example Verification Process
+**Impact:** High - Enables criterion 4 validation
 **Effort:** Low
+**Description:** Create verification process specification that defines:
+- What constitutes an "executable command example" vs "illustrative pseudocode"
+- How to mark non-executable examples clearly (e.g., "Pseudocode:", "Example structure:")
+- How to verify executable commands (run and validate output)
+- Where to document verification results
+- How to track verification status per spec
 
-Add clear markers to pseudocode and illustrative examples:
-- Use "Pseudocode:" prefix for algorithm descriptions
-- Use "Illustrative:" prefix for conceptual examples
-- Use "Example (not executable):" for hypothetical scenarios
-- Ensure executable examples have no such markers
-
-**Acceptance Criteria:**
-- All non-executable examples clearly marked
-- Executable examples have no confusion markers
-- Consistent marking pattern across all specs
-
-### 4. Create Verification Tracking System
-**Priority:** Medium
-**Impact:** Medium - enables ongoing verification
-**Effort:** Medium
-
-Establish system to track verification status:
-- Add verification metadata to specs (last verified date, status)
-- Create verification checklist or tracking file
-- Define re-verification triggers (spec updates, implementation changes)
-- Document verification ownership
-
-**Acceptance Criteria:**
-- Verification status visible for each spec
-- Re-verification process defined
-- Ownership assigned
-
-### 5. Automate Command Verification Where Possible
-**Priority:** Low
-**Impact:** High - reduces manual verification burden
+### 2. Execute Initial Verification Pass on All Specs
+**Impact:** High - Validates all command examples
 **Effort:** High
+**Description:** For each spec file:
+- Identify all command examples (bash code blocks, inline commands)
+- Classify as executable or illustrative
+- Mark illustrative examples clearly with labels
+- Execute all executable commands
+- Validate output matches documented expectations
+- Document verification results
+- Fix any broken commands or incorrect documentation
 
-Create automated verification tooling:
-- Extract executable commands from specs
-- Execute commands in test environment
-- Validate expected outputs
-- Report verification failures
-- Integrate with CI/CD if applicable
+### 3. Create Verification Tracking System
+**Impact:** Medium - Enables ongoing verification
+**Effort:** Medium
+**Description:** Implement tracking mechanism:
+- Add verification metadata to each spec (last verified date, status)
+- Create verification checklist or matrix
+- Document which commands were verified and results
+- Enable incremental re-verification when specs change
 
-**Acceptance Criteria:**
-- Automated verification script exists
-- Can be run on-demand or in CI
-- Reports clear pass/fail results
-- Covers majority of executable commands
+### 4. Automate Verification Where Possible
+**Impact:** Medium - Reduces manual verification effort
+**Effort:** High
+**Description:** Create automation for verifiable commands:
+- Script to extract executable commands from specs
+- Script to run commands and validate output
+- Integration with quality criteria checks
+- CI/CD integration for continuous verification
+
+### 5. Update AGENTS.md Quality Criteria
+**Impact:** Low - Clarifies verification expectations
+**Effort:** Low
+**Description:** Refine criterion 4 in AGENTS.md:
+- Reference verification process specification
+- Clarify what "verified working" means
+- Document verification frequency expectations
+- Link to verification tracking system
+
+## Dependencies
+- Task 1 must complete before Task 2 (need process before executing)
+- Task 2 should complete before Task 3 (need results to track)
+- Task 3 should complete before Task 4 (automation needs tracking structure)
+- Task 5 can happen after Task 1 (once process is defined)
+
+## Acceptance Criteria
+- [ ] Verification process documented and approved
+- [ ] All 8 active specs have verified command examples
+- [ ] Non-executable examples clearly marked
+- [ ] Verification tracking system operational
+- [ ] Quality criterion 4 passes (all command examples verified)
