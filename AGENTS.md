@@ -61,12 +61,12 @@ bd ready --json
 
 ## Implementation Definition
 
-**Location:** `src/rooda.sh`, `src/components/*.md`, and `docs/*.md`
+**Location:** `src/rooda.sh`, `src/prompts/*.md`, and `docs/*.md`
 
 **Patterns:**
 - `src/rooda.sh` - Main loop script
 - `src/rooda-config.yml` - Procedure configuration
-- `src/components/*.md` - OODA prompt components
+- `src/prompts/*.md` - OODA prompt components
 - `docs/*.md` - User-facing documentation
 
 **Exclude:**

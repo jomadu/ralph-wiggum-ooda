@@ -110,17 +110,17 @@ procedures:
   build:
     display: "Build from Plan"
     summary: "Implements tasks from plan"
-    observe: src/components/observe_plan_specs_impl.md
-    orient: src/components/orient_build.md
-    decide: src/components/decide_build.md
-    act: src/components/act_build.md
+    observe: src/prompts/observe_plan_specs_impl.md
+    orient: src/prompts/orient_build.md
+    decide: src/prompts/decide_build.md
+    act: src/prompts/act_build.md
     default_iterations: 5
 ```
 
 **Query:**
 ```bash
 yq eval ".procedures.build.observe" rooda-config.yml
-# Returns: src/components/observe_plan_specs_impl.md
+# Returns: src/prompts/observe_plan_specs_impl.md
 ```
 
 **Verification:**

@@ -71,7 +71,7 @@ Enable developers to create and modify OODA component prompt files that can be c
 3. Select relevant step codes from common steps reference
 4. Write phase header: `# [Phase]: [Purpose]`
 5. For each step: write step header `## [Code]: [Name]` and full prose instructions
-6. Save as `src/components/[phase]_[purpose].md`
+6. Save as `src/prompts/[phase]_[purpose].md`
 
 **Prompt Assembly:**
 1. Load procedure configuration from rooda-config.yml

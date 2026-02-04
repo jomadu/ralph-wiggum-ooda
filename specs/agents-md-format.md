@@ -229,14 +229,14 @@ AGENTS.md is the authoritative definition of how agents interact with the projec
 ## Path Conventions
 
 **Consumer projects** (using ralph-wiggum-ooda):
-- Copy components to `prompts/` directory at project root (flat structure)
+- Copy prompts to `prompts/` directory at project root (flat structure)
 - Config file references `prompts/*.md`
 - Examples in this spec use `prompts/` to match consumer convention
 
 **Framework repository** (ralph-wiggum-ooda itself):
-- Components stored in `src/components/` (organized internal structure)
-- Config file references `src/components/*.md`
-- Consumers copy from `src/components/` to their `prompts/`
+- Prompts stored in `src/prompts/` (organized internal structure)
+- Config file references `src/prompts/*.md`
+- Consumers copy from `src/prompts/` to their `prompts/`
 
 This separation allows the framework to maintain organized structure while consumers get simple flat layout.
 

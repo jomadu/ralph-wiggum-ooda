@@ -141,10 +141,10 @@ for file in [OBSERVE, ORIENT, DECIDE, ACT]:
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Procedure: bootstrap
-Observe:   src/components/observe_bootstrap.md
-Orient:    src/components/orient_bootstrap.md
-Decide:    src/components/decide_bootstrap.md
-Act:       src/components/act_bootstrap.md
+Observe:   src/prompts/observe_bootstrap.md
+Orient:    src/prompts/orient_bootstrap.md
+Decide:    src/prompts/decide_bootstrap.md
+Act:       src/prompts/act_bootstrap.md
 Branch:    main
 Max:       1 iterations
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -160,10 +160,10 @@ Max:       1 iterations
 **Input:**
 ```bash
 ./rooda.sh \
-  --observe src/components/observe_specs.md \
-  --orient src/components/orient_gap.md \
-  --decide src/components/decide_gap_plan.md \
-  --act src/components/act_plan.md \
+  --observe src/prompts/observe_specs.md \
+  --orient src/prompts/orient_gap.md \
+  --decide src/prompts/decide_gap_plan.md \
+  --act src/prompts/act_plan.md \
   --max-iterations 1
 ```
 

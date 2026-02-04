@@ -91,15 +91,15 @@ Publish converged draft plan to work tracking system.
 - **Decide:** `decide_publish.md` (new)
 - **Act:** `act_publish.md` (new)
 
-## Components
+## Prompts
 
-## Key Principles for Writing Components
+## Key Principles for Writing Prompts
 
 **Reference Common Steps by Code** - Use step codes (O1, R5, D3, A2) rather than rewriting instructions. This ensures consistency and makes updates propagate automatically.
 
-**One Component, One Concern** - Each component handles exactly one OODA phase. Observe gathers, Orient analyzes, Decide chooses, Act executes. No overlap.
+**One Prompt, One Concern** - Each prompt handles exactly one OODA phase. Observe gathers, Orient analyzes, Decide chooses, Act executes. No overlap.
 
-**AGENTS.md is Always the Source of Truth** - Components must defer to AGENTS.md for all project-specific definitions: what constitutes specs/implementation, where files live, what commands to run, what quality criteria apply.
+**AGENTS.md is Always the Source of Truth** - Prompts must defer to AGENTS.md for all project-specific definitions: what constitutes specs/implementation, where files live, what commands to run, what quality criteria apply.
 
 **Explicit Over Implicit** - State exactly what to read, analyze, decide, or do. "Study specifications per AGENTS.md definition" is better than "look at the specs."
 
@@ -111,13 +111,13 @@ Publish converged draft plan to work tracking system.
 - "keep it up to date" for maintaining accuracy
 - "resolve them or document them" for issues found
 
-**Search Before Assuming** - Orient components must emphasize searching the codebase before concluding something doesn't exist. This is the critical failure mode.
+**Search Before Assuming** - Orient prompts must emphasize searching the codebase before concluding something doesn't exist. This is the critical failure mode.
 
-**Backpressure is Mandatory** - Act components that modify code must run tests and only commit when passing. No exceptions.
+**Backpressure is Mandatory** - Act prompts that modify code must run tests and only commit when passing. No exceptions.
 
-**Capture the Why** - When updating AGENTS.md, components must instruct agents to document rationale, not just changes. Why this command? Why this location? What was learned?
+**Capture the Why** - When updating AGENTS.md, prompts must instruct agents to document rationale, not just changes. Why this command? Why this location? What was learned?
 
-**Parallel Subagents for Scale** - Act components should use parallel subagents for independent work, but only 1 subagent for build/test operations to avoid conflicts.
+**Parallel Subagents for Scale** - Act prompts should use parallel subagents for independent work, but only 1 subagent for build/test operations to avoid conflicts.
 
 **Plans are Disposable** - Planning components should generate complete plans each iteration, not incrementally patch. Cheap to regenerate beats expensive to maintain.
 

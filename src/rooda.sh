@@ -176,7 +176,9 @@ validate_config() {
             fi
             
             echo "Available procedures:"
-            echo "$available_procs" | sed 's/^/  - /'
+            while IFS= read -r proc; do
+                echo "  - $proc"
+            done <<< "$available_procs"
             exit 1
         fi
         

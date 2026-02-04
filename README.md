@@ -11,7 +11,7 @@ git clone https://github.com/jomadu/ralph-wiggum-ooda.git
 # Copy necessary files to your project
 cp ralph-wiggum-ooda/src/rooda.sh .
 cp ralph-wiggum-ooda/src/rooda-config.yml .
-cp -r ralph-wiggum-ooda/src/components ./prompts
+cp -r ralph-wiggum-ooda/src/prompts ./prompts
 chmod +x rooda.sh
 ```
 
@@ -32,7 +32,7 @@ If you previously installed ralph-wiggum-ooda, your installation is unaffected. 
    cd /path/to/your-project
    cp /path/to/ralph-wiggum-ooda/src/rooda.sh .
    cp /path/to/ralph-wiggum-ooda/src/rooda-config.yml .
-   cp -r /path/to/ralph-wiggum-ooda/src/components ./prompts
+   cp -r /path/to/ralph-wiggum-ooda/src/prompts ./prompts
    chmod +x rooda.sh
    ```
 
@@ -286,7 +286,7 @@ consumer-project/
 ├── rooda.sh                   # Copied from ralph-wiggum-ooda/src/
 ├── rooda-config.yml           # Copied from ralph-wiggum-ooda/src/
 ├── AGENTS.md                  # Operational guide (created by bootstrap)
-├── prompts/                   # Copied from ralph-wiggum-ooda/src/components/
+├── prompts/                   # Copied from ralph-wiggum-ooda/src/prompts/
 │   ├── observe_*.md           # Observation variants
 │   ├── orient_*.md            # Analysis variants
 │   ├── decide_*.md            # Decision variants
