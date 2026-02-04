@@ -26,6 +26,7 @@ Options:
   -d, --decide <file>      Path to decide phase prompt
   -a, --act <file>         Path to act phase prompt
   -m, --max-iterations N   Maximum iterations (default: see below)
+  --ai-cli <command>       AI CLI command to use (default: kiro-cli chat --no-interactive --trust-all-tools)
   --verbose                Show detailed execution including full prompt
   --quiet                  Suppress non-error output
   --help, -h               Show this help message
@@ -97,15 +98,6 @@ KIRO_MAJOR=$(echo "$KIRO_VERSION" | cut -d. -f1)
 if [ "$KIRO_MAJOR" -lt 1 ]; then
     # kiro-cli version check moved to after argument parsing (conditional on AI_CLI_COMMAND)
     :
-fi
-
-BD_VERSION=$(bd --version 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-BD_MAJOR=$(echo "$BD_VERSION" | cut -d. -f1)
-BD_MINOR=$(echo "$BD_VERSION" | cut -d. -f2)
-if [ "$BD_MAJOR" -eq 0 ] && [ "$BD_MINOR" -lt 1 ]; then
-    echo "Error: bd version 0.1.0 or higher required (found $BD_VERSION)"
-    echo "Upgrade with: cargo install beads-cli"
-    exit 1
 fi
 
 # Validate config structure
@@ -222,7 +214,7 @@ ACT=""
 MAX_ITERATIONS=0
 PROCEDURE=""
 VERBOSE=0  # 0=default, 1=verbose, -1=quiet
-AI_CLI_COMMAND="kiro-cli"  # Default AI CLI, configurable via --ai-cli or config
+AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"  # Default AI CLI, configurable via --ai-cli or config
 # Resolve config file relative to script location
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/rooda-config.yml"
@@ -362,14 +354,14 @@ if [ -n "$PROCEDURE" ]; then
     fi
     
     # Query ai_cli_command from config if not set via --ai-cli flag
-    if [ "$AI_CLI_COMMAND" = "kiro-cli" ]; then
+    if [ "$AI_CLI_COMMAND" = "kiro-cli chat --no-interactive --trust-all-tools" ]; then
         CONFIG_AI_CLI=$(yq eval ".procedures.$PROCEDURE.ai_cli_command" "$CONFIG_FILE" 2>&1)
         [ "$CONFIG_AI_CLI" != "null" ] && [ -n "$CONFIG_AI_CLI" ] && AI_CLI_COMMAND="$CONFIG_AI_CLI"
     fi
 fi
 
 # Check AI CLI availability and version (only if using kiro-cli)
-if [ "$AI_CLI_COMMAND" = "kiro-cli" ]; then
+if [[ "$AI_CLI_COMMAND" == kiro-cli* ]]; then
     if ! command -v kiro-cli &> /dev/null; then
         echo "Error: kiro-cli is required for AI CLI integration"
         echo "Install from: https://docs.aws.amazon.com/kiro/"
