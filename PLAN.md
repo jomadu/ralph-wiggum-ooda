@@ -1,66 +1,74 @@
 # Specification Refactoring Plan
 
-## Priority 1: Fix Quality Criteria (Critical)
+## Priority 1: Verify Command Examples in Specifications
 
-**Issue:** AGENTS.md quality criteria are all subjective and non-boolean, violating the framework's core principle that quality assessment must use PASS/FAIL criteria with clear thresholds.
-
-**Tasks:**
-- Replace subjective spec criteria with boolean checks:
-  - "All specs have Job to be Done section" (PASS/FAIL)
-  - "All specs have Acceptance Criteria section" (PASS/FAIL)
-  - "All specs have Examples section" (PASS/FAIL)
-  - "All command examples in specs are verified working" (PASS/FAIL)
-  - "No specs marked as DEPRECATED without replacement" (PASS/FAIL)
-
-- Replace subjective implementation criteria with boolean checks:
-  - "shellcheck passes with no errors" (PASS/FAIL)
-  - "All procedures in config have corresponding component files" (PASS/FAIL)
-  - "Script executes bootstrap procedure successfully" (PASS/FAIL)
-  - "Script executes on macOS without errors" (PASS/FAIL)
-  - "Script executes on Linux without errors" (PASS/FAIL)
-
-**Impact:** High - Current criteria cannot be used for quality assessment procedures
-**Effort:** Low - Update AGENTS.md with boolean criteria
-
-## Priority 2: Remove Deprecated Specs (High Impact)
-
-**Issue:** Two specs are marked DEPRECATED (prompt-composition.md, component-system.md) but are still referenced by other specs and may confuse users.
+**Impact:** HIGH - Incorrect command examples mislead users and cause runtime failures
 
 **Tasks:**
-- Remove prompt-composition.md (superseded by component-authoring.md)
-- Remove component-system.md (superseded by component-authoring.md)
-- Update any references in other specs to point to component-authoring.md
-- Update specs/README.md index if it references deprecated specs
+- Verify all bash command examples in external-dependencies.md work as documented
+- Verify all bash command examples in cli-interface.md work as documented
+- Verify all bash command examples in iteration-loop.md work as documented
+- Verify all bash command examples in configuration-schema.md work as documented
+- Verify all bash command examples in ai-cli-integration.md work as documented
+- Verify all bash command examples in component-authoring.md work as documented
+- Verify all bash command examples in agents-md-format.md work as documented
+- Verify all bash command examples in component-system.md work as documented (deprecated but retained)
+- Verify all bash command examples in prompt-composition.md work as documented (deprecated but retained)
 
-**Impact:** High - Deprecated specs create confusion about which documentation is authoritative
-**Effort:** Low - Delete files and update references
+**Acceptance Criteria:**
+- All command examples execute successfully or are marked as pseudocode/illustrative
+- Commands that reference actual implementation (./rooda.sh, yq, bd, kiro-cli) are verified working
+- Pseudocode examples are clearly marked as non-executable
+- Any broken commands are corrected or removed
 
-## Priority 3: Complete Acceptance Criteria (Medium Impact)
+**Effort:** MEDIUM - Requires running each command and validating output
 
-**Issue:** iteration-loop.md has 5 of 7 acceptance criteria unchecked, indicating incomplete specification.
+**Risk:** LOW - Verification only, no structural changes to specs
+
+## Priority 2: Document Command Verification Process
+
+**Impact:** MEDIUM - Prevents future drift between specs and implementation
 
 **Tasks:**
-- Review iteration-loop.md acceptance criteria
-- Verify which criteria are actually met by implementation
-- Check or document why criteria are not met
-- Add implementation notes if criteria are met but not documented
+- Add "Command Verification" section to AGENTS.md quality criteria
+- Document how to verify command examples (manual execution, automated testing)
+- Define what constitutes "verified working" (exit code 0, expected output, no errors)
+- Clarify distinction between executable commands and pseudocode examples
 
-**Impact:** Medium - Incomplete acceptance criteria make it unclear if spec matches implementation
-**Effort:** Low - Review and update checkboxes with verification
+**Acceptance Criteria:**
+- AGENTS.md contains clear guidance on command verification
+- Future spec authors know how to verify command examples
+- Quality criteria checking includes command verification step
 
-## Priority 4: Address Known Issues (Low Priority)
+**Effort:** LOW - Documentation update only
 
-**Issue:** Multiple specs document known issues but don't propose solutions or track remediation.
+**Risk:** LOW - Clarifies existing process
+
+## Priority 3: Add Verification Markers to Specs
+
+**Impact:** LOW - Improves transparency but doesn't affect functionality
 
 **Tasks:**
-- Review known issues in:
-  - external-dependencies.md (4 issues)
-  - cli-interface.md (2 issues)
-  - iteration-loop.md (3 issues)
-  - ai-cli-integration.md (4 issues)
-- Determine which issues should become work tracking items
-- File issues for problems that need fixing
-- Document issues that are acceptable trade-offs
+- Consider adding verification markers to command examples (e.g., "✓ Verified 2026-02-03")
+- Evaluate if verification markers add value or create maintenance burden
+- If valuable, add markers to all verified commands
 
-**Impact:** Low - Known issues are documented, not blocking current functionality
-**Effort:** Medium - Requires analysis and decision-making per issue
+**Acceptance Criteria:**
+- Decision made on whether to use verification markers
+- If using markers, all verified commands are marked
+- If not using markers, rationale documented
+
+**Effort:** LOW - Simple annotation if adopted
+
+**Risk:** LOW - Optional enhancement
+
+## Notes
+
+**Why Command Verification Failed:**
+The quality criterion "All command examples in specs are verified working" is boolean (PASS/FAIL), but no verification process was established when specs were created. Command examples were written based on implementation understanding but not empirically tested.
+
+**Scope:**
+This plan focuses on specification quality only. Implementation quality criteria (shellcheck, procedure execution, cross-platform compatibility) are separate and not assessed here.
+
+**Deprecated Specs:**
+component-system.md and prompt-composition.md are deprecated but retained for historical reference. Their command examples should still be verified to ensure historical accuracy.

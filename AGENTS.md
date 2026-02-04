@@ -99,3 +99,5 @@ bd ready --json
 
 **2025-02-03:** Updated quality criteria from subjective assessments to boolean PASS/FAIL checks. Previous criteria ("Clarity: Can a new user understand?", "Maintainability: Is bash code readable?") were not actionable for automated quality assessment. New criteria provide clear thresholds that can be verified empirically.
 
+**2026-02-03:** Quality criterion "All command examples in specs are verified working" requires verification process definition. Command examples should be empirically tested by executing them and validating output. Distinguish between executable commands (./rooda.sh, yq, bd, kiro-cli) that must work as documented, and pseudocode/illustrative examples that should be clearly marked as non-executable. Verification ensures specs remain accurate as implementation evolves.
+
