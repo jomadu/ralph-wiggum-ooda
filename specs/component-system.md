@@ -1,3 +1,5 @@
+> **DEPRECATED:** This specification has been superseded by [component-authoring.md](component-authoring.md), which provides a unified and more accurate description of component file structure, prompt assembly, and authoring guidelines. This file is retained for historical reference only.
+
 # OODA Component System
 
 ## Job to be Done
