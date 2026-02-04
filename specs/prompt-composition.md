@@ -1,5 +1,7 @@
 # Prompt Composition
 
+> **DEPRECATED:** This specification has been superseded by [component-authoring.md](component-authoring.md), which provides a unified description of both component file structure and prompt assembly. This file is retained for historical reference only.
+
 ## Job to be Done
 Assemble four OODA phase prompt files into a single executable prompt that can be piped to the AI CLI.
 

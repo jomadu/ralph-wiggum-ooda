@@ -1,6 +1,6 @@
 # Procedures and Components Specification
 
-**Note:** This is a quick reference guide. For the authoritative specification of the component system, including detailed A6 operational learning criteria, see [specs/component-system.md](../specs/component-system.md).
+**Note:** This is a quick reference guide. For the authoritative specification of component authoring, including file structure, prompt assembly, and detailed A6 operational learning criteria, see [specs/component-authoring.md](../specs/component-authoring.md).
 
 ## Procedures
 
