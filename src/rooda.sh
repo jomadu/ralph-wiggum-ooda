@@ -326,7 +326,7 @@ if [[ "$1" == "--list-procedures" ]]; then
 fi
 
 # First positional argument is procedure name (optional)
-if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^-- ]]; then
+if [[ $# -gt 0 ]] && [[ ! "$1" =~ ^- ]]; then
     PROCEDURE="$1"
     shift
 fi
