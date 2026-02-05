@@ -214,8 +214,6 @@ The loop doesn't check if kiro-cli succeeds. If the AI CLI fails, the script con
 
 **No kiro-cli error handling:** If kiro-cli exits with non-zero status, the loop continues anyway. This could lead to repeated failures without termination.
 
-**Git push failures:** If git push fails for reasons other than missing remote branch, the error is silent and the loop continues.
-
 **Iteration display off-by-one:** The separator shows "LOOP $ITERATION" after incrementing, so it displays the next iteration number, not the one that just completed. This is confusing but matches the implementation.
 
 ## Areas for Improvement
