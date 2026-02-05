@@ -112,3 +112,20 @@ bd ready --json
 
 **Note:** Quality criteria evolved from subjective assessments to boolean PASS/FAIL checks for automated verification.
 
+## Operational Learnings
+
+**Last Bootstrap Verification:** 2026-02-04T19:54:42-08:00
+
+**Verified Working:**
+- shellcheck src/rooda.sh executes without errors
+- bd ready --json returns valid JSON with issue list
+- All commands in AGENTS.md tested and functional
+- Repository structure matches documented patterns
+
+**Why These Definitions:**
+- Specs location chosen because project uses JTBD-based markdown specifications in dedicated directory
+- Implementation includes prompts/ because OODA prompt components are core framework logic
+- Quality criteria are boolean PASS/FAIL to enable automated verification via scripts
+- Work tracking uses beads because it provides JSON output for programmatic access
+- Planning system uses PLAN.md for draft convergence before publishing to work tracking
+
