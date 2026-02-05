@@ -540,7 +540,18 @@ None identified during specification creation.
 
 ## Areas for Improvement
 
-- Could add validation tooling to check prompt files follow structure
-- Could add linting for step code consistency across prompts
 - Could add examples of custom prompt creation for project-specific procedures
 - Could document how to extend common steps reference with project-specific codes
+
+**Validation Tooling Status:**
+
+`scripts/validate-prompts.sh` currently validates:
+- Phase header presence (`# Observe:|Orient:|Decide:|Act:`)
+- Step code format matches phase (O1-O99, R1-R99, D1-D99, A1-A99)
+- Step code consistency within each file
+
+Not yet validated:
+- File naming convention (`[phase]_[purpose].md`)
+- Purpose text in phase header
+- Prose instructions present under each step
+- Content quality or completeness
