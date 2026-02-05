@@ -283,6 +283,8 @@ MAX_ITERATIONS=0
 PROCEDURE=""
 VERBOSE=0  # 0=default, 1=verbose, -1=quiet
 AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"  # Default AI CLI, configurable via --ai-cli or config
+# Override with environment variable if set (precedence: --ai-cli flag > $ROODA_AI_CLI > config > default)
+[ -n "$ROODA_AI_CLI" ] && AI_CLI_COMMAND="$ROODA_AI_CLI"
 # Resolve config file relative to script location
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/rooda-config.yml"
