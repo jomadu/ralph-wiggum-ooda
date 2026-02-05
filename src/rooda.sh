@@ -83,6 +83,49 @@ list_procedures() {
     done <<< "$procedures"
 }
 
+resolve_ai_tool_preset() {
+    local preset="$1"
+    local config_file="$2"
+    
+    # Hardcoded presets
+    case "$preset" in
+        kiro-cli)
+            echo "kiro-cli chat --no-interactive --trust-all-tools"
+            return 0
+            ;;
+        claude)
+            echo "claude-cli --no-interactive"
+            return 0
+            ;;
+        aider)
+            echo "aider --yes"
+            return 0
+            ;;
+    esac
+    
+    # Query custom preset from config
+    local custom_command
+    custom_command=$(yq eval ".ai_tools.$preset" "$config_file" 2>&1)
+    
+    if [ "$custom_command" != "null" ] && [ -n "$custom_command" ]; then
+        echo "$custom_command"
+        return 0
+    fi
+    
+    # Unknown preset - return error with helpful message
+    echo "Error: Unknown AI tool preset: $preset" >&2
+    echo "" >&2
+    echo "Available hardcoded presets:" >&2
+    echo "  - kiro-cli" >&2
+    echo "  - claude" >&2
+    echo "  - aider" >&2
+    echo "" >&2
+    echo "To define custom presets, add to $config_file:" >&2
+    echo "  ai_tools:" >&2
+    echo "    $preset: \"your-command-here\"" >&2
+    return 1
+}
+
 # Detect OS for platform-specific instructions
 OS="$(uname -s)"
 case "$OS" in
