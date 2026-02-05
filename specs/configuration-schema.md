@@ -13,19 +13,23 @@ Enable users to define custom OODA loop procedures by mapping procedure names to
 ## Acceptance Criteria
 - [x] YAML structure supports nested procedure definitions
 - [x] Required fields (observe, orient, decide, act) validated at runtime
-- [x] Optional fields (display, summary, description, default_iterations, ai_cli_command) supported
+- [x] Optional fields (display, summary, description, default_iterations) supported
+- [x] Optional ai_tools section supports custom preset definitions
 - [x] yq queries successfully extract procedure configuration
-- [x] yq queries successfully extract ai_cli_command
+- [x] yq queries successfully extract ai_tools presets
 - [x] Missing procedures return clear error messages
 - [x] File paths resolved relative to script directory
-- [x] ai_cli_command validated as string type
-- [x] ai_cli_command defaults to kiro-cli when not specified
+- [x] ai_tools presets validated as string type
+- [x] Unknown presets return helpful error messages
 
 ## Data Structures
 
 ### Configuration File Structure
 ```yaml
-ai_cli_command: "kiro-cli chat --no-interactive --trust-all-tools"
+ai_tools:
+  fast: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
+  thorough: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-7-sonnet-20250219"
+  custom: "your-ai-cli-command-here"
 
 procedures:
   procedure-name:
@@ -40,7 +44,7 @@ procedures:
 ```
 
 **Root-level fields:**
-- `ai_cli_command` - AI CLI command to use for all procedures (optional, defaults to `kiro-cli chat --no-interactive --trust-all-tools`)
+- `ai_tools` - Map of preset names to AI CLI commands (optional)
 
 **Procedure fields:**
 - `procedures` - Top-level map of procedure definitions (required)
@@ -54,24 +58,46 @@ procedures:
 - `act` - File path to action phase prompt (required)
 - `default_iterations` - Default max iterations if not specified via CLI (optional, defaults to 0)
 
+### AI Tools Section
+
+The `ai_tools` section defines custom AI CLI tool presets that can be used with the `--ai-tool` flag.
+
+**Structure:**
+```yaml
+ai_tools:
+  preset-name: "ai-cli-command with flags"
+```
+
+**Hardcoded presets** (always available, no config needed):
+- `kiro-cli` - `kiro-cli chat --no-interactive --trust-all-tools`
+- `claude` - `claude-cli --no-interactive`
+- `aider` - `aider --yes`
+
+**Custom presets** can be defined in config to:
+- Use different AI models (e.g., fast vs thorough)
+- Configure team-specific AI CLI tools
+- Set project-specific flags or options
+
+**Usage:**
+```bash
+./rooda.sh build --ai-tool fast
+./rooda.sh build --ai-tool thorough
+./rooda.sh build --ai-tool kiro-cli  # hardcoded preset
+```
+
 ## Algorithm
 
 1. Parse command-line arguments to extract procedure name
 2. Resolve config file path relative to script directory
-3. Query config for ai_cli_command: `.ai_cli_command`
-4. Query config for procedure OODA files: `.procedures.$PROCEDURE.observe|orient|decide|act`
-5. Validate all four OODA phase paths are non-null
-6. Extract default_iterations if max-iterations not specified via CLI
+3. Query config for procedure OODA files: `.procedures.$PROCEDURE.observe|orient|decide|act`
+4. Validate all four OODA phase paths are non-null
+5. Extract default_iterations if max-iterations not specified via CLI
+6. If --ai-tool flag specified, query config for preset: `.ai_tools.$PRESET`
 7. Return error if procedure not found or required fields missing
 
 **Pseudocode:**
 ```bash
 if procedure_specified:
-    # Query AI CLI command
-    ai_cli_config = yq eval ".ai_cli_command" config
-    if ai_cli_config != null:
-        AI_CLI_COMMAND = ai_cli_config
-    
     # Query procedure OODA files
     observe = yq eval ".procedures.$PROCEDURE.observe" config
     orient = yq eval ".procedures.$PROCEDURE.orient" config
@@ -85,6 +111,15 @@ if procedure_specified:
         default_iter = yq eval ".procedures.$PROCEDURE.default_iterations" config
         if default_iter != null:
             max_iterations = default_iter
+
+if ai_tool_preset_specified:
+    # Query custom preset from config
+    custom_command = yq eval ".ai_tools.$PRESET" config
+    if custom_command != null:
+        AI_CLI_COMMAND = custom_command
+    else:
+        # Check hardcoded presets or error
+        error "Unknown AI tool preset: $PRESET"
 ```
 
 ## Edge Cases
@@ -164,11 +199,13 @@ procedures:
 - default_iterations defaults to 0 (infinite loop)
 - No display/summary/description required
 
-### Example 3: Custom AI CLI Configuration
+### Example 3: Custom AI Tool Presets
 
 **Input:**
 ```yaml
-ai_cli_command: "claude-cli --autonomous --trust-tools"
+ai_tools:
+  fast: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
+  thorough: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-7-sonnet-20250219"
 
 procedures:
   build:
@@ -183,13 +220,20 @@ procedures:
 
 **Query:**
 ```bash
-yq eval ".ai_cli_command" rooda-config.yml
-# Returns: claude-cli --autonomous --trust-tools
+yq eval ".ai_tools.fast" rooda-config.yml
+# Returns: kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022
+```
+
+**Usage:**
+```bash
+./rooda.sh build --ai-tool fast
+./rooda.sh build --ai-tool thorough
 ```
 
 **Verification:**
-- All procedures use claude-cli instead of default kiro-cli
-- AI CLI command resolved from config at runtime
+- Custom presets resolve to configured commands
+- Hardcoded presets (kiro-cli, claude, aider) always available
+- Unknown presets return error with helpful message
 
 ### Example 4: Missing Procedure Error
 
