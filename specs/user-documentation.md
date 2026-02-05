@@ -205,6 +205,7 @@ User has specific workflow not covered by built-in procedures.
 - Some documentation may contradict script behavior (quality criteria catches this)
 - Code examples may become outdated as script evolves (quality criteria catches this)
 - Cross-references between docs may break if files are renamed
+- audit-links.sh validates relative file paths and external URLs but does not verify anchor fragments (e.g., `#section-name`) exist in target files - anchors are stripped during validation
 
 ## Areas for Improvement
 
