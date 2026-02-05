@@ -184,6 +184,25 @@ if [ "$KIRO_MAJOR" -lt 1 ]; then
     :
 fi
 
+# Check for optional dependencies
+if ! command -v shellcheck &> /dev/null; then
+    echo "Warning: shellcheck not installed (optional but recommended for linting)"
+    if [ "$PLATFORM" = "macos" ]; then
+        echo "  Install with: brew install shellcheck"
+    elif [ "$PLATFORM" = "linux" ]; then
+        echo "  Install with: apt-get install shellcheck (or yum install shellcheck)"
+    fi
+fi
+
+if ! command -v git &> /dev/null; then
+    echo "Warning: git not installed (optional but recommended for version control)"
+    if [ "$PLATFORM" = "macos" ]; then
+        echo "  Install with: brew install git"
+    elif [ "$PLATFORM" = "linux" ]; then
+        echo "  Install with: apt-get install git (or yum install git)"
+    fi
+fi
+
 # Validate config structure
 validate_config() {
     local config_file="$1"
