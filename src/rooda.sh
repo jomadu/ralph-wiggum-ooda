@@ -283,7 +283,8 @@ MAX_ITERATIONS=0
 PROCEDURE=""
 VERBOSE=0  # 0=default, 1=verbose, -1=quiet
 AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"  # Default AI CLI, configurable via --ai-cli or config
-# Override with environment variable if set (precedence: --ai-cli flag > $ROODA_AI_CLI > config > default)
+AI_TOOL_PRESET=""  # Preset name for --ai-tool flag
+# Override with environment variable if set (precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > default)
 [ -n "$ROODA_AI_CLI" ] && AI_CLI_COMMAND="$ROODA_AI_CLI"
 # Resolve config file relative to script location
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -355,6 +356,10 @@ while [[ $# -gt 0 ]]; do
             AI_CLI_COMMAND="$2"
             shift 2
             ;;
+        --ai-tool)
+            AI_TOOL_PRESET="$2"
+            shift 2
+            ;;
         --verbose)
             VERBOSE=1
             shift
@@ -370,6 +375,11 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Apply --ai-tool preset if specified (overrides $ROODA_AI_CLI)
+if [ -n "$AI_TOOL_PRESET" ]; then
+    AI_CLI_COMMAND=$(resolve_ai_tool_preset "$AI_TOOL_PRESET" "$CONFIG_FILE") || exit 1
+fi
 
 # If procedure specified, load from config (explicit flags override config)
 if [ -n "$PROCEDURE" ]; then
