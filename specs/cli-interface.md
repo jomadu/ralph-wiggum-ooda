@@ -14,9 +14,9 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 - [x] Procedure-based invocation loads OODA files from config
 - [x] Explicit flag invocation accepts four OODA phase files directly
 - [x] Explicit flags override config-based procedure settings
-- [x] --ai-cli flag overrides all other AI CLI settings
-- [x] --ai-tool flag resolves preset to command (hardcoded or config)
-- [x] Precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config ai_cli_command > default
+- [x] --ai-cmd flag overrides all other AI CLI settings
+- [x] --ai-cmd-preset flag resolves preset to command (hardcoded or config)
+- [x] Precedence: --ai-cmd flag > --ai-cmd-preset > $ROODA_AI_CMD > config ai_cli_command > default
 - [x] Config file resolves relative to script location
 - [x] Missing files produce clear error messages
 - [x] Invalid arguments produce usage help
@@ -32,10 +32,10 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 ### Command-Line Arguments
 ```bash
 # Procedure-based invocation
-./rooda.sh <procedure> [--config <file>] [--max-iterations N] [--ai-cli <command>] [--ai-tool <preset>]
+./rooda.sh <procedure> [--config <file>] [--max-iterations N] [--ai-cmd <command>] [--ai-cmd-preset <preset>]
 
 # Explicit flag invocation
-./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N] [--ai-cli <command>] [--ai-tool <preset>]
+./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N] [--ai-cmd <command>] [--ai-cmd-preset <preset>]
 ```
 
 **Arguments:**
@@ -46,8 +46,8 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 - `--decide|-d <file>` - Path to decide phase prompt
 - `--act|-a <file>` - Path to act phase prompt
 - `--max-iterations|-m N` - Maximum iterations (default: from config or 0 for unlimited)
-- `--ai-cli <command>` - AI CLI command to use (overrides config, default: kiro-cli chat --no-interactive --trust-all-tools)
-- `--ai-tool <preset>` - AI tool preset (kiro-cli, claude, aider, or custom from config). Resolves to command via config or hardcoded presets
+- `--ai-cmd <command>` - AI CLI command to use (overrides config, default: kiro-cli chat --no-interactive --trust-all-tools)
+- `--ai-cmd-preset <preset>` - AI tool preset (kiro-cli, claude, aider, or custom from config). Resolves to command via config or hardcoded presets
 - `--version` - Show version number and exit
 - `--help|-h` - Show usage help and exit
 - `--verbose` - Show detailed execution including full prompt
@@ -56,11 +56,11 @@ Enable users to invoke OODA loop procedures through a command-line interface, su
 ## Algorithm
 
 1. Check for yq dependency, exit if missing
-2. Initialize variables (OBSERVE, ORIENT, DECIDE, ACT, MAX_ITERATIONS, PROCEDURE, CONFIG_FILE, AI_CLI_COMMAND, AI_TOOL_PRESET, AI_CLI_FLAG)
+2. Initialize variables (OBSERVE, ORIENT, DECIDE, ACT, MAX_ITERATIONS, PROCEDURE, CONFIG_FILE, AI_CMD_COMMAND, AI_CMD_PRESET, AI_CMD_FLAG)
 3. Resolve CONFIG_FILE relative to script location
 4. Parse first positional argument as PROCEDURE if not flag
-5. Parse remaining arguments in while loop (including --ai-cli and --ai-tool)
-6. Resolve AI CLI command with precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config ai_cli_command > default
+5. Parse remaining arguments in while loop (including --ai-cmd and --ai-cmd-preset)
+6. Resolve AI CLI command with precedence: --ai-cmd flag > --ai-cmd-preset > $ROODA_AI_CMD > config ai_cli_command > default
 7. If PROCEDURE specified:
    - Validate config file exists
    - Query config for procedure OODA files using yq
@@ -90,8 +90,8 @@ while has_args:
         --decide: DECIDE = next_arg
         --act: ACT = next_arg
         --max-iterations: MAX_ITERATIONS = next_arg
-        --ai-cli: AI_CLI_COMMAND = next_arg
-        --ai-tool: AI_TOOL_PRESET = next_arg
+        --ai-cmd: AI_CMD_COMMAND = next_arg
+        --ai-cmd-preset: AI_CMD_PRESET = next_arg
         default: error "Unknown option"
 
 # Resolve from config if procedure specified
@@ -99,18 +99,18 @@ if PROCEDURE:
     if not exists(CONFIG_FILE):
         error "Config not found"
     
-    # Resolve AI CLI command (--ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config > default)
-    if not AI_CLI_COMMAND:
-        if AI_TOOL_PRESET:
-            AI_CLI_COMMAND = resolve_ai_tool_preset(AI_TOOL_PRESET, CONFIG_FILE)
-        else if ROODA_AI_CLI:
-            AI_CLI_COMMAND = ROODA_AI_CLI
+    # Resolve AI CLI command (--ai-cmd flag > --ai-cmd-preset > $ROODA_AI_CMD > config > default)
+    if not AI_CMD_COMMAND:
+        if AI_CMD_PRESET:
+            AI_CMD_COMMAND = resolve_ai_cmd_preset(AI_CMD_PRESET, CONFIG_FILE)
+        else if ROODA_AI_CMD:
+            AI_CMD_COMMAND = ROODA_AI_CMD
         else:
-            AI_CLI_CONFIG = yq(".ai_cli_command", CONFIG_FILE)
-            if AI_CLI_CONFIG:
-                AI_CLI_COMMAND = AI_CLI_CONFIG
+            AI_CMD_CONFIG = yq(".ai_cli_command", CONFIG_FILE)
+            if AI_CMD_CONFIG:
+                AI_CMD_COMMAND = AI_CMD_CONFIG
             else:
-                AI_CLI_COMMAND = "kiro-cli chat --no-interactive --trust-all-tools"
+                AI_CMD_COMMAND = "kiro-cli chat --no-interactive --trust-all-tools"
     
     OBSERVE = yq(".procedures.$PROCEDURE.observe", CONFIG_FILE)
     ORIENT = yq(".procedures.$PROCEDURE.orient", CONFIG_FILE)
@@ -141,12 +141,12 @@ for file in [OBSERVE, ORIENT, DECIDE, ACT]:
 | OODA phase file missing | Error "File not found: path", exit 1 |
 | Only some OODA phases specified | Error "All four OODA phases required", exit 1 |
 | Explicit flags with procedure | Explicit flags take precedence, procedure ignored |
-| --ai-cli flag specified | Overrides all other AI CLI settings (--ai-tool, $ROODA_AI_CLI, config) |
-| --ai-cli with invalid command | Command fails at runtime when invoked |
-| --ai-tool with unknown preset | Error message listing available presets (kiro-cli, claude, aider) and instructions for custom presets in config, exit 1 |
-| --ai-tool with hardcoded preset | Resolves to hardcoded command (kiro-cli, claude, aider) |
-| --ai-tool with custom preset | Resolves to command from config ai_tools section |
-| --ai-cli and --ai-tool both specified | --ai-cli takes precedence, --ai-tool ignored |
+| --ai-cmd flag specified | Overrides all other AI CLI settings (--ai-cmd-preset, $ROODA_AI_CMD, config) |
+| --ai-cmd with invalid command | Command fails at runtime when invoked |
+| --ai-cmd-preset with unknown preset | Error message listing available presets (kiro-cli, claude, aider) and instructions for custom presets in config, exit 1 |
+| --ai-cmd-preset with hardcoded preset | Resolves to hardcoded command (kiro-cli, claude, aider) |
+| --ai-cmd-preset with custom preset | Resolves to command from config ai_tools section |
+| --ai-cmd and --ai-cmd-preset both specified | --ai-cmd takes precedence, --ai-cmd-preset ignored |
 | ai_cli_command not in config | Defaults to kiro-cli chat --no-interactive --trust-all-tools |
 | --max-iterations 0 | Unlimited iterations (loop until Ctrl+C) |
 | --max-iterations not specified | Use default_iterations from config, or 0 if not in config |
@@ -288,7 +288,7 @@ Error: Procedure 'nonexistent' not found in /path/to/rooda-config.yml
 
 **Input:**
 ```bash
-./rooda.sh build --ai-cli "claude-cli --autonomous --trust-tools"
+./rooda.sh build --ai-cmd "claude-cli --autonomous --trust-tools"
 ```
 
 **Expected Output:**
@@ -307,14 +307,14 @@ Max:       5 iterations
 
 **Verification:**
 - Procedure loaded from config
-- --ai-cli flag overrides config ai_cli_command and default
+- --ai-cmd flag overrides config ai_cli_command and default
 - claude-cli used instead of kiro-cli
 
 ### Example 7: Override AI CLI via Preset
 
 **Input:**
 ```bash
-./rooda.sh build --ai-tool claude
+./rooda.sh build --ai-cmd-preset claude
 ```
 
 **Expected Output:**
@@ -333,14 +333,14 @@ Max:       5 iterations
 
 **Verification:**
 - Procedure loaded from config
-- --ai-tool preset resolves to claude-cli command
+- --ai-cmd-preset resolves to claude-cli command
 - claude-cli used instead of default kiro-cli
 
 ### Example 8: Unknown AI Tool Preset
 
 **Input:**
 ```bash
-./rooda.sh build --ai-tool unknown-tool
+./rooda.sh build --ai-cmd-preset unknown-tool
 ```
 
 **Expected Output:**

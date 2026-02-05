@@ -17,17 +17,17 @@ Execute OODA loop prompts through a configurable AI CLI tool that can read files
 
 AI CLI command resolution follows this precedence order (highest to lowest):
 
-1. `--ai-cli` flag - Direct command override
-2. `--ai-tool` preset - Resolves to command via hardcoded presets or config
-3. `$ROODA_AI_CLI` environment variable
+1. `--ai-cmd` flag - Direct command override
+2. `--ai-cmd-preset` - Resolves to command via hardcoded presets or config
+3. `$ROODA_AI_CMD` environment variable
 4. Default: `kiro-cli chat --no-interactive --trust-all-tools`
 
-### --ai-cli Flag
+### --ai-cmd Flag
 
 Override the AI CLI command with a direct command string:
 
 ```bash
-./rooda.sh build --ai-cli "custom-cli --flags"
+./rooda.sh build --ai-cmd "custom-cli --flags"
 ```
 
 **Properties:**
@@ -35,12 +35,12 @@ Override the AI CLI command with a direct command string:
 - **Precedence:** Highest (overrides all other settings)
 - **Use case:** One-off custom commands, testing new tools
 
-### --ai-tool Preset
+### --ai-cmd-preset
 
 Specify an AI tool by preset name:
 
 ```bash
-./rooda.sh build --ai-tool claude
+./rooda.sh build --ai-cmd-preset claude
 ```
 
 **Hardcoded presets:**
@@ -61,23 +61,23 @@ procedures:
 
 **Properties:**
 - **Type:** String (preset name)
-- **Precedence:** Second (after --ai-cli flag)
+- **Precedence:** Second (after --ai-cmd flag)
 - **Resolution:** Hardcoded presets checked first, then config `ai_tools` section
 - **Error handling:** Unknown presets show helpful error with available options
 - **Use case:** Team-wide tool standardization, convenient shortcuts
 
-### $ROODA_AI_CLI Environment Variable
+### $ROODA_AI_CMD Environment Variable
 
 Set a default AI CLI command via environment variable:
 
 ```bash
-export ROODA_AI_CLI="claude-cli --no-interactive"
+export ROODA_AI_CMD="claude-cli --no-interactive"
 ./rooda.sh build
 ```
 
 **Properties:**
 - **Type:** String (full command with flags)
-- **Precedence:** Third (after --ai-cli and --ai-tool)
+- **Precedence:** Third (after --ai-cmd and --ai-cmd-preset)
 - **Use case:** User-specific defaults, CI/CD environments
 
 ### Default
@@ -95,7 +95,7 @@ kiro-cli chat --no-interactive --trust-all-tools
 ## Acceptance Criteria
 - [x] Prompt piped to AI CLI via stdin
 - [x] AI CLI command configurable via rooda-config.yml
-- [x] AI CLI command overridable via --ai-cli flag
+- [x] AI CLI command overridable via --ai-cmd flag
 - [x] Precedence: flag > config > default
 - [x] Default remains kiro-cli for backward compatibility
 - [x] --no-interactive flag (or equivalent) disables interactive prompts
@@ -110,26 +110,26 @@ kiro-cli chat --no-interactive --trust-all-tools
 
 ### AI CLI Command Resolution
 ```bash
-# Precedence: --ai-cli > --ai-tool > $ROODA_AI_CLI > default
-if [ -n "$AI_CLI_FLAG" ]; then
-    AI_CLI_COMMAND="$AI_CLI_FLAG"
-elif [ -n "$AI_TOOL_PRESET" ]; then
-    AI_CLI_COMMAND=$(resolve_ai_tool_preset "$AI_TOOL_PRESET" "$CONFIG_FILE")
-elif [ -n "$ROODA_AI_CLI" ]; then
-    AI_CLI_COMMAND="$ROODA_AI_CLI"
+# Precedence: --ai-cmd > --ai-cmd-preset > $ROODA_AI_CMD > default
+if [ -n "$AI_CMD_FLAG" ]; then
+    AI_CMD_COMMAND="$AI_CMD_FLAG"
+elif [ -n "$AI_CMD_PRESET" ]; then
+    AI_CMD_COMMAND=$(resolve_ai_cmd_preset "$AI_CMD_PRESET" "$CONFIG_FILE")
+elif [ -n "$ROODA_AI_CMD" ]; then
+    AI_CMD_COMMAND="$ROODA_AI_CMD"
 else
-    AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"
+    AI_CMD_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"
 fi
 ```
 
 ### AI CLI Invocation
 ```bash
-create_prompt | $AI_CLI_COMMAND
+create_prompt | $AI_CMD_COMMAND
 ```
 
 **Components:**
 - `create_prompt` - Function that assembles OODA prompt from four phase files
-- `$AI_CLI_COMMAND` - Resolved AI CLI command (configurable)
+- `$AI_CMD_COMMAND` - Resolved AI CLI command (configurable)
 - Default: `kiro-cli chat --no-interactive --trust-all-tools`
 
 **Common AI CLI tools:**
@@ -169,9 +169,9 @@ ai_tools:
 ## Algorithm
 
 1. Resolve AI CLI command from configuration
-   - Check for --ai-cli flag (highest priority - direct command)
-   - Check for --ai-tool preset (resolve via hardcoded or config)
-   - Check for $ROODA_AI_CLI environment variable
+   - Check for --ai-cmd flag (highest priority - direct command)
+   - Check for --ai-cmd-preset (resolve via hardcoded or config)
+   - Check for $ROODA_AI_CMD environment variable
    - Fall back to default: `kiro-cli chat --no-interactive --trust-all-tools`
 2. Assemble OODA prompt using `create_prompt` function
 3. Pipe prompt to AI CLI via stdin
@@ -184,17 +184,17 @@ ai_tools:
 **Pseudocode:**
 ```bash
 # Resolve AI CLI command
-if [ -n "$AI_CLI_FLAG" ]; then
-    AI_CLI_COMMAND="$AI_CLI_FLAG"
-elif [ -n "$AI_TOOL_PRESET" ]; then
-    AI_CLI_COMMAND=$(resolve_ai_tool_preset "$AI_TOOL_PRESET" "$CONFIG_FILE")
-elif [ -n "$ROODA_AI_CLI" ]; then
-    AI_CLI_COMMAND="$ROODA_AI_CLI"
+if [ -n "$AI_CMD_FLAG" ]; then
+    AI_CMD_COMMAND="$AI_CMD_FLAG"
+elif [ -n "$AI_CMD_PRESET" ]; then
+    AI_CMD_COMMAND=$(resolve_ai_cmd_preset "$AI_CMD_PRESET" "$CONFIG_FILE")
+elif [ -n "$ROODA_AI_CMD" ]; then
+    AI_CMD_COMMAND="$ROODA_AI_CMD"
 else
-    AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"
+    AI_CMD_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"
 fi
 
-resolve_ai_tool_preset() {
+resolve_ai_cmd_preset() {
     case "$preset" in
         kiro-cli) echo "kiro-cli chat --no-interactive --trust-all-tools" ;;
         claude) echo "claude-cli --no-interactive" ;;
@@ -231,7 +231,7 @@ EOF
 }
 
 # Execute AI CLI
-create_prompt | $AI_CLI_COMMAND
+create_prompt | $AI_CMD_COMMAND
 # Exit status not checked - script continues regardless
 ```
 
@@ -246,12 +246,12 @@ create_prompt | $AI_CLI_COMMAND
 | AI executes dangerous command | Command runs (sandboxing required for safety) |
 | Prompt exceeds token limit | AI CLI may truncate or fail (no size validation) |
 | Network failure during AI call | AI CLI fails, script continues (no retry logic) |
-| Invalid AI CLI command via --ai-cli | Command fails at runtime, script exits |
-| Unknown preset via --ai-tool | Error with available presets listed, script exits |
+| Invalid AI CLI command via --ai-cmd | Command fails at runtime, script exits |
+| Unknown preset via --ai-cmd-preset | Error with available presets listed, script exits |
 | Custom preset not in config | Error with instructions to add to config, script exits |
-| $ROODA_AI_CLI with invalid command | Command fails at runtime, script exits |
+| $ROODA_AI_CMD with invalid command | Command fails at runtime, script exits |
 | AI CLI doesn't support stdin | Script fails, no fallback mechanism |
-| Multiple configuration methods | Precedence: --ai-cli > --ai-tool > $ROODA_AI_CLI > default |
+| Multiple configuration methods | Precedence: --ai-cmd > --ai-cmd-preset > $ROODA_AI_CMD > default |
 
 ## Dependencies
 
@@ -296,11 +296,11 @@ create_prompt | $AI_CLI_COMMAND
 - Git commits created by AI
 - Script continues to next iteration
 
-### Example 2: Preset via --ai-tool Flag
+### Example 2: Preset via --ai-cmd-preset Flag
 
 **Input:**
 ```bash
-./rooda.sh build --ai-tool claude
+./rooda.sh build --ai-cmd-preset claude
 ```
 
 **Expected Output:**
@@ -327,7 +327,7 @@ procedures:
 
 **Input:**
 ```bash
-./rooda.sh build --ai-tool my-tool
+./rooda.sh build --ai-cmd-preset my-tool
 ```
 
 **Expected Output:**
@@ -345,7 +345,7 @@ procedures:
 
 **Input:**
 ```bash
-export ROODA_AI_CLI="aider --yes"
+export ROODA_AI_CMD="aider --yes"
 ./rooda.sh build
 ```
 
@@ -360,11 +360,11 @@ export ROODA_AI_CLI="aider --yes"
 - aider invoked
 - Iteration completes successfully
 
-### Example 5: Override via --ai-cli Flag
+### Example 5: Override via --ai-cmd Flag
 
 **Input:**
 ```bash
-./rooda.sh build --ai-cli "custom-cli --flags"
+./rooda.sh build --ai-cmd "custom-cli --flags"
 ```
 
 **Expected Output:**
@@ -374,7 +374,7 @@ export ROODA_AI_CLI="aider --yes"
 ```
 
 **Verification:**
-- --ai-cli flag overrides all other settings
+- --ai-cmd flag overrides all other settings
 - custom-cli invoked
 - Iteration completes successfully
 
@@ -382,7 +382,7 @@ export ROODA_AI_CLI="aider --yes"
 
 **Input:**
 ```bash
-./rooda.sh build --ai-tool nonexistent
+./rooda.sh build --ai-cmd-preset nonexistent
 ```
 
 **Expected Output:**
@@ -408,7 +408,7 @@ To define custom presets, add to rooda-config.yml:
 
 **Input:**
 ```bash
-./rooda.sh build --ai-cli "nonexistent-cli"
+./rooda.sh build --ai-cmd "nonexistent-cli"
 ```
 
 **Expected Output:**
@@ -447,6 +447,14 @@ export ROODA_AI_CLI="aider --yes"
 ./rooda.sh build --ai-tool claude
 ```
 
+### Example 9: Precedence - Flag Overrides Environment
+
+**Input:**
+```bash
+export ROODA_AI_CMD="aider --yes"
+./rooda.sh build --ai-cmd-preset claude
+```
+
 **Expected Output:**
 ```
 [Prompt piped to claude-cli --no-interactive]
@@ -454,7 +462,7 @@ export ROODA_AI_CLI="aider --yes"
 ```
 
 **Verification:**
-- --ai-tool preset overrides $ROODA_AI_CLI
+- --ai-cmd-preset overrides $ROODA_AI_CMD
 - claude-cli invoked (not aider)
 - Precedence order respected
 
@@ -464,9 +472,9 @@ export ROODA_AI_CLI="aider --yes"
 
 The AI CLI integration is designed for autonomous operation with minimal human intervention. The four-tier precedence system provides flexibility for different use cases:
 
-1. **--ai-cli flag** - Direct command override for one-off experiments
-2. **--ai-tool preset** - Convenient shortcuts for common tools (team standardization)
-3. **$ROODA_AI_CLI** - User-specific defaults without modifying config
+1. **--ai-cmd flag** - Direct command override for one-off experiments
+2. **--ai-cmd-preset** - Convenient shortcuts for common tools (team standardization)
+3. **$ROODA_AI_CMD** - User-specific defaults without modifying config
 4. **Default (kiro-cli)** - Backward compatibility for existing users
 
 **Preset System:**
@@ -476,10 +484,10 @@ Presets simplify AI CLI configuration by providing named shortcuts. Hardcoded pr
 **Configuration Flexibility:**
 
 The precedence system enables:
-- **Individual developers** - Set $ROODA_AI_CLI for personal preference
+- **Individual developers** - Set $ROODA_AI_CMD for personal preference
 - **Teams** - Define custom presets in rooda-config.yml for consistency
-- **Experimentation** - Use --ai-cli or --ai-tool flags without modifying config
-- **CI/CD** - Set $ROODA_AI_CLI in environment for automated workflows
+- **Experimentation** - Use --ai-cmd or --ai-cmd-preset flags without modifying config
+- **CI/CD** - Set $ROODA_AI_CMD in environment for automated workflows
 
 **Security Implications:**
 
