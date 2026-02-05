@@ -122,6 +122,7 @@ bd ready --json
 - ./scripts/audit-links.sh validates all cross-document links
 - ./scripts/validate-prompts.sh confirms all 25 prompt files valid
 - All commands in AGENTS.md tested and functional
+- All short flags work correctly: -o, -r, -d, -a, -m, -c, -h  # Fixed -m 0 to support unlimited iterations (was being overridden by config default)
 - Repository structure matches documented patterns
 
 **Why These Definitions:**
@@ -130,4 +131,5 @@ bd ready --json
 - Quality criteria are boolean PASS/FAIL to enable automated verification via scripts
 - Work tracking uses beads because it provides JSON output for programmatic access
 - Planning system uses PLAN.md for draft convergence before publishing to work tracking
+- MAX_ITERATIONS uses empty string for "not set" to distinguish from explicit 0 (unlimited)  # Enables three-tier default: CLI flag > config default > 0
 
