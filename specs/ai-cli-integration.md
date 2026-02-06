@@ -443,8 +443,8 @@ bash: nonexistent-cli: command not found
 
 **Input:**
 ```bash
-export ROODA_AI_CLI="aider --yes"
-./rooda.sh build --ai-tool claude
+export ROODA_AI_CMD="aider --yes"
+./rooda.sh build --ai-cmd-preset claude
 ```
 
 ### Example 9: Precedence - Flag Overrides Environment

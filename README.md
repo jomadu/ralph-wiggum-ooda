@@ -138,22 +138,22 @@ The loop uses an AI CLI tool to execute prompts. You can configure which tool to
 
 **Configuration precedence (highest to lowest):**
 
-1. `--ai-cli` flag - Direct command override
-2. `--ai-tool` preset - Named preset (hardcoded or custom)
-3. `$ROODA_AI_CLI` environment variable
+1. `--ai-cmd` flag - Direct command override
+2. `--ai-cmd-preset` preset - Named preset (hardcoded or custom)
+3. `$ROODA_AI_CMD` environment variable
 4. Default: `kiro-cli chat --no-interactive --trust-all-tools`
 
 **Hardcoded presets:**
 
 ```bash
 # Use kiro-cli (default)
-./rooda.sh build --ai-tool kiro-cli
+./rooda.sh build --ai-cmd-preset kiro-cli
 
 # Use Claude CLI
-./rooda.sh build --ai-tool claude
+./rooda.sh build --ai-cmd-preset claude
 
 # Use Aider
-./rooda.sh build --ai-tool aider
+./rooda.sh build --ai-cmd-preset aider
 ```
 
 **Custom presets:**
@@ -167,24 +167,24 @@ ai_tools:
   custom: "your-ai-cli-command-here"
 ```
 
-Then use with `--ai-tool`:
+Then use with `--ai-cmd-preset`:
 
 ```bash
-./rooda.sh build --ai-tool fast
+./rooda.sh build --ai-cmd-preset fast
 ```
 
 **Team workflows:**
 
 ```bash
 # Individual developer using different model
-./rooda.sh build --ai-cli "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
+./rooda.sh build --ai-cmd "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
 
 # Team standardizing via environment variable
-export ROODA_AI_CLI="claude-cli --no-interactive"
+export ROODA_AI_CMD="claude-cli --no-interactive"
 ./rooda.sh build
 
 # Project with custom preset in rooda-config.yml
-./rooda.sh build --ai-tool custom
+./rooda.sh build --ai-cmd-preset custom
 ```
 
 **Troubleshooting:**
@@ -192,7 +192,7 @@ export ROODA_AI_CLI="claude-cli --no-interactive"
 If you get "Unknown AI tool preset" error:
 - Check available hardcoded presets: `kiro-cli`, `claude`, `aider`
 - Define custom presets in `rooda-config.yml` under `ai_tools` section
-- Or use `--ai-cli` flag with full command
+- Or use `--ai-cmd` flag with full command
 
 ### How It Works
 

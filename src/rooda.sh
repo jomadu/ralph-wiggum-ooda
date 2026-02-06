@@ -27,16 +27,16 @@ Options:
   -d, --decide <file>      Path to decide phase prompt
   -a, --act <file>         Path to act phase prompt
   -m, --max-iterations N   Maximum iterations (default: see below)
-  --ai-cli <command>       AI CLI command to use (overrides all other settings)
-  --ai-tool <preset>       AI tool preset (kiro-cli, claude, aider, or custom from config)
+  --ai-cmd <command>       AI CLI command to use (overrides all other settings)
+  --ai-cmd-preset <preset> AI tool preset (kiro-cli, claude, aider, or custom from config)
   --verbose                Show detailed execution including full prompt
   --quiet                  Suppress non-error output
   --help, -h               Show this help message
 
 AI CLI Precedence (highest to lowest):
-  1. --ai-cli flag (direct command override)
-  2. --ai-tool preset (resolves to command via config or hardcoded)
-  3. \$ROODA_AI_CLI environment variable
+  1. --ai-cmd flag (direct command override)
+  2. --ai-cmd-preset preset (resolves to command via config or hardcoded)
+  3. \$ROODA_AI_CMD environment variable
   4. Default: kiro-cli chat --no-interactive --trust-all-tools
 
 Hardcoded AI Tool Presets:
@@ -56,8 +56,8 @@ Examples:
   ./rooda.sh build -m 5
   ./rooda.sh build --verbose
   ./rooda.sh build --quiet
-  ./rooda.sh build --ai-tool claude
-  ./rooda.sh build --ai-cli "custom-cli --flags"
+  ./rooda.sh build --ai-cmd-preset claude
+  ./rooda.sh build --ai-cmd "custom-cli --flags"
   ./rooda.sh --list-procedures
   ./rooda.sh -o prompts/observe_specs.md \\
             -r prompts/orient_gap.md \\
@@ -305,11 +305,11 @@ ACT=""
 MAX_ITERATIONS=""  # Empty means not set, will use config default or 0
 PROCEDURE=""
 VERBOSE=0  # 0=default, 1=verbose, -1=quiet
-AI_CLI_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"  # Default AI CLI, configurable via --ai-cli or config
-AI_TOOL_PRESET=""  # Preset name for --ai-tool flag
-AI_CLI_FLAG=""  # Set by --ai-cli flag (highest precedence)
-# Override with environment variable if set (precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > default)
-[ -n "$ROODA_AI_CLI" ] && AI_CLI_COMMAND="$ROODA_AI_CLI"
+AI_CMD_COMMAND="kiro-cli chat --no-interactive --trust-all-tools"  # Default AI CLI, configurable via --ai-cmd or config
+AI_CMD_PRESET=""  # Preset name for --ai-cmd-preset flag
+AI_CMD_FLAG=""  # Set by --ai-cmd flag (highest precedence)
+# Override with environment variable if set (precedence: --ai-cmd flag > --ai-cmd-preset preset > $ROODA_AI_CMD > default)
+[ -n "$ROODA_AI_CMD" ] && AI_CMD_COMMAND="$ROODA_AI_CMD"
 # Resolve config file relative to script location
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_FILE="${SCRIPT_DIR}/rooda-config.yml"
@@ -376,12 +376,12 @@ while [[ $# -gt 0 ]]; do
             MAX_ITERATIONS="$2"
             shift 2
             ;;
-        --ai-cli)
-            AI_CLI_FLAG="$2"
+        --ai-cmd)
+            AI_CMD_FLAG="$2"
             shift 2
             ;;
-        --ai-tool)
-            AI_TOOL_PRESET="$2"
+        --ai-cmd-preset)
+            AI_CMD_PRESET="$2"
             shift 2
             ;;
         --verbose)
@@ -400,15 +400,15 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Resolve AI CLI command with correct precedence: --ai-cli > --ai-tool > $ROODA_AI_CLI > default
-if [ -n "$AI_CLI_FLAG" ]; then
-    # --ai-cli flag has highest priority
-    AI_CLI_COMMAND="$AI_CLI_FLAG"
-elif [ -n "$AI_TOOL_PRESET" ]; then
-    # --ai-tool preset resolution
-    AI_CLI_COMMAND=$(resolve_ai_tool_preset "$AI_TOOL_PRESET" "$CONFIG_FILE") || exit 1
+# Resolve AI CLI command with correct precedence: --ai-cmd > --ai-cmd-preset > $ROODA_AI_CMD > default
+if [ -n "$AI_CMD_FLAG" ]; then
+    # --ai-cmd flag has highest priority
+    AI_CMD_COMMAND="$AI_CMD_FLAG"
+elif [ -n "$AI_CMD_PRESET" ]; then
+    # --ai-cmd-preset preset resolution
+    AI_CMD_COMMAND=$(resolve_ai_tool_preset "$AI_CMD_PRESET" "$CONFIG_FILE") || exit 1
 fi
-# Otherwise use $ROODA_AI_CLI (already set at line 288) or default
+# Otherwise use $ROODA_AI_CMD (already set at line 288) or default
 
 # If procedure specified, load from config (explicit flags override config)
 if [ -n "$PROCEDURE" ]; then
@@ -478,7 +478,7 @@ if [ -n "$PROCEDURE" ]; then
 fi
 
 # Check AI CLI availability and version (only if using kiro-cli)
-if [[ "$AI_CLI_COMMAND" == kiro-cli* ]]; then
+if [[ "$AI_CMD_COMMAND" == kiro-cli* ]]; then
     if ! command -v kiro-cli &> /dev/null; then
         echo "Error: kiro-cli is required for AI CLI integration"
         echo "Install from: https://docs.aws.amazon.com/kiro/"
@@ -568,7 +568,7 @@ while true; do
     # Execute AI CLI - exit status intentionally ignored per ai-cli-integration.md
     # Design: Script continues to git push regardless of AI CLI success/failure
     # Rationale: Allows loop to self-correct through empirical feedback in subsequent iterations
-    create_prompt | $AI_CLI_COMMAND
+    create_prompt | $AI_CMD_COMMAND
 
     PUSH_OUTPUT=$(git push origin "$CURRENT_BRANCH" 2>&1)
     PUSH_EXIT=$?
