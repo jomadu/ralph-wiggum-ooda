@@ -1,205 +1,233 @@
 # Draft Plan: Spec to Implementation Gap Analysis
 
-## Critical Gaps (Missing Core Features)
+## High Priority Gaps (Missing Core Features)
 
-### 1. AI CLI Integration - Missing ai_cli_command config field
-**Gap:** Spec `ai-cli-integration.md` describes `ai_cli_command` field in config for setting default AI CLI, but `rooda-config.yml` doesn't have this field and implementation doesn't query it.
+### 1. AI CLI Integration - Missing ai_tools Configuration Section
+**Gap:** Specs define ai_tools section in rooda-config.yml for custom presets, but implementation doesn't have this section in the actual config file.
 
-**Current behavior:** Uses hardcoded default `kiro-cli chat --no-interactive --trust-all-tools`, overridable only via `$ROODA_AI_CMD` env var or `--ai-cmd` flag.
+**Evidence:**
+- `specs/configuration-schema.md` documents ai_tools section with examples (fast, thorough, custom presets)
+- `specs/ai-cli-integration.md` extensively documents custom presets in config
+- `src/rooda-config.yml` has commented-out example but no actual ai_tools section
+- `src/rooda.sh` lines 102-143 implement resolve_ai_tool_preset() that queries .ai_tools.$preset
 
-**Spec requirement:** Four-tier precedence: `--ai-cmd` flag > `--ai-cmd-preset` > `$ROODA_AI_CMD` > config `ai_cli_command` > default
+**Impact:** Users cannot define custom AI tool presets in config as documented. The --ai-cmd-preset flag only works with hardcoded presets (kiro-cli, claude, aider).
 
-**Implementation needed:**
-- Add `ai_cli_command` field to config schema documentation
-- Query config for `ai_cli_command` when resolving AI CLI command
-- Insert into precedence chain between `$ROODA_AI_CMD` and default
+**Acceptance Criteria:**
+- Add ai_tools section to src/rooda-config.yml with at least one example preset
+- Verify --ai-cmd-preset resolves custom presets from config
+- Update AGENTS.md if needed to document the feature
 
-**Acceptance:** Config with `ai_cli_command: "custom-cli"` uses that command when no flag/preset/env var specified
-
----
-
-### 2. External Dependencies - Missing bd/beads dependency check
-**Gap:** Spec `external-dependencies.md` lists bd (beads) as project-specific dependency with version check, but implementation doesn't check for bd at startup.
-
-**Current behavior:** No bd availability check. Commands fail at runtime if bd not installed.
-
-**Spec requirement:** Check for bd at startup, provide installation instructions if missing.
-
-**Implementation needed:**
-- Add bd availability check in dependency section (after yq, before kiro-cli)
-- Check bd version >= 0.1.0 (requires --json flag support)
-- Provide installation instructions: `cargo install beads-cli`
-- Note: This is project-specific, not framework-required
-
-**Acceptance:** Running `./rooda.sh bootstrap` without bd installed shows error with installation instructions
+**Dependencies:** None
 
 ---
 
-### 3. CLI Interface - Missing --version output format
-**Gap:** Spec `cli-interface.md` Example 10 shows version output as `rooda.sh version 0.1.0`, but implementation outputs `rooda.sh version $VERSION` (variable not expanded in example verification).
+### 2. External Dependencies - Missing yq Version Validation
+**Gap:** Specs require yq v4.0.0+ validation at startup, but implementation doesn't validate version.
 
-**Current behavior:** Implementation correctly outputs version.
+**Evidence:**
+- `specs/external-dependencies.md` specifies yq minimum version 4.0.0 with validation algorithm
+- `specs/external-dependencies.md` includes Example 3 showing version check error message
+- `src/rooda.sh` checks for yq existence but doesn't validate version
+- AGENTS.md notes "yq version validation (requires v4.0.0+)" but implementation missing
 
-**Spec accuracy:** Spec example is correct, no implementation gap. This is a false positive from initial analysis.
+**Impact:** Script may fail with cryptic errors if user has yq v3 installed (incompatible syntax).
 
-**Action:** No implementation change needed. Verify spec example matches implementation.
+**Acceptance Criteria:**
+- Add yq version check at startup (lines 15-19 area)
+- Extract version from `yq --version` output
+- Compare against minimum 4.0.0
+- Exit with clear error message if version too old
+- Include upgrade instructions in error message
 
----
-
-### 4. Iteration Loop - Missing iteration timing display
-**Gap:** Spec `iteration-loop.md` "Areas for Improvement" mentions displaying elapsed time per iteration, but not implemented.
-
-**Current behavior:** No timing information displayed.
-
-**Spec requirement:** This is listed as "Areas for Improvement", not acceptance criteria.
-
-**Action:** Not a gap - this is a future enhancement, not a missing feature.
-
----
-
-## High-Impact Gaps (Frequently Used Functionality)
-
-### 5. Configuration Schema - ai_tools section not documented in config comments
-**Gap:** Spec `configuration-schema.md` describes `ai_tools` section for custom presets, but `rooda-config.yml` has this section commented out with example presets.
-
-**Current behavior:** Config has commented-out `ai_tools` section with examples.
-
-**Spec requirement:** Config should document the `ai_tools` section structure and usage.
-
-**Implementation status:** Config has examples but they're commented out. Users must uncomment to use.
-
-**Action:** Config is correct - examples are intentionally commented out. No gap.
+**Dependencies:** None
 
 ---
 
-### 6. CLI Interface - Missing fuzzy procedure name matching
-**Gap:** Implementation has fuzzy matching for unknown procedures (lines 230-260), but spec `cli-interface.md` doesn't document this feature.
+### 3. CLI Interface - Missing --list-procedures Implementation
+**Gap:** Specs document --list-procedures flag, implementation has function but may not be fully integrated.
 
-**Current behavior:** When procedure not found, suggests closest match based on character overlap.
+**Evidence:**
+- `specs/cli-interface.md` acceptance criteria includes --list-procedures flag
+- `src/rooda.sh` lines 70-100 implement list_procedures() function
+- Help text shows --list-procedures option
+- Need to verify it works correctly with all procedures
 
-**Spec requirement:** Spec only says "Error 'Procedure X not found in config', exit 1"
+**Impact:** Users cannot easily discover available procedures without reading config file.
 
-**Action:** Spec is incomplete - implementation has better UX than spec describes. Update spec to document fuzzy matching.
+**Acceptance Criteria:**
+- Verify --list-procedures works with current config
+- Test output format matches expectations
+- Ensure display and summary fields are shown correctly
 
----
-
-### 7. User Documentation - Missing docs/beads.md content verification
-**Gap:** Spec `user-documentation.md` lists `docs/beads.md` as existing file, but need to verify it exists and has correct content.
-
-**Current behavior:** File exists (confirmed by glob).
-
-**Action:** Verify `docs/beads.md` content matches spec requirements.
-
----
-
-## Low-Priority Gaps (Nice-to-Have, Edge Cases)
-
-### 8. External Dependencies - No automated installer
-**Gap:** Spec `external-dependencies.md` "Areas for Improvement" mentions automated installer, but not implemented.
-
-**Current behavior:** Users manually install dependencies.
-
-**Spec requirement:** This is "Areas for Improvement", not acceptance criteria.
-
-**Action:** Not a gap - this is a future enhancement.
+**Dependencies:** None
 
 ---
 
-### 9. AI CLI Integration - No timeout mechanism
-**Gap:** Spec `ai-cli-integration.md` "Known Issues" mentions no timeout for AI CLI invocation, but not implemented.
+## Medium Priority Gaps (Documentation & Validation)
 
-**Current behavior:** Script waits indefinitely if AI CLI hangs.
+### 4. Documentation - Code Examples Not Verified
+**Gap:** Quality criteria require all code examples in docs/ to be verified working, but no verification process exists.
 
-**Spec requirement:** This is "Known Issues" / "Areas for Improvement", not acceptance criteria.
+**Evidence:**
+- AGENTS.md quality criteria: "All code examples in docs/ are verified working (PASS/FAIL)"
+- `specs/user-documentation.md` acceptance criteria: "All code examples in documentation are verified working"
+- No test script or verification process for docs/ examples
+- docs/beads.md, docs/ooda-loop.md, docs/ralph-loop.md contain code examples
 
-**Action:** Not a gap - this is a known limitation, not a missing feature.
+**Impact:** Documentation examples may be outdated or incorrect, misleading users.
 
----
+**Acceptance Criteria:**
+- Create script to extract and verify code examples from docs/*.md
+- Add to quality criteria verification process
+- Document verification approach in AGENTS.md
 
-### 10. Iteration Loop - No dry-run mode
-**Gap:** Spec `iteration-loop.md` "Areas for Improvement" mentions --dry-run flag, but not implemented.
-
-**Current behavior:** No dry-run mode.
-
-**Spec requirement:** This is "Areas for Improvement", not acceptance criteria.
-
-**Action:** Not a gap - this is a future enhancement.
-
----
-
-## Spec Drift (Specified Differently Than Implemented)
-
-### 11. AI CLI Integration - Precedence documentation inconsistency
-**Gap:** Spec `ai-cli-integration.md` describes four-tier precedence including config `ai_cli_command`, but implementation only has three tiers (no config field).
-
-**Current behavior:** Three-tier precedence: `--ai-cmd` > `--ai-cmd-preset` > `$ROODA_AI_CMD` > default
-
-**Spec requirement:** Four-tier precedence: `--ai-cmd` > `--ai-cmd-preset` > `$ROODA_AI_CMD` > config `ai_cli_command` > default
-
-**Action:** This is the same as Gap #1. Implement config `ai_cli_command` field.
+**Dependencies:** None
 
 ---
 
-### 12. Configuration Schema - ai_tools validation not implemented
-**Gap:** Spec `configuration-schema.md` mentions "ai_tools presets validated as string type" and "Unknown presets return helpful error messages", but implementation doesn't validate string type.
+### 5. Specification System - Missing Spec Index Regeneration
+**Gap:** Specs describe automatic spec index regeneration in specs/README.md, but implementation doesn't maintain this.
 
-**Current behavior:** Implementation checks if preset is null or empty, returns helpful error for unknown presets.
+**Evidence:**
+- `specs/component-authoring.md` mentions "A3.6: Regenerate Spec Index (If Specs Modified)"
+- `src/prompts/act_build.md` includes step A3.6 for regenerating spec index
+- specs/README.md exists but may not be automatically maintained
+- No clear algorithm for what should be in the index
 
-**Spec requirement:** Validate that custom presets are strings.
+**Impact:** Spec index may become stale as specs are added/modified/deleted.
 
-**Implementation needed:**
-- Add type validation in `resolve_ai_tool_preset` function
-- Check that custom preset value is a string (not array, object, number, boolean)
-- Return error if wrong type
+**Acceptance Criteria:**
+- Define spec index structure requirements
+- Implement automatic regeneration when specs change
+- Verify index stays current with spec changes
 
-**Acceptance:** Config with `ai_tools: { bad: 123 }` returns error "Preset 'bad' must be a string"
-
----
-
-## Undocumented Implementation (Implemented But Not Specified)
-
-### 13. CLI Interface - Fuzzy procedure name matching
-**Gap:** Implementation has fuzzy matching (lines 230-260) but spec doesn't document it.
-
-**Action:** Update spec `cli-interface.md` to document fuzzy matching behavior.
+**Dependencies:** None
 
 ---
 
-### 14. CLI Interface - Detailed git push error handling
-**Gap:** Implementation has detailed git push error parsing (lines 580-600) but spec doesn't document it.
+### 6. Iteration Loop - Missing Error Handling for AI CLI Failures
+**Gap:** Specs note "No kiro-cli error handling" as known issue, but this is a significant gap.
 
-**Current behavior:** Parses git push errors and provides specific guidance (authentication, network, merge conflicts).
+**Evidence:**
+- `specs/iteration-loop.md` Known Issues: "No kiro-cli error handling: If kiro-cli exits with non-zero status, the loop continues anyway"
+- `specs/ai-cli-integration.md` Known Issues: "No error handling: Script continues to git push even if AI CLI fails"
+- Implementation doesn't check AI CLI exit status
 
-**Spec requirement:** Spec `iteration-loop.md` only says "Attempts to create remote branch, continues loop"
+**Impact:** Loop continues after AI CLI failures, potentially pushing incomplete or invalid changes.
 
-**Action:** Update spec `iteration-loop.md` to document detailed error handling.
+**Acceptance Criteria:**
+- Check AI CLI exit status after each iteration
+- Implement failure handling (retry, skip push, abort loop)
+- Add --max-failures threshold option
+- Document behavior in AGENTS.md
 
----
-
-### 15. Configuration Schema - Config validation function
-**Gap:** Implementation has comprehensive `validate_config` function (lines 195-298) but spec doesn't document validation behavior.
-
-**Current behavior:** Validates YAML parseability, procedures key exists, procedure exists, required OODA fields present and non-empty.
-
-**Spec requirement:** Spec only mentions "Missing procedures return clear error messages"
-
-**Action:** Update spec `configuration-schema.md` to document validation behavior.
+**Dependencies:** None
 
 ---
 
-## Summary
+## Low Priority Gaps (Nice-to-Have Features)
 
-**Critical gaps requiring implementation:**
-1. AI CLI Integration - Add config `ai_cli_command` field support
-2. Configuration Schema - Add ai_tools preset type validation
+### 7. CLI Interface - Missing Dry-Run Mode
+**Gap:** Specs suggest --dry-run mode as area for improvement, not implemented.
 
-**Spec updates required (implementation exceeds spec):**
-3. CLI Interface - Document fuzzy procedure name matching
-4. Iteration Loop - Document detailed git push error handling  
-5. Configuration Schema - Document config validation behavior
+**Evidence:**
+- `specs/iteration-loop.md` Areas for Improvement: "Dry-run mode: Support --dry-run flag to show what would execute without actually running the AI CLI"
+- No --dry-run flag in implementation
+- Would be useful for testing procedures without executing
 
-**False positives (no action needed):**
-- External Dependencies bd check (project-specific, not framework-required)
-- Version output format (spec is correct)
-- Future enhancements listed in "Areas for Improvement" (not gaps)
-- Commented-out ai_tools examples (intentional)
+**Impact:** Users cannot preview what a procedure would do without actually running it.
+
+**Acceptance Criteria:**
+- Add --dry-run flag to CLI
+- Show assembled prompt without executing AI CLI
+- Display what files would be read/modified
+- Skip git push in dry-run mode
+
+**Dependencies:** None
+
+---
+
+### 8. External Dependencies - Missing Automated Dependency Checker
+**Gap:** Specs describe dependency checking algorithm, but implementation only checks yq.
+
+**Evidence:**
+- `specs/external-dependencies.md` documents comprehensive dependency checking algorithm
+- Implementation only checks for yq at startup
+- No checks for kiro-cli, bd, shellcheck, git
+- No version validation for any tools
+
+**Impact:** Users may encounter runtime errors due to missing dependencies.
+
+**Acceptance Criteria:**
+- Implement check_dependencies() function per spec algorithm
+- Check all required dependencies at startup
+- Provide installation instructions for missing tools
+- Validate versions where specified
+
+**Dependencies:** Task #2 (yq version validation)
+
+---
+
+### 9. Configuration Schema - Missing Config Validation
+**Gap:** Specs note "Config validation: Script doesn't validate config file structure before querying with yq" as known issue.
+
+**Evidence:**
+- `specs/cli-interface.md` Known Issues: "Config validation: Script doesn't validate config file structure before querying with yq"
+- `src/rooda.sh` lines 195-298 implement validate_config() function
+- Need to verify this function is comprehensive
+
+**Impact:** Invalid YAML or missing required fields cause cryptic yq errors.
+
+**Acceptance Criteria:**
+- Verify validate_config() checks all required fields
+- Add validation for ai_tools section structure
+- Provide clear error messages for common config mistakes
+- Test with intentionally malformed configs
+
+**Dependencies:** Task #1 (ai_tools section)
+
+---
+
+### 10. Iteration Loop - Missing Progress Indicators
+**Gap:** Specs suggest progress indicators as area for improvement.
+
+**Evidence:**
+- `specs/iteration-loop.md` Areas for Improvement: "Progress indicators: Show which OODA phase is executing during long-running iterations"
+- `specs/iteration-loop.md` Areas for Improvement: "Iteration timing: Display elapsed time per iteration"
+- No progress indicators in current implementation
+
+**Impact:** Users have no visibility into what's happening during long-running iterations.
+
+**Acceptance Criteria:**
+- Show current OODA phase during execution
+- Display elapsed time per iteration
+- Add progress bar or spinner for long operations
+- Make optional via --verbose flag
+
+**Dependencies:** None
+
+---
+
+## Completeness Assessment
+
+**Specifications Coverage:** ~85%
+- Core functionality (OODA loop, procedures, CLI, config) fully implemented
+- AI CLI integration mostly implemented (missing ai_tools config section)
+- Dependency checking partially implemented (yq only)
+- Error handling minimal
+- Documentation validation missing
+
+**Implementation Coverage:** ~90%
+- All 9 procedures defined and functional
+- All 25 prompt files valid and structured correctly
+- CLI interface complete with all documented flags
+- Config schema supports all required fields
+- Quality validation scripts (validate-prompts.sh, audit-links.sh) working
+
+**Critical Gaps:** 3 (tasks #1, #2, #3)
+**Important Gaps:** 6 (tasks #4-#9)
+**Enhancement Gaps:** 1 (task #10)
+
+**Highest Priority:** Task #1 (ai_tools config section) - documented feature that doesn't work
+**Blocking Issues:** None - all gaps are independent and can be addressed in parallel
