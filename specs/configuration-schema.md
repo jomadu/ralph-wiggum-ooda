@@ -60,7 +60,7 @@ procedures:
 
 ### AI Tools Section
 
-The `ai_tools` section defines custom AI CLI tool presets that can be used with the `--ai-tool` flag.
+The `ai_tools` section defines custom AI CLI tool presets that can be used with the `--ai-cmd-preset` flag.
 
 **Structure:**
 ```yaml
@@ -80,9 +80,9 @@ ai_tools:
 
 **Usage:**
 ```bash
-./rooda.sh build --ai-tool fast
-./rooda.sh build --ai-tool thorough
-./rooda.sh build --ai-tool kiro-cli  # hardcoded preset
+./rooda.sh build --ai-cmd-preset fast
+./rooda.sh build --ai-cmd-preset thorough
+./rooda.sh build --ai-cmd-preset kiro-cli  # hardcoded preset
 ```
 
 ## Algorithm
@@ -92,7 +92,7 @@ ai_tools:
 3. Query config for procedure OODA files: `.procedures.$PROCEDURE.observe|orient|decide|act`
 4. Validate all four OODA phase paths are non-null
 5. Extract default_iterations if max-iterations not specified via CLI
-6. If --ai-tool flag specified, query config for preset: `.ai_tools.$PRESET`
+6. If --ai-cmd-preset flag specified, query config for preset: `.ai_tools.$PRESET`
 7. Return error if procedure not found or required fields missing
 
 **Pseudocode:**
@@ -226,8 +226,8 @@ yq eval ".ai_tools.fast" rooda-config.yml
 
 **Usage:**
 ```bash
-./rooda.sh build --ai-tool fast
-./rooda.sh build --ai-tool thorough
+./rooda.sh build --ai-cmd-preset fast
+./rooda.sh build --ai-cmd-preset thorough
 ```
 
 **Verification:**
