@@ -32,14 +32,18 @@ Detect, report, and recover from failures — AI CLI crashes, network issues, te
 
 ### AI CLI Failure Detection
 
-- [ ] Non-zero exit code from AI CLI counts as failure
-- [ ] `<promise>FAILURE</promise>` in output counts as failure (even if exit code 0)
+- [ ] Promise signals scanned first, before checking exit code
+- [ ] `<promise>FAILURE</promise>` in output counts as failure (overrides exit code 0)
 - [ ] If both `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>` present, FAILURE takes precedence
+- [ ] `<promise>SUCCESS</promise>` counts as success (overrides non-zero exit code)
+- [ ] If no promise signals, non-zero exit code counts as failure
+- [ ] If no promise signals and exit code 0, counts as success
 - [ ] Process crash (SIGSEGV, SIGKILL, OOM) counts as failure
-- [ ] Process timeout counts as failure
+- [ ] Process timeout always counts as failure (promise signals in timed-out output ignored)
+- [ ] Promise signals are case-sensitive: exact match for `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>`
+- [ ] Invalid formats (lowercase, extra spaces, unclosed tags) are not recognized
 - [ ] Failure increments `ConsecutiveFailures` counter
 - [ ] Success resets `ConsecutiveFailures` to 0
-- [ ] `<promise>SUCCESS</promise>` counts as success regardless of exit code
 
 ### Consecutive Failure Tracking
 
@@ -62,9 +66,11 @@ Detect, report, and recover from failures — AI CLI crashes, network issues, te
 - [ ] After SIGTERM, wait up to 5 seconds for graceful termination
 - [ ] If process doesn't terminate within 5 seconds, send SIGKILL
 - [ ] If process still doesn't terminate after SIGKILL, log warning and continue
-- [ ] Timeout counts as failure (increments `ConsecutiveFailures`)
+- [ ] Timeout always counts as failure (increments `ConsecutiveFailures`)
+- [ ] Timeout always fails even if output contains `<promise>SUCCESS</promise>`
+- [ ] Promise signals in timed-out output logged for diagnostics but don't affect outcome
 - [ ] Timeout logs iteration number, command, and timeout duration
-- [ ] Partial output from timed-out process captured and scanned for signals
+- [ ] Partial output from timed-out process captured for diagnostic logging
 
 ### Crash Recovery
 
@@ -102,6 +108,56 @@ Detect, report, and recover from failures — AI CLI crashes, network issues, te
 - [ ] Truncation logs warning with actual size and buffer limit
 - [ ] Truncation sets `AIExecutionResult.Truncated = true`
 - [ ] `<promise>` signals at end of output preserved (signals at beginning may be lost)
+- [ ] If promise signal is split across truncation boundary, it may not be detected
+- [ ] Prompts must instruct AI to emit promise signals at the very end of output
+- [ ] If truncation is frequent, increase `max_output_buffer` size
+
+## Edge Cases
+
+### Promise Signal Format
+
+**Valid signals** (case-sensitive, exact match):
+- `<promise>SUCCESS</promise>`
+- `<promise>FAILURE</promise>`
+
+**Invalid signals** (not recognized):
+- `<promise>success</promise>` (lowercase)
+- `<promise> SUCCESS </promise>` (extra spaces)
+- `<PROMISE>SUCCESS</PROMISE>` (uppercase tags)
+- `<promise>SUCCESS` (unclosed tag)
+- `<Promise>Success</Promise>` (mixed case)
+
+**Rationale:** Strict format forces AI to follow exact specification, prevents ambiguity, and enables fast string matching.
+
+### Timeout with Promise Signals
+
+**Scenario:** AI CLI times out but output contains `<promise>SUCCESS</promise>`
+
+**Behavior:** Timeout always counts as failure. Promise signals in timed-out output are logged for diagnostics but do not affect outcome.
+
+**Rationale:** If agent can't complete within timeout, it's a failure regardless of partial output. User should increase timeout if legitimate work takes longer.
+
+### Truncated Output with Split Promise Signal
+
+**Scenario:** Promise signal is split across truncation boundary
+
+**Example:**
+```
+Output: [9.9MB of text]...<prom[TRUNCATE]ise>SUCCESS</promise>
+Result: Buffer contains "ise>SUCCESS</promise>" (incomplete tag)
+```
+
+**Behavior:** Signal scanning will fail because `<promise>SUCCESS</promise>` is incomplete. Iteration outcome determined by exit code.
+
+**Mitigation:** Prompts must instruct AI to emit promise signals at the very end of output. 10MB buffer is sufficient for most iterations.
+
+### All Failures Treated Equally
+
+**Current behavior:** All failures (timeout, crash, exit code, explicit FAILURE signal) increment the same `ConsecutiveFailures` counter.
+
+**Limitation:** Cannot distinguish transient failures (network blip, rate limit) from permanent failures (invalid config, AI agent blocked).
+
+**Rationale:** Simple implementation for v2. Future versions may add failure type classification with separate thresholds.
 
 ## Data Structures
 
@@ -151,6 +207,67 @@ type ValidationError struct {
 - `Message` — Clear description of what's wrong
 - `Suggestion` — Actionable fix suggestion (e.g., "Set loop.ai_cmd or use --ai-cmd flag")
 
+## Future Enhancements (Out of Scope for v2)
+
+### Failure Type Classification
+
+Distinguish transient failures (network, timeout, rate limit) from permanent failures (config error, explicit FAILURE signal) with separate thresholds:
+
+```go
+type FailureType string
+
+const (
+    FailureTransient FailureType = "transient" // Network, timeout, rate limit
+    FailurePermanent FailureType = "permanent" // Config, explicit FAILURE signal
+)
+
+type IterationState struct {
+    // ...
+    TransientFailures int // Consecutive transient failures
+    PermanentFailures int // Consecutive permanent failures
+}
+
+// Abort if: PermanentFailures >= 1 OR TransientFailures >= 5
+```
+
+**Tradeoffs:**
+- ✅ More intelligent retry logic
+- ✅ Don't abort on transient issues
+- ⚠️ Complex: how to classify each failure?
+- ⚠️ More configuration needed
+
+### Exponential Backoff
+
+Wait between iterations after transient failures:
+
+```go
+On timeout/network failure:
+  - Wait before next iteration (1s, 2s, 4s, 8s...)
+  - Don't increment counter if backoff succeeds
+```
+
+**Tradeoffs:**
+- ✅ Handles transient issues gracefully
+- ✅ Simple classification (timeout = transient)
+- ⚠️ Adds delay to loop
+- ⚠️ More complex state management
+
+### Failure Pattern Detection
+
+Abort immediately on repeated identical failures:
+
+```go
+If same error message 3 times in a row:
+  - Abort immediately (don't wait for threshold)
+  - Log: "Repeated identical failure detected"
+```
+
+**Tradeoffs:**
+- ✅ Faster abort on permanent issues
+- ✅ Prevents wasted iterations
+- ⚠️ Requires error message comparison
+- ⚠️ May abort too early on legitimate retries
+
 ## Algorithm
 
 ### Detect Iteration Failure
@@ -159,18 +276,42 @@ type ValidationError struct {
 Input: AIExecutionResult
 Output: bool (is failure)
 
-1. If result.Error != nil → failure
-2. If result.ExitCode != 0 → failure
-3. Scan result.Output for <promise> signals:
-   - If contains <promise>FAILURE</promise> → failure
-   - If contains <promise>SUCCESS</promise> and no FAILURE → success
-4. Otherwise → success (exit code 0, no error, no failure signal)
+1. Scan result.Output for <promise> signals (case-sensitive exact match):
+   - If contains <promise>FAILURE</promise> → failure (overrides everything)
+   - If contains <promise>SUCCESS</promise> (and no FAILURE) → success (overrides exit code)
+2. If no promise signals:
+   - If result.Error != nil → failure
+   - If result.ExitCode != 0 → failure
+   - Otherwise → success
 ```
 
 **Precedence:**
 1. `<promise>FAILURE</promise>` overrides everything (even exit code 0)
 2. `<promise>SUCCESS</promise>` overrides non-zero exit code
-3. Exit code used if no promise signals
+3. Process errors (timeout, crash) count as failure if no promise signals
+4. Exit code used if no promise signals and no process errors
+
+**Implementation:**
+```go
+func DetectIterationFailure(result AIExecutionResult) bool {
+    hasSuccess := strings.Contains(result.Output, "<promise>SUCCESS</promise>")
+    hasFailure := strings.Contains(result.Output, "<promise>FAILURE</promise>")
+    
+    // Promise signals take precedence
+    if hasFailure {
+        return true  // Failure wins if both present
+    }
+    if hasSuccess {
+        return false  // Success overrides exit code
+    }
+    
+    // No promise signals - fall back to process status
+    if result.Error != nil {
+        return true
+    }
+    return result.ExitCode != 0
+}
+```
 
 ### Track Consecutive Failures
 
@@ -206,8 +347,10 @@ Output: AIExecutionResult
      e. If still running, log warning and continue
      f. Capture partial output
      g. Return result with Error = "timeout exceeded"
-4. Scan captured output for <promise> signals
-5. Return AIExecutionResult
+4. Return result (timeout always counts as failure, promise signals ignored)
+```
+
+**Note:** Partial output from timed-out processes is logged for diagnostics but does not affect failure detection. Timeout always increments `ConsecutiveFailures` regardless of output content.ecutionResult
 ```
 
 ### Handle SIGINT/SIGTERM
