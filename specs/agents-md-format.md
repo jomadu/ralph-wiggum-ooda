@@ -31,23 +31,17 @@ Specify the AGENTS.md format — required sections, field definitions, and struc
 ```markdown
 # Agent Instructions
 
-## Issue Tracking
-[Brief description of work tracking system and onboarding steps]
-
-## Quick Reference
-[Code block with essential commands for common operations]
-
-## Landing the Plane (Session Completion)
-[Mandatory workflow steps for completing a work session]
-[Critical rules about pushing to remote]
-
 ## Work Tracking System
 **System:** [name of work tracking system]
+[Brief onboarding instructions]
 [Commands for querying, updating, closing, creating work items]
 
-## Story/Bug Input
-[Where and how stories/bugs are documented]
-[Prerequisites for planning procedures]
+## Quick Reference
+[Code block with cross-section summary of most frequently used commands]
+
+## Task Input
+[Where and how task descriptions are documented]
+[Required for planning procedures]
 
 ## Planning System
 [Where draft plans are stored]
@@ -86,24 +80,39 @@ Specify the AGENTS.md format — required sections, field definitions, and struc
 
 ### Section Definitions
 
-#### Issue Tracking (Required)
-**Purpose:** Identify the work tracking system and provide onboarding instructions.
-
+#### Work Tracking System (Required)
+**Purpose:** Identify the work tracking system, provide onboarding instructions, and document commands for interacting with it.
 **Fields:**
-- System name (e.g., "bd (beads)", "GitHub Issues", "file-based")
-- Onboarding command or instructions
+- System name (bold, prefixed with "System:")
+- Brief onboarding instructions
+- Query command with description
+- Update command with description
+- Close command with description
+- Create command with description
 
-**Format:** Brief paragraph with system name in bold, followed by onboarding steps.
+**Format:** Bold "System:" line, brief onboarding paragraph, followed by subsections with bold labels and code blocks.
 
 **Example:**
 ```markdown
-## Issue Tracking
+## Work Tracking System
 
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+**System:** beads (bd CLI)
+
+Run `bd onboard` to get started.
+
+**Query ready work:**
+\```bash
+bd ready --json
+\```
+
+**Update status:**
+\```bash
+bd update <id> --status in_progress
+\```
 ```
 
 #### Quick Reference (Required)
-**Purpose:** Provide essential commands for common operations without explanation.
+**Purpose:** Cross-section summary of the most frequently used commands from all sections. Provides quick copy-paste access without scrolling.
 
 **Fields:**
 - Command with inline comment explaining purpose
@@ -117,85 +126,49 @@ This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get sta
 \```bash
 bd ready              # Find available work
 bd show <id>          # View issue details
-bd update <id> --status in_progress  # Claim work
+go test ./...         # Run tests
 \```
 ```
 
-#### Landing the Plane (Required)
-**Purpose:** Define mandatory workflow for completing a work session, emphasizing git push.
+#### Task Input (Optional)
+**Purpose:** Document where task descriptions are documented and prerequisites for planning procedures.
+
+**Note:** Required for planning procedures (`draft-plan-*`). When missing, planning procedures cannot run.
 
 **Fields:**
-- Numbered workflow steps
-- Critical rules (bullet list)
-
-**Format:** Bold heading, numbered list of steps (may include sub-bullets), followed by "CRITICAL RULES:" with bullet list.
-
-**Example:**
-```markdown
-## Landing the Plane (Session Completion)
-
-**When ending a work session**, you MUST complete ALL steps below.
-
-**MANDATORY WORKFLOW:**
-
-1. **File issues for remaining work**
-2. **Run quality gates** (if code changed)
-3. **PUSH TO REMOTE** - This is MANDATORY:
-   \```bash
-   git push
-   \```
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-- NEVER stop before pushing
-```
-
-#### Work Tracking System (Required)
-**Purpose:** Document commands for interacting with the work tracking system.
-
-**Fields:**
-- System name (bold, prefixed with "System:")
-- Query command with description
-- Update command with description
-- Close command with description
-- Create command with description
-
-**Format:** Bold "System:" line, followed by subsections with bold labels and code blocks.
-
-**Example:**
-```markdown
-## Work Tracking System
-
-**System:** beads (bd CLI)
-
-**Query ready work:**
-\```bash
-bd ready --json
-\```
-
-**Update status:**
-\```bash
-bd update <id> --status in_progress
-\```
-```
-
-#### Story/Bug Input (Optional)
-**Purpose:** Document where stories/bugs are documented and prerequisites for planning.
-
-**Fields:**
-- Location of story/bug documentation
-- Prerequisites for planning procedures
+- Location of task documentation
+- Format (file path, environment variable, command)
 
 **Format:** Paragraph with file path and instructions.
 
+**Example:**
+```markdown
+## Task Input
+
+**Location:** `TASK.md` at project root
+
+**Format:** Markdown file with task description, requirements, and acceptance criteria.
+```
+
 #### Planning System (Optional)
 **Purpose:** Document where draft plans are stored and how they're published.
+
+**Note:** Required for planning procedures (`draft-plan-*`). When missing, planning procedures cannot run.
 
 **Fields:**
 - Draft plan location
 - Publishing mechanism
 
 **Format:** Bold labels with descriptions.
+
+**Example:**
+```markdown
+## Planning System
+
+**Draft plan location:** `PLAN.md` at project root
+
+**Publishing:** Agent runs work tracking commands to create issues from PLAN.md
+```
 
 #### Build/Test/Lint Commands (Required)
 **Purpose:** Define commands for running tests, builds, and linters.
@@ -343,6 +316,7 @@ shellcheck rooda.sh
 - Agents update this section in-place when drift detected
 - Add inline rationale for changes (brief comment)
 - Don't append dated diary entries
+- Keep content minimal — longer AGENTS.md increases loop iteration context overhead
 
 **Example:**
 ```markdown
@@ -365,92 +339,15 @@ shellcheck rooda.sh
 
 ## Algorithm
 
-### Validation Algorithm
+### Parsing
 
-```
-function ValidateAGENTSMD(content):
-    sections = ParseMarkdownSections(content)
-    
-    required = [
-        "Issue Tracking",
-        "Quick Reference",
-        "Landing the Plane",
-        "Work Tracking System",
-        "Build/Test/Lint Commands",
-        "Specification Definition",
-        "Implementation Definition",
-        "Quality Criteria",
-        "Operational Learnings"
-    ]
-    
-    for section in required:
-        if section not in sections:
-            return FAIL, "Missing required section: " + section
-    
-    # Validate Build/Test/Lint Commands
-    btl = sections["Build/Test/Lint Commands"]
-    if not (contains(btl, "**Test:**") or contains(btl, "**Build:**") or contains(btl, "**Lint:**")):
-        return FAIL, "Build/Test/Lint Commands missing required fields"
-    
-    # Validate Quality Criteria has PASS/FAIL markers
-    qc = sections["Quality Criteria"]
-    if not contains(qc, "(PASS/FAIL)"):
-        return FAIL, "Quality Criteria must have (PASS/FAIL) markers"
-    
-    # Validate Operational Learnings has date
-    ol = sections["Operational Learnings"]
-    if not matches(ol, /\d{4}-\d{2}-\d{2}/):
-        return FAIL, "Operational Learnings missing Last Bootstrap Verification date"
-    
-    return PASS, "Valid AGENTS.md"
-```
+AGENTS.md uses standard markdown structure:
+- Sections identified by level-2 headers (`##`)
+- Fields identified by bold labels (`**Field:**`)
+- Commands in code blocks (` ```bash`)
+- Lists as markdown bullets (`-`)
 
-### Bootstrap Algorithm (AGENTS.md doesn't exist)
-
-```
-function BootstrapAGENTSMD(repo_path):
-    # Detect work tracking system
-    if exists(repo_path + "/.beads"):
-        work_tracking = "beads (bd CLI)"
-        query_cmd = "bd ready --json"
-    elif exists(repo_path + "/.github"):
-        work_tracking = "GitHub Issues"
-        query_cmd = "gh issue list --json number,title,state"
-    else:
-        work_tracking = "file-based (TASK.md)"
-        query_cmd = "cat TASK.md"
-    
-    # Detect build system
-    if exists(repo_path + "/Makefile"):
-        build_cmd = "make"
-        test_cmd = "make test"
-    elif exists(repo_path + "/package.json"):
-        build_cmd = "npm run build"
-        test_cmd = "npm test"
-    elif exists(repo_path + "/go.mod"):
-        build_cmd = "go build ./..."
-        test_cmd = "go test ./..."
-    else:
-        build_cmd = "Not required"
-        test_cmd = "Manual verification"
-    
-    # Detect spec location
-    if exists(repo_path + "/specs"):
-        spec_location = "specs/*.md"
-    elif exists(repo_path + "/docs/specs"):
-        spec_location = "docs/specs/*.md"
-    else:
-        spec_location = "Not defined"
-    
-    # Generate AGENTS.md from template with detected values
-    return RenderTemplate(AGENTS_MD_TEMPLATE, {
-        work_tracking: work_tracking,
-        query_cmd: query_cmd,
-        build_cmd: build_cmd,
-        test_cmd: test_cmd,
-        spec_location: spec_location
-    })
-```
+See `operational-knowledge.md` for the read-verify-update lifecycle that uses this schema.
 
 ## Edge Cases
 
@@ -472,12 +369,22 @@ function BootstrapAGENTSMD(repo_path):
 ### Multiple Work Tracking Systems
 **Scenario:** Repository has both `.beads/` and `.github/` directories.
 
-**Behavior:** Precedence order: beads > GitHub Issues > file-based. Agent documents the active system in AGENTS.md.
+**Behavior:** Agent documents uncertainty in Operational Learnings section (loop is non-interactive). Example:
+```markdown
+## Operational Learnings
+**Why These Definitions:**
+- UNCERTAIN: Multiple work tracking systems detected (.beads/ and .github/). Defaulted to beads. Human should verify and update if incorrect.
+```
 
 ### Ambiguous Spec/Impl Definitions
 **Scenario:** AGENTS.md says "Location: `src/*.go`" but `src/` contains both specs and implementation.
 
-**Behavior:** Agent refines definition by examining file content (looks for "Job to be Done" section for specs) and updates AGENTS.md with more precise patterns.
+**Behavior:** Agent refines definition by examining file content (looks for "Job to be Done" section for specs) and updates AGENTS.md with more precise patterns. If unable to determine definitively, documents uncertainty in Operational Learnings:
+```markdown
+## Operational Learnings
+**Why These Definitions:**
+- UNCERTAIN: src/ contains mixed content. Separated by file naming convention (specs have _spec suffix). Human should verify.
+```
 
 ### Empty Operational Learnings
 **Scenario:** AGENTS.md has Operational Learnings section but no content under "Verified Working".
@@ -507,15 +414,12 @@ function BootstrapAGENTSMD(repo_path):
 ## Implementation Mapping
 
 **Related specs:**
-- `operational-knowledge.md` — Runtime behavior for reading/verifying/updating AGENTS.md
+- `operational-knowledge.md` — Runtime behavior for reading/verifying/updating AGENTS.md (includes bootstrap and validation algorithms)
 - `procedures.md` — Built-in procedures that consume AGENTS.md
 
 **Implementation files (v2 Go):**
-- `internal/agents/schema.go` — AGENTS.md schema definition and validation
+- `internal/agents/schema.go` — AGENTS.md schema definition
 - `internal/agents/parser.go` — Markdown parsing for AGENTS.md sections
-- `internal/agents/bootstrap.go` — Bootstrap algorithm for creating AGENTS.md
-- `internal/agents/verify.go` — Empirical verification (run commands, check paths)
-- `cmd/rooda/agents_sync.go` — CLI command for `rooda agents-sync` procedure
 
 ## Examples
 
@@ -525,26 +429,10 @@ function BootstrapAGENTSMD(repo_path):
 ```markdown
 # Agent Instructions
 
-## Issue Tracking
-This project uses **file-based** tracking. Create `TASK.md` to document work.
-
-## Quick Reference
-\```bash
-cat TASK.md  # View current tasks
-\```
-
-## Landing the Plane (Session Completion)
-**MANDATORY WORKFLOW:**
-1. **PUSH TO REMOTE**
-   \```bash
-   git push
-   \```
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-
 ## Work Tracking System
 **System:** file-based (TASK.md)
+
+Create `TASK.md` to document work.
 
 **Query ready work:**
 \```bash
@@ -556,6 +444,11 @@ cat TASK.md
 **Close issue:** Remove from TASK.md
 
 **Create issue:** Add to TASK.md
+
+## Quick Reference
+\```bash
+cat TASK.md  # View current tasks
+\```
 
 ## Build/Test/Lint Commands
 **Test:** Manual verification
@@ -589,7 +482,7 @@ cat TASK.md
 **Why These Definitions:** Minimal project, no formal specs
 ```
 
-**Verification:** PASS (all required sections present, valid format)
+**Verification:** PASS (all 7 required sections present, valid format)
 
 ### Example 2: Full-Featured AGENTS.md (Current Project)
 
@@ -603,8 +496,8 @@ cat TASK.md
 ```markdown
 # Agent Instructions
 
-## Issue Tracking
-This project uses **bd** (beads).
+## Work Tracking System
+**System:** beads (bd CLI)
 
 ## Build/Test/Lint Commands
 **Test:** `go test ./...`
@@ -627,7 +520,7 @@ This project uses **bd** (beads).
 
 **Verification:** WARNING ("Quality Criteria should have (PASS/FAIL) markers")
 
-### Example 5: Bootstrap Detection (Go Project)
+### Example 5: Full-Featured AGENTS.md (Go Project)
 
 **Input:** Repository with `go.mod`, `.beads/`, `specs/` directory
 
@@ -635,31 +528,36 @@ This project uses **bd** (beads).
 ```markdown
 # Agent Instructions
 
-## Issue Tracking
-This project uses **bd** (beads) for issue tracking. Run `bd onboard` to get started.
+## Work Tracking System
+**System:** beads (bd CLI)
+
+Run `bd onboard` to get started.
+
+**Query ready work:**
+\```bash
+bd ready --json
+\```
+
+**Update status:**
+\```bash
+bd update <id> --status in_progress
+\```
+
+**Close issue:**
+\```bash
+bd close <id> --reason "Completed"
+\```
+
+**Create issue:**
+\```bash
+bd create --title "Title" --description "Description"
+\```
 
 ## Quick Reference
 \```bash
 bd ready              # Find available work
 bd show <id>          # View issue details
-\```
-
-## Landing the Plane (Session Completion)
-**MANDATORY WORKFLOW:**
-1. **PUSH TO REMOTE**
-   \```bash
-   git push
-   \```
-
-**CRITICAL RULES:**
-- Work is NOT complete until `git push` succeeds
-
-## Work Tracking System
-**System:** beads (bd CLI)
-
-**Query ready work:**
-\```bash
-bd ready --json
+go test ./...         # Run tests
 \```
 
 ## Build/Test/Lint Commands
@@ -713,7 +611,7 @@ golangci-lint run
 **Why These Definitions:** Auto-detected from repository structure
 ```
 
-**Verification:** PASS (generated from bootstrap algorithm)
+**Verification:** PASS (all 7 required sections present, 2 optional sections included)
 
 ## Notes
 
@@ -735,10 +633,11 @@ golangci-lint run
 - Provides rationale for decisions (the "why")
 - Prevents agents from repeating failed approaches
 
-**Why bootstrap algorithm?**
-- Solves chicken-and-egg problem: agents need AGENTS.md to work, but AGENTS.md doesn't exist yet
-- Auto-detection reduces manual setup burden
-- Empirical verification corrects wrong detections
+**Why 7 required sections?**
+- Covers minimum information needed for any repository
+- Work Tracking System merged with onboarding (was separate Issue Tracking section)
+- Quick Reference provides cross-section summary for quick access
+- Optional sections (Task Input, Planning System) required only for planning procedures
 
 **Why in-place updates instead of append-only?**
 - Keeps AGENTS.md concise and current
@@ -750,6 +649,13 @@ golangci-lint run
 - Git-friendly (diffs, merges)
 - Widely supported by tools and editors
 - Structured enough for parsing, flexible enough for prose
+
+**Why keep AGENTS.md minimal?**
+- AGENTS.md is loaded into every loop iteration's context
+- Longer files increase context allocation overhead
+- Target: minimal yet complete and accurate
+- Omit explanations that belong in specs or documentation
+- Use terse commands and brief rationale
 
 ### Alternative Approaches Considered
 
@@ -771,26 +677,4 @@ golangci-lint run
 **Optional vs Required sections:**
 - Pros: Flexibility for minimal projects
 - Cons: Agents can't rely on sections existing
-- Decision: Required sections cover minimum viable information; optional sections for advanced features
-
-### Future Considerations
-
-**Schema versioning:**
-- If AGENTS.md format changes significantly, may need version marker
-- Could use frontmatter: `---\nversion: 2\n---`
-
-**Multi-language support:**
-- Current schema assumes English
-- Could add optional `language: en` field for i18n
-
-**Machine-readable metadata:**
-- Could add YAML frontmatter for structured metadata
-- Would preserve human-readable body while enabling strict parsing
-
-**Validation tooling:**
-- Could provide `rooda validate-agents` command
-- Would run validation algorithm and report errors
-
-**Template library:**
-- Could provide templates for common project types (Go, Python, Node.js)
-- Would speed up bootstrap process
+- Decision: 7 required sections cover minimum viable information; 2 optional sections (Task Input, Planning System) required only for planning procedures
