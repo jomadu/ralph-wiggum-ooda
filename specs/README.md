@@ -165,13 +165,14 @@ Written specs with extracted JTBDs:
 
 | Spec | Job to be Done |
 |------|----------------|
-| [iteration-loop](iteration-loop.md) | Execute AI coding agents through controlled OODA iteration cycles that clear AI context between runs, preventing LLM degradation while maintaining file-based state continuity. |
-| [configuration](configuration.md) | Define custom OODA procedures, AI command aliases, and project-specific settings through a three-tier configuration system — workspace, global, and environment variables — with sensible built-in defaults for zero-config startup. |
-| [prompt-composition](prompt-composition.md) | Assemble four OODA phase files (observe, orient, decide, act) and optional user-provided context into a single prompt that can be piped to an AI CLI tool, supporting both embedded defaults and user-provided custom prompts with clear path resolution. |
 | [agents-md-format](agents-md-format.md) | Specify the AGENTS.md format — required sections, field definitions, and structural conventions — that serves as the contract between AI agents and the repository. This file is the source of truth for project-specific behavior: build commands, file paths, work tracking, quality criteria. Agents read it first, verify it empirically, and update it when drift is detected. |
+| [ai-cli-integration](ai-cli-integration.md) | Pipe assembled prompts to a configurable AI CLI tool with support for command aliases, environment variables, and direct command override. Built-in support for kiro-cli, claude, github copilot, and cursor agent, with extensibility for custom tools. |
+| [configuration](configuration.md) | Define custom OODA procedures, AI command aliases, and project-specific settings through a three-tier configuration system — workspace (`./`), global (`<config_dir>/`), and environment variables — with sensible built-in defaults for zero-config startup. Tiers merge with clear precedence (CLI flags > env vars > workspace > global > built-in defaults) and provenance tracking so users know where each setting comes from. |
+| [iteration-loop](iteration-loop.md) | Execute AI coding agents through controlled OODA iteration cycles that clear AI context between runs, preventing LLM degradation while maintaining file-based state continuity. Each iteration invokes the AI CLI as a fresh process — the agent starts clean, processes the assembled prompt, executes tools, then exits. The loop orchestrator persists across iterations, managing termination and state. |
+| [prompt-composition](prompt-composition.md) | Assemble four OODA phase files (observe, orient, decide, act) and optional user-provided context into a single prompt that can be piped to an AI CLI tool, supporting both embedded defaults and user-provided custom prompts with clear path resolution. |
 
 Pending specs (not yet written):
-`ai-cli-integration.md`, `error-handling.md`, `cli-interface.md`, `operational-knowledge.md`, `distribution.md`, `observability.md`, `procedures.md`
+`error-handling.md`, `cli-interface.md`, `operational-knowledge.md`, `distribution.md`, `observability.md`, `procedures.md`
 
 ## How to Write Specs
 
