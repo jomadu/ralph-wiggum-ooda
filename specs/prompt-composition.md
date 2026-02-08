@@ -17,10 +17,14 @@ Assemble four OODA phase files (observe, orient, decide, act) and optional user-
 - [ ] Assembles prompts from four OODA phase files (observe, orient, decide, act)
 - [ ] Supports embedded default prompts via builtin: prefix (e.g., builtin:observe_build.md)
 - [ ] Supports filesystem prompts via relative paths (e.g., ./custom-prompts/observe.md)
+- [ ] Filesystem paths resolved relative to config file directory, not current working directory
 - [ ] Injects user-provided context when --context flag is supplied
+- [ ] Wraps user context with "# CONTEXT" section marker
 - [ ] Wraps each phase with section markers (e.g., "# OBSERVE", "# ORIENT")
-- [ ] Returns error if any phase file is missing or empty
+- [ ] Validates all prompt files at config load time (fail fast)
+- [ ] Returns error if any phase file is missing or empty (after trimming whitespace)
 - [ ] Preserves markdown formatting from source files
+- [ ] Normalizes trailing newlines (trim then add consistent spacing)
 - [ ] Handles multi-line context injection without breaking prompt structure
 
 ## Data Structures
@@ -40,6 +44,7 @@ procedures:
 ### Assembled Prompt Structure
 
 ```
+# CONTEXT
 [User Context - if provided via --context]
 
 # OBSERVE
@@ -58,11 +63,12 @@ procedures:
 ## Algorithm
 
 ```
-function AssemblePrompt(procedure, userContext):
+function AssemblePrompt(procedure, userContext, configDir):
     prompt = ""
     
     // Inject user context first if provided
     if userContext != "":
+        prompt += "# CONTEXT\n"
         prompt += userContext + "\n\n"
     
     // Process each OODA phase in order
@@ -73,17 +79,51 @@ function AssemblePrompt(procedure, userContext):
         if filePath.startsWith("builtin:"):
             content = readEmbeddedPrompt(filePath.removePrefix("builtin:"))
         else:
-            content = readFilesystemPrompt(filePath)
+            // Resolve relative to config file directory
+            absolutePath = resolvePath(configDir, filePath)
+            content = readFilesystemPrompt(absolutePath)
         
-        // Validate content exists
-        if content == "" or content == null:
+        // Validate content exists (trim whitespace first)
+        if strings.TrimSpace(content) == "":
             return error("Missing or empty prompt file: " + filePath)
         
-        // Add section marker and content
+        // Add section marker and content (normalize trailing newlines)
         prompt += "# " + phase.toUpperCase() + "\n"
-        prompt += content + "\n\n"
+        prompt += strings.TrimRight(content, "\n") + "\n\n"
     
     return prompt
+```
+
+### Validation at Config Load Time
+
+```
+function ValidateProcedure(procedure, configDir):
+    // Validate all four phases exist and are non-empty
+    for phase in [observe, orient, decide, act]:
+        filePath = procedure[phase]
+        
+        if filePath.startsWith("builtin:"):
+            embeddedPath = filePath.removePrefix("builtin:")
+            if !embeddedPromptExists(embeddedPath):
+                return error("Prompt file not found: " + filePath + "\n" +
+                           "Available builtin prompts for " + phase + " phase:\n" +
+                           listBuiltinPromptsForPhase(phase))
+        else:
+            absolutePath = resolvePath(configDir, filePath)
+            if !fileExists(absolutePath):
+                return error("Prompt file not found: " + filePath + "\n" +
+                           "Resolved to: " + absolutePath + "\n\n" +
+                           "Tip: Check that the file exists and the path is correct.\n" +
+                           "     Paths are resolved relative to the config file directory.")
+            
+            content = readFile(absolutePath)
+            if strings.TrimSpace(content) == "":
+                return error("Prompt file is empty: " + filePath + "\n" +
+                           "Resolved to: " + absolutePath + "\n\n" +
+                           "Tip: Each OODA phase must contain prompt instructions.\n" +
+                           "     Check that the file is not empty or whitespace-only.")
+    
+    return nil
 ```
 
 ## Edge Cases
@@ -113,17 +153,22 @@ Phase: observe
 
 **Scenario:** User provides custom prompt with relative path `./prompts/custom.md`
 
-**Behavior:** Resolve relative to current working directory (where rooda is invoked)
+**Behavior:** Resolve relative to config file directory, not current working directory
 
 **Example:**
 ```bash
-# From project root
-rooda build  # Resolves ./prompts/custom.md from /project/root/prompts/custom.md
+# Config at /project/root/rooda-config.yml references ./prompts/custom.md
+# Resolves to /project/root/prompts/custom.md
 
-# From subdirectory
-cd src/
-rooda build  # Resolves ./prompts/custom.md from /project/root/src/prompts/custom.md
+# Works regardless of where rooda is invoked from:
+cd /project/root
+rooda build  # Resolves to /project/root/prompts/custom.md
+
+cd /project/root/src
+rooda build  # Still resolves to /project/root/prompts/custom.md
 ```
+
+**Rationale:** Config-relative paths ensure reproducibility regardless of invocation directory
 
 ### Context Injection with Special Characters
 
@@ -145,9 +190,19 @@ Result: Context appears at top of prompt with code block intact
 
 **Scenario:** User writes `Builtin:` or `BUILTIN:` instead of `builtin:`
 
-**Behavior:** Case-insensitive match, all variants resolve to embedded prompts
+**Behavior:** Return error, require exact `builtin:` prefix
 
-**Rationale:** Reduce configuration errors from capitalization mistakes
+**Example:**
+```
+Error: Prompt file not found: Builtin:observe_build.md
+Procedure: build
+Phase: observe
+
+Did you mean: builtin:observe_build.md
+Note: The builtin: prefix is case-sensitive and must be lowercase.
+```
+
+**Rationale:** YAML is case-sensitive everywhere else; clear error message guides users to correct syntax
 
 ## Dependencies
 
@@ -267,6 +322,7 @@ rooda build --context "Focus on the authentication module. The new feature shoul
 
 **Output:**
 ```markdown
+# CONTEXT
 Focus on the authentication module. The new feature should integrate with the existing OAuth2 flow.
 
 # OBSERVE
@@ -310,11 +366,14 @@ Error: Prompt file not found: builtin:observe_missing.md
 Procedure: broken
 Phase: observe
 
-Available builtin prompts:
+Available builtin prompts for observe phase:
   observe_plan_specs_impl.md
   observe_specs.md
   observe_impl.md
-  [... full list ...]
+  observe_bootstrap.md
+  observe_bug_task_specs_impl.md
+  observe_draft_plan.md
+  observe_story_task_specs_impl.md
 ```
 
 **Verification:** Clear error message, suggests available alternatives
@@ -347,8 +406,12 @@ rooda test
 **Output (error):**
 ```
 Error: Prompt file is empty: ./my-prompts/empty.md
+Resolved to: /project/root/my-prompts/empty.md
 Procedure: test
 Phase: observe
+
+Tip: Each OODA phase must contain prompt instructions.
+     Check that the file is not empty or whitespace-only.
 ```
 
 **Verification:** Detects empty file, prevents partial prompt assembly
@@ -372,10 +435,11 @@ Phase: observe
 - Visibility: AI sees context before any phase-specific instructions
 - Simplicity: No need to parse or merge context into specific phases
 
-**Why validate all phases before assembly?**
-- Fail fast: Catch configuration errors before starting iteration loop
+**Why validate all phases at config load time?**
+- Fail fast: Catch configuration errors immediately, before any iteration starts
+- Clear feedback: User knows about broken config before invoking a procedure
 - Atomicity: Either get complete prompt or clear error, no partial states
-- Debugging: Error messages point to exact missing file
+- Debugging: Error messages point to exact missing file with resolved absolute path
 
 ### Embedded Prompts List (v1 Reference)
 
