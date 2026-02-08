@@ -23,25 +23,28 @@ The developer wants to use their preferred AI CLI tool without modifying framewo
 - [ ] If no AI command configured via any source, error with clear guidance listing all ways to set one
 - [ ] Built-in aliases available: `kiro-cli`, `claude`, `copilot`, `cursor-agent`
 - [ ] Built-in alias `kiro-cli` maps to: `kiro-cli chat --no-interactive --trust-all-tools`
-- [ ] Built-in alias `claude` maps to: `claude-cli --no-interactive`
-- [ ] Built-in alias `copilot` maps to: `gh copilot --no-interactive`
-- [ ] Built-in alias `cursor-agent` maps to: `cursor-agent --no-interactive`
+- [ ] Built-in alias `claude` maps to: `claude -p --dangerously-skip-permissions`
+- [ ] Built-in alias `copilot` maps to: `copilot --yolo`
+- [ ] Built-in alias `cursor-agent` maps to: `cursor-wrapper.sh` (wrapper script that parses JSON output)
 - [ ] User-defined aliases in config merge with built-in aliases (user aliases can override built-in)
 - [ ] Direct command (`ai_cmd`) takes precedence over alias (`ai_cmd_alias`) at same config level
-- [ ] AI command binary validated as existing and executable in dry-run mode
+- [ ] Dry-run mode displays resolved config and assembled prompt (binary validation already done at config load)
 - [ ] Assembled prompt piped to AI CLI stdin
 - [ ] AI CLI stdout and stderr captured to buffer
 - [ ] Output buffer size configurable via `loop.max_output_buffer` (default: 10485760 bytes = 10MB)
 - [ ] Output buffer size overridable per-procedure via `procedure.max_output_buffer`
+- [ ] AI command binary validated at config load time (fail fast before any iteration)
 - [ ] If output exceeds buffer size, buffer truncated from beginning (keeps most recent output), warning logged
 - [ ] Output always captured regardless of `--verbose` flag (needed for signal scanning)
 - [ ] When `--verbose` flag set, output streamed to terminal in real-time while also being captured
 - [ ] When `--verbose` not set, output captured silently (only loop-level progress displayed)
 - [ ] Process exit code captured and returned
-- [ ] If process exceeds iteration timeout, process killed and error returned
+- [ ] If process exceeds AI execution timeout, process killed and error returned
 - [ ] If process crashes (SIGSEGV, SIGKILL, OOM), partial output captured and returned
 - [ ] Captured output scanned for `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>` signals
 - [ ] Signal scanning happens after process exits (not during streaming)
+- [ ] Prompts should instruct AI to emit `<promise>` signals at end of output (after all work complete)
+- [ ] If output is truncated, signals at end are preserved (signals at beginning may be lost)
 - [ ] Environment variables from parent process inherited by AI CLI process
 - [ ] Working directory for AI CLI process is current working directory (where rooda was invoked)
 - [ ] SIGINT/SIGTERM to rooda kills AI CLI process and waits for termination (with 5s timeout)
@@ -86,9 +89,9 @@ type AIExecutionResult struct {
 ```go
 var BuiltinAliases = map[string]string{
     "kiro-cli":     "kiro-cli chat --no-interactive --trust-all-tools",
-    "claude":       "claude-cli --no-interactive",
-    "copilot":      "gh copilot --no-interactive",
-    "cursor-agent": "cursor-agent --no-interactive",
+    "claude":       "claude -p --dangerously-skip-permissions",
+    "copilot":      "copilot --yolo",
+    "cursor-agent": "cursor-wrapper.sh",
 }
 ```
 
@@ -146,11 +149,11 @@ function resolveAlias(config Config, aliasName string, source string) -> (AIComm
 ### Execute AI CLI
 
 ```go
-function ExecuteAICLI(aiCmd AICommand, prompt string, verbose bool, timeout *int, maxBuffer int) -> AIExecutionResult:
+function ExecuteAICLI(aiCmd AICommand, prompt string, verbose bool, aiExecutionTimeout *int, maxBuffer int) -> AIExecutionResult:
     startTime = time.Now()
     
-    // Parse command string into binary and args
-    parts = strings.Fields(aiCmd.Command)
+    // Parse command string into binary and args using shell-style quoting
+    parts, err = shellquote.Split(aiCmd.Command)
     if len(parts) == 0:
         return AIExecutionResult{Error: error("empty AI command")}
     
@@ -189,11 +192,11 @@ function ExecuteAICLI(aiCmd AICommand, prompt string, verbose bool, timeout *int
         done <- cmd.Wait()
     
     var waitErr error
-    if timeout != nil:
+    if aiExecutionTimeout != nil:
         select:
             case waitErr = <-done:
                 // Process completed
-            case <-time.After(time.Duration(*timeout) * time.Second):
+            case <-time.After(time.Duration(*aiExecutionTimeout) * time.Second):
                 // Timeout — kill process
                 cmd.Process.Kill()
                 <-done  // Wait for process to actually terminate
@@ -237,12 +240,14 @@ function ExecuteAICLI(aiCmd AICommand, prompt string, verbose bool, timeout *int
     }
 ```
 
-### Validate AI Command (Dry-Run)
+### Validate AI Command (Config Load Time)
 
 ```go
 function ValidateAICommand(aiCmd AICommand) -> error:
-    // Parse command string
-    parts = strings.Fields(aiCmd.Command)
+    // Parse command string using shell-style quoting
+    parts, err = shellquote.Split(aiCmd.Command)
+    if err != nil:
+        return error("invalid AI command syntax: %w\nCommand: %s", err, aiCmd.Command)
     if len(parts) == 0:
         return error("empty AI command")
     
@@ -282,7 +287,8 @@ function ScanOutputForSignals(output string) -> (hasSuccess bool, hasFailure boo
 | AI command binary not executable | Error during validation (dry-run): "AI command binary is not executable: X" |
 | AI command is empty string | Error: "empty AI command" |
 | AI command has only whitespace | Parsed as empty, error: "empty AI command" |
-| AI command with complex shell syntax (pipes, redirects) | Not supported — command is split on whitespace, no shell interpretation. User must wrap in a script. |
+| AI command with quoted arguments | Parsed correctly using shell-style quoting: `claude -p --model "claude-3-5-sonnet"` → binary=`claude`, args=`["-p", "--model", "claude-3-5-sonnet"]` |
+| AI command with complex shell syntax (pipes, redirects) | Not supported — no shell execution. User must wrap in a script. Example: create `my-ai.sh` with `#!/bin/bash\nclaude -p | tee log.txt`, then use `--ai-cmd my-ai.sh` |
 | Output exceeds max buffer during execution | Buffer truncated from beginning after process exits, warning logged, `Truncated=true` in result |
 | Process times out | Process killed, partial output captured, `Error=ErrTimeout` returned |
 | Process crashes (SIGSEGV, SIGKILL) | Partial output captured, exit code captured, `Error=nil` (crash is not an execution error, just a non-zero exit) |
@@ -295,7 +301,7 @@ function ScanOutputForSignals(output string) -> (hasSuccess bool, hasFailure boo
 | Both `ai_cmd` and `ai_cmd_alias` set at same level | `ai_cmd` wins (direct command overrides alias) |
 | User-defined alias overrides built-in alias | User alias wins (config merging allows override) |
 | Prompt is empty string | Valid — empty stdin piped to AI CLI (AI CLI may error, but that's its responsibility) |
-| AI CLI requires interactive input | Not supported — all AI CLIs must support non-interactive mode. Built-in aliases include `--no-interactive` flags. |
+| AI CLI requires interactive input | Not supported — all AI CLIs must support non-interactive mode and be pre-configured (API keys, etc.). Built-in aliases include non-interactive flags. |
 | AI CLI writes binary data to stdout | Captured as-is, signal scanning may fail if binary data corrupts string matching |
 | Output contains multiple `<promise>SUCCESS</promise>` | Treated same as one — `hasSuccess=true` |
 | Output contains both SUCCESS and FAILURE signals | Both flags returned; iteration loop decides precedence (FAILURE wins) |
@@ -303,7 +309,9 @@ function ScanOutputForSignals(output string) -> (hasSuccess bool, hasFailure boo
 ## Dependencies
 
 - **Go standard library** — `os/exec` for process spawning, `io` for stream handling, `bytes` for buffering
-- **configuration** — Provides resolved AI command via `ResolveAICommand`
+- **github.com/kballard/go-shellquote** — Shell-style command string parsing (handles quoted arguments)
+- **jq** — Required for cursor-agent wrapper script (JSON parsing)
+- **configuration** — Provides resolved AI command via `ResolveAICommand`, validates at config load time
 - **iteration-loop** — Calls `ExecuteAICLI` each iteration, interprets exit code and signals
 - **observability** — Logs execution start, completion, timeout, truncation warnings
 
@@ -536,6 +544,10 @@ hasSuccess4 = false, hasFailure4 = false
 
 ## Notes
 
+**Design Rationale — Command String Parsing:**
+
+AI commands are parsed using shell-style quoting (via `github.com/kballard/go-shellquote`) but NOT executed through a shell. This allows quoted arguments like `--model "claude-3-5-sonnet"` to work correctly while avoiding shell injection vulnerabilities. Complex shell features (pipes, redirects, environment variable expansion) are not supported — users should wrap such commands in a script.
+
 **Design Rationale — No Shell Interpretation:**
 
 The AI command is split on whitespace and executed directly via `exec.Command`, not through a shell. This avoids shell injection vulnerabilities and makes behavior predictable across platforms. If users need complex shell syntax (pipes, redirects, environment variable expansion), they should wrap their command in a script and invoke the script.
@@ -556,6 +568,10 @@ The four built-in aliases (`kiro-cli`, `claude`, `copilot`, `cursor-agent`) cove
 
 All AI CLI tools must support non-interactive mode. The loop pipes a prompt to stdin and expects the AI to process it and exit. Interactive prompts, confirmation dialogs, or TTY requirements break this model. Built-in aliases include `--no-interactive` flags to enforce this.
 
+**Design Rationale — AI Execution Timeout:**
+
+Timeouts are configured as `ai_execution_timeout` (via `loop.iteration_timeout` or `procedure.iteration_timeout` in config) and apply only to AI CLI execution, not the full iteration. Prompt assembly and signal scanning typically take <1s, so actual iteration duration may exceed the configured timeout by 1-2s. This is acceptable — the timeout prevents runaway AI execution, which is the primary concern.
+
 **Design Rationale — Timeout at Iteration Level:**
 
 Timeouts are configured per-iteration (via `loop.iteration_timeout` or `procedure.iteration_timeout`), not per-procedure or per-loop. This gives fine-grained control — a single runaway iteration is killed, but the loop continues. If the timeout is too aggressive, users can increase it or disable it (nil = no timeout).
@@ -567,6 +583,14 @@ The AI CLI process inherits all environment variables from the parent rooda proc
 **Design Rationale — Working Directory Inheritance:**
 
 The AI CLI process runs in the same working directory where rooda was invoked. This ensures file paths in prompts (e.g., "read AGENTS.md") resolve correctly. The AI CLI tool can use relative paths naturally.
+
+**Design Rationale — Signal Placement:**
+
+Prompts should instruct the AI to emit `<promise>` signals at the END of output, after all work is complete. This ensures signals are preserved even if output is truncated (truncation keeps the most recent output). If signals appear early and output exceeds the buffer, they may be lost. The 10MB default buffer is sufficient for most iterations — if truncation occurs frequently, users should increase `max_output_buffer`.
+
+**Design Rationale — Cursor Agent Wrapper:**
+
+The cursor agent outputs JSON (`--output-format stream-json`) which requires parsing to extract text and emit `<promise>` signals. Rather than adding JSON parsing to the core loop, we provide a wrapper script (`cursor-wrapper.sh`) that handles this. The script requires `jq` as a dependency. Users who don't use cursor agent don't pay the complexity cost.
 
 **Why Not Retry Logic Here:**
 
