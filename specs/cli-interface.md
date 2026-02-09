@@ -27,8 +27,7 @@ The developer wants to invoke rooda procedures with minimal typing, override con
 - [ ] `--unlimited` sets iteration mode to unlimited (overrides `--max-iterations`)
 - [ ] `--dry-run` displays assembled prompt without executing AI CLI
 - [ ] `--dry-run` exits with code 0 if validation passes (config valid, prompts exist, AI command found)
-- [ ] `--dry-run` exits with code 1 if user error (invalid flags, unknown procedure)
-- [ ] `--dry-run` exits with code 2 if config error (missing AI command, invalid config, missing prompt files)
+- [ ] `--dry-run` exits with code 1 if validation fails (invalid flags, unknown procedure, missing AI command, invalid config, missing prompt files)
 - [ ] `--context <text>` injects user-provided context into prompt composition
 - [ ] `--context-file <path>` reads context from file and injects into prompt composition
 - [ ] Multiple `--context` flags accumulate (all contexts injected in order)
@@ -37,7 +36,7 @@ The developer wants to invoke rooda procedures with minimal typing, override con
 - [ ] `--ai-cmd <command>` overrides AI command for this execution (direct command string)
 - [ ] `--ai-cmd-alias <alias>` overrides AI command using a named alias
 - [ ] `--ai-cmd` takes precedence over `--ai-cmd-alias` when both provided
-- [ ] `--verbose` enables verbose output (streams AI CLI output, shows provenance)
+- [ ] `--verbose` enables verbose output (sets show_ai_output=true and log_level=debug)
 - [ ] `--quiet` suppresses all non-error output
 - [ ] `--log-level <level>` sets log level (debug, info, warn, error)
 - [ ] `--config <path>` specifies alternate workspace config file path
@@ -93,8 +92,8 @@ type CLIArgs struct {
 ```go
 const (
     ExitSuccess         = 0  // Successful execution
-    ExitUserError       = 1  // Invalid flags, unknown procedure
-    ExitConfigError     = 2  // Invalid config file, missing AI command
+    ExitUserError       = 1  // Invalid flags, unknown procedure, validation failures
+    ExitConfigError     = 2  // Invalid config file, missing AI command (runtime only, not dry-run)
     ExitExecutionError  = 3  // AI CLI failure, iteration timeout
 )
 ```
@@ -236,6 +235,42 @@ Error: Observe file not found: custom-observe.md
 
 Exit code: 1
 
+### Dry-Run Validation Success
+
+```bash
+$ rooda build --dry-run
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] INFO Configuration validated procedure=build
+[21:00:15.202] INFO Prompt files validated procedure=build
+[21:00:15.203] INFO AI command found path=/usr/local/bin/kiro-cli procedure=build
+[21:00:15.204] INFO Assembled prompt (1234 chars) procedure=build
+--- OBSERVE ---
+...prompt content...
+--- END ---
+```
+
+Exit code: 0
+
+### Dry-Run Validation Failure
+
+```bash
+$ rooda build --dry-run --ai-cmd nonexistent
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] ERROR AI command binary not found path=nonexistent procedure=build
+Error: AI command binary not found: nonexistent
+```
+
+Exit code: 1
+
+```bash
+$ rooda build --dry-run --observe missing.md
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] ERROR Observe file not found path=missing.md procedure=build
+Error: Observe file not found: missing.md
+```
+
+Exit code: 1
+
 ## Dependencies
 
 - **configuration.md** — Defines Config, LoopConfig, Procedure structures and merge logic
@@ -316,7 +351,8 @@ $ rooda build --ai-cmd-alias claude
 
 ```bash
 $ rooda build --verbose
-# Streams AI CLI output, shows configuration provenance
+# Sets show_ai_output=true and log_level=debug
+# Streams AI CLI output and shows debug-level logs
 ```
 
 ### Override OODA Phase
@@ -369,6 +405,12 @@ Users may want to inject multiple independent contexts (e.g., task description +
 
 **Why mutually exclusive `--verbose` and `--quiet`?**
 These represent opposite intents. Allowing both would create ambiguity about which takes precedence.
+
+**What does `--verbose` actually do?**
+Sets two configuration values: `show_ai_output=true` (streams AI CLI output to console) and `log_level=debug` (shows debug-level logs). This provides maximum visibility into loop execution.
+
+**Why does dry-run use exit code 1 for all validation failures?**
+Dry-run is a pre-flight check tool. All validation failures (missing files, invalid config, missing AI command) are actionable by the user before execution. Using a single exit code (1) simplifies scripting: 0 means "ready to run", 1 means "fix something first". Exit code 2 is reserved for runtime configuration errors that occur during actual execution.
 
 **Why different exit codes for different error types?**
 Enables scripting and CI/CD integration to distinguish user errors (fix the command) from configuration errors (fix the config) from execution errors (retry or investigate).
