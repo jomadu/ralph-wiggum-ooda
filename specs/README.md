@@ -25,7 +25,7 @@ The developer wants to define what should be built (specs), point an AI agent at
 - **Audit what exists** — assess specs, implementation, AGENTS.md, or the gap between specs and implementation, producing an audit report. Audits don't modify anything — they identify what needs attention. Audit output feeds as context into planning procedures.
 - **Plan work by type and target** — given a work item classified by conventional commit type (feat, fix, refactor, chore) and a target (spec or impl), produce a prioritized task list that agents can execute. Procedures are cheap because OODA components are reused across types — a `draft-plan-spec-feat` and `draft-plan-spec-fix` may share most of their observe/act components, differing only in orient/decide.
 - **Publish plans to work tracking** — import a converged draft plan into the project's work tracking system (beads, GitHub Issues, file-based, etc.).
-- **Build from plan** — implement tasks from the work tracking system. The only procedure that modifies code.
+- **Build from plan** — implement tasks from the work tracking system. The only procedure that modifies specs and implementation files based on work tracking tasks (other procedures modify specific files: AGENTS.md, PLAN.md).
 - **Provide context to guide a procedure** — pass runtime hints to any procedure execution (e.g., "focus on the auth module", "the new feature should integrate with the payment service") that steer the agent's focus without changing procedure definitions or prompt files.
 - **Configure procedures for a team** — define custom OODA procedures, AI command aliases, and project-specific settings without modifying framework code.
 - **Distribute and install the tool** — get rooda running on a new machine or in a CI/CD pipeline with minimal friction and no external dependencies.
@@ -130,9 +130,9 @@ Every procedure reads AGENTS.md first as the source of truth for project-specifi
 Direct-action:
 | Procedure | Description |
 |---|---|
-| `agents-sync` | Create or update AGENTS.md by analyzing the repository |
-| `build` | Implement tasks from work tracking (only procedure that modifies code) |
-| `publish-plan` | Publish converged draft plan to work tracking system |
+| `agents-sync` | Create or update AGENTS.md by analyzing the repository (modifies AGENTS.md) |
+| `build` | Implement tasks from work tracking (only procedure that modifies specs and implementation) |
+| `publish-plan` | Publish converged draft plan to work tracking system (modifies PLAN.md status) |
 
 Audits (produce reports, don't modify anything):
 | Procedure | Description |
@@ -146,18 +146,18 @@ Audits (produce reports, don't modify anything):
 Planning — spec-targeted (work → specs):
 | Procedure | Description |
 |---|---|
-| `draft-plan-spec-feat` | Plan new capability incorporation into specs |
-| `draft-plan-spec-fix` | Plan spec adjustment to drive a correction |
-| `draft-plan-spec-refactor` | Plan spec restructuring from task file |
-| `draft-plan-spec-chore` | Plan spec maintenance from task file |
+| `draft-plan-spec-feat` | Plan new capability incorporation into specs (writes PLAN.md) |
+| `draft-plan-spec-fix` | Plan spec adjustment to drive a correction (writes PLAN.md) |
+| `draft-plan-spec-refactor` | Plan spec restructuring from task file (writes PLAN.md) |
+| `draft-plan-spec-chore` | Plan spec maintenance from task file (writes PLAN.md) |
 
 Planning — impl-targeted (work → implementation):
 | Procedure | Description |
 |---|---|
-| `draft-plan-impl-feat` | Plan new capability implementation |
-| `draft-plan-impl-fix` | Plan implementation correction |
-| `draft-plan-impl-refactor` | Plan implementation restructuring from task file |
-| `draft-plan-impl-chore` | Plan implementation maintenance from task file |
+| `draft-plan-impl-feat` | Plan new capability implementation (writes PLAN.md) |
+| `draft-plan-impl-fix` | Plan implementation correction (writes PLAN.md) |
+| `draft-plan-impl-refactor` | Plan implementation restructuring from task file (writes PLAN.md) |
+| `draft-plan-impl-chore` | Plan implementation maintenance from task file (writes PLAN.md) |
 
 ## Specification Status
 

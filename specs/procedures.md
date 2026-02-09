@@ -133,7 +133,7 @@ These procedures modify the repository directly (not planning).
 
 #### build
 
-**Description:** Implement tasks from work tracking (only procedure that modifies code).
+**Description:** Implement tasks from work tracking (only procedure that modifies specs and implementation).
 
 **OODA Composition:**
 - Observe: `prompts/observe_plan_specs_impl.md` — Study AGENTS.md, work tracking, specs, implementation
@@ -143,7 +143,7 @@ These procedures modify the repository directly (not planning).
 
 **Default Max Iterations:** 5
 
-**Use Case:** Autonomous implementation of tasks from the work tracking system.
+**Use Case:** Autonomous implementation of tasks from the work tracking system. This is the only procedure that modifies specs and implementation files based on work tracking tasks. Other procedures modify specific files (AGENTS.md via agents-sync, PLAN.md via planning procedures) but don't implement features or fix bugs in the project codebase.
 
 **Rationale:** 5 iterations balances progress (implement multiple tasks) with context freshness (don't let AI drift too far).
 
