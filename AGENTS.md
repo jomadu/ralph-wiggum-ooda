@@ -157,7 +157,14 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - shellcheck not installed on this machine — `shellcheck rooda.sh` cannot run
 - No automated test suite exists
 - No CI/CD pipeline configured
-- Individual v2 spec files (e.g., iteration-loop.md, cli-interface.md) referenced in `specs/README.md` do not yet exist
+
+**Gap Analysis (2026-02-08):**
+- v2 specs complete (11 spec files, 16 procedures defined)
+- v0.1.0 bash implements 9 of 16 procedures (missing 5 audit procedures, 2 planning procedures)
+- v0.1.0 bash missing 13 critical features specified in v2: promise signals, failure tracking, timeouts, dry-run, context injection, signal handling, iteration statistics, output buffering, iteration modes, exit code semantics, provenance tracking, config tiers, Go implementation
+- Undocumented bash features: git push automation with fallback, platform detection, fuzzy procedure name matching, AI tool preset resolution
+- Root cause: v2 specs describe Go rewrite; current implementation is bash
+- Resolution: PLAN.md contains 23-task Go rewrite plan organized in 6 priorities (foundation, core loop, observability, procedures, distribution, testing)
 
 **Why These Definitions:**
 - Implementation is at root level (not `src/`) because `goify` branch restructured the project
