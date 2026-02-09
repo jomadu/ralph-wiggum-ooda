@@ -967,7 +967,7 @@ Error: workspace config ./rooda-config.yml: line 2: cannot unmarshal "abc" into 
 - Clear error with file path and line number
 - Error identifies the field and type mismatch
 
-### Example 8: Custom Procedure with Filesystem Prompts
+### Example 9: Custom Procedure with Filesystem Prompts
 
 **Workspace config (`./rooda-config.yml`):**
 ```yaml
