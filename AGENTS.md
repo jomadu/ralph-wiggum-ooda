@@ -160,11 +160,13 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 
 **Gap Analysis (2026-02-08):**
 - v2 specs complete (11 spec files, 16 procedures defined)
-- v0.1.0 bash implements 9 of 16 procedures (missing 5 audit procedures, 2 planning procedures)
-- v0.1.0 bash missing 13 critical features specified in v2: promise signals, failure tracking, timeouts, dry-run, context injection, signal handling, iteration statistics, output buffering, iteration modes, exit code semantics, provenance tracking, config tiers, Go implementation
-- Undocumented bash features: git push automation with fallback, platform detection, fuzzy procedure name matching, AI tool preset resolution
-- Root cause: v2 specs describe Go rewrite; current implementation is bash
-- Resolution: PLAN.md contains 23-task Go rewrite plan organized in 6 priorities (foundation, core loop, observability, procedures, distribution, testing)
+- v0.1.0 bash implements 9 of 16 procedures (56% coverage)
+  - Missing: audit-spec, audit-impl, audit-agents, draft-plan-spec-chore, draft-plan-impl-feat, draft-plan-impl-fix, draft-plan-impl-chore
+- v0.1.0 bash missing 13 critical features (0% coverage): promise signals, failure tracking, timeouts, dry-run, context injection, signal handling, iteration statistics, output buffering, iteration modes, exit code semantics, provenance tracking, config tiers, Go implementation
+- Undocumented bash features (4): git push automation with fallback, platform detection, fuzzy procedure name matching, AI tool preset resolution
+- Root cause: v2 specs describe Go rewrite; v0.1.0 is bash proof-of-concept
+- Resolution: Proceed with Go rewrite per existing PLAN.md (23 tasks, 6 priorities). Bash served its purpose validating OODA loop pattern.
+- Gap analysis plan: PLAN.md contains detailed gap breakdown with 15 tasks (55 hours estimated) to achieve bash feature parity, but recommends Go rewrite instead
 
 **Why These Definitions:**
 - Implementation is at root level (not `src/`) because `goify` branch restructured the project

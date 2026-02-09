@@ -1,273 +1,397 @@
 # Gap Analysis Plan: v2 Specs vs v0.1.0 Implementation
 
-**Context:** v2 specifications describe a Go rewrite with 16 procedures and 13 critical features. Current v0.1.0 bash implementation has 9 procedures and is missing most v2 features.
+**Generated:** 2026-02-08T22:23:26-08:00  
+**Source:** Gap analysis comparing v2 specifications to v0.1.0 bash implementation  
+**Status:** Draft
 
-**Root Cause:** v2 specs describe the target Go implementation; v0.1.0 bash is the current working prototype.
+## Executive Summary
 
-**Resolution Strategy:** Implement v2 Go rewrite following the prioritized task list below.
+v2 specs define 16 procedures and 13 critical features for a Go rewrite. v0.1.0 bash implements 9 of 16 procedures (56%) and 0 of 13 critical features (0%). The bash implementation is a working proof-of-concept that validates the core OODA loop pattern but lacks the robustness, observability, and extensibility specified in v2.
 
----
+**Root cause:** v2 specs describe a Go rewrite with production-grade features; v0.1.0 is a bash prototype.
 
-## Priority 0: Foundation (Go Implementation Bootstrap)
+**Resolution path:** Implement missing procedures in bash (short-term) OR proceed with Go rewrite per PLAN.md (long-term, already planned).
 
-### Task 1: Initialize Go Module and Project Structure
-- Create `go.mod` with module name `github.com/maxdunn/ralph-wiggum-ooda`
-- Create directory structure: `cmd/rooda/`, `internal/{config,loop,ai,cli,prompt}/`
-- Add `.gitignore` for Go artifacts (`*.exe`, `*.test`, `vendor/`, `dist/`)
-- **Acceptance:** `go mod init` succeeds, directory structure matches spec
+## Gap Summary
 
-### Task 2: Implement Core Data Structures
-- Define `Config`, `LoopConfig`, `Procedure` structs per configuration.md
-- Define `IterationState`, `LoopStatus`, `IterationStats` per iteration-loop.md
-- Define `LogLevel`, `TimestampFormat`, `LogEvent` per observability.md
-- **Acceptance:** All structs compile, match spec field definitions
+### Missing Procedures (7 of 16)
 
-### Task 3: Implement Built-in Defaults
-- Embed 25 prompt files using `go:embed` directive
-- Define built-in procedure definitions (16 procedures)
-- Define built-in AI command aliases (kiro-cli, claude, copilot, cursor-agent)
-- **Acceptance:** `BuiltInDefaults` variable compiles, all 16 procedures defined
+**Audit procedures (5):**
+- audit-spec — Quality assessment of specs
+- audit-impl — Quality assessment of implementation  
+- audit-agents — Accuracy assessment of AGENTS.md vs repo state
+- (audit-spec-to-impl and audit-impl-to-spec exist but named draft-plan-*)
 
----
+**Planning procedures (2):**
+- draft-plan-spec-chore — Plan spec maintenance
+- draft-plan-impl-feat — Plan new capability implementation
+- draft-plan-impl-fix — Plan implementation correction
+- draft-plan-impl-chore — Plan implementation maintenance
 
-## Priority 1: Core Loop (Iteration Engine)
+### Missing Critical Features (13 of 13)
 
-### Task 4: Implement Prompt Composition
-- Implement `AssemblePrompt()` function per prompt-composition.md
-- Support four OODA phase files + optional user context
-- Support embedded prompts (builtin: prefix) and filesystem prompts
-- **Acceptance:** Assembled prompt matches spec format, context injection works
+**Loop control:**
+1. Promise signals — AI can't signal completion (`<promise>SUCCESS</promise>`)
+2. Failure tracking — No consecutive failure counter or abort threshold
+3. Iteration modes — Only supports max-iterations, not unlimited mode
+4. Exit code semantics — No standardized exit codes (0/1/2/130)
 
-### Task 5: Implement AI CLI Execution
-- Implement `ExecuteAICLI()` function per ai-cli-integration.md
-- Pipe assembled prompt to AI CLI process
-- Capture stdout/stderr with configurable buffer size
-- **Acceptance:** AI CLI executes, output captured, exit code returned
+**Observability:**
+5. Iteration statistics — No min/max/mean/stddev timing
+6. Dry-run mode — Can't validate config without executing
+7. Provenance tracking — Can't see where config values came from
 
-### Task 6: Implement Promise Signal Scanning
-- Scan output for `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>`
-- Implement outcome matrix per iteration-loop.md (FAILURE wins if both present)
-- **Acceptance:** Signal detection works, outcome matrix logic correct
+**Robustness:**
+8. Timeouts — No iteration timeout, processes can run forever
+9. Signal handling — SIGINT/SIGTERM not handled cleanly
+10. Output buffering — No max buffer size, no truncation handling
 
-### Task 7: Implement Consecutive Failure Tracking
-- Track `ConsecutiveFailures` counter across iterations
-- Reset counter on success, increment on failure
-- Abort when `ConsecutiveFailures >= FailureThreshold`
-- **Acceptance:** Failure tracking works, abort at threshold
+**Configuration:**
+11. Context injection — No `--context` or `--context-file` flags
+12. Config tiers — Only workspace config, no global/env vars/built-in defaults
+13. Go implementation — Bash is platform-specific, not cross-platform binary
 
-### Task 8: Implement Iteration Loop
-- Implement `RunLoop()` function per iteration-loop.md
-- Termination conditions: max iterations, failure threshold, SUCCESS signal, SIGINT
-- Iteration counter (0-indexed internal, 1-indexed display)
-- **Acceptance:** Loop executes, terminates correctly, exit codes match spec
+### Undocumented Features (4)
 
-### Task 9: Implement Iteration Timeouts
-- Add per-iteration timeout with SIGTERM → SIGKILL escalation
-- Timeout always counts as failure (promise signals ignored)
-- **Acceptance:** Timeout kills process, increments failure counter
+Bash implementation has features not in specs:
+1. Git push automation with fallback (`git push` → `git push -u`)
+2. Platform detection (macOS vs Linux install instructions)
+3. Fuzzy procedure name matching (suggests closest match on typo)
+4. AI tool preset resolution (hardcoded + custom from config)
 
-### Task 10: Implement Signal Handling
-- Handle SIGINT/SIGTERM: kill AI CLI, wait for termination, exit 130
-- **Acceptance:** Ctrl+C terminates cleanly, no zombie processes
+## Priority 0: Critical Gaps (Blocking)
 
----
+### Task 1: Implement promise signal scanning
 
-## Priority 2: Observability (Logging and Diagnostics)
+**Description:** Add `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>` detection to loop.
 
-### Task 11: Implement Structured Logging
-- Implement log event emission at four levels (debug, info, warn, error)
-- Implement logfmt formatting (timestamp, level, message, fields)
-- Support five timestamp formats (time, time-ms, relative, iso, none)
-- **Acceptance:** Log output matches spec format, levels filter correctly
+**Acceptance criteria:**
+- Loop scans AI CLI output for promise signals after each iteration
+- `<promise>SUCCESS</promise>` terminates loop with exit code 0
+- `<promise>FAILURE</promise>` increments consecutive failure counter
+- If both signals present, FAILURE takes precedence
 
-### Task 12: Implement Iteration Statistics
-- Implement Welford's online algorithm for constant-memory stats
-- Calculate count, min, max, mean, stddev
-- Display at loop completion (omit stddev when count < 2)
-- **Acceptance:** Statistics correct, memory usage O(1)
+**Rationale:** Without promise signals, loop can't detect when AI has completed work. Currently relies only on max iterations.
 
-### Task 13: Implement Dry-Run Mode
-- Validate config, prompt files, AI command without executing
-- Display assembled prompt and resolved config with provenance
-- Exit 0 if valid, 1 if invalid
-- **Acceptance:** Dry-run validates, displays prompt, doesn't execute AI CLI
-
-### Task 14: Implement Verbose Mode
-- Stream AI CLI output to terminal in real-time
-- Set `show_ai_output=true` and `log_level=debug`
-- **Acceptance:** Verbose mode streams output, shows debug logs
-
-### Task 15: Implement Output Buffering
-- Configurable max buffer size (default 10MB)
-- Truncate from beginning if exceeded, keep most recent output
-- Log warning when truncated
-- **Acceptance:** Buffer truncation works, signals at end preserved
+**Estimated effort:** 2 hours (add grep to output, update termination logic)
 
 ---
 
-## Priority 3: Configuration (Three-Tier System)
+### Task 2: Implement failure tracking
 
-### Task 16: Implement Config Loading
-- Load built-in defaults → global config → workspace config → env vars → CLI flags
-- Resolve global config directory (ROODA_CONFIG_HOME > XDG_CONFIG_HOME/rooda > ~/.config/rooda)
-- Parse YAML config files using `gopkg.in/yaml.v3`
-- **Acceptance:** Config loads from all tiers, merges correctly
+**Description:** Add consecutive failure counter and abort threshold.
 
-### Task 17: Implement Config Merging
-- Field-level merge (overlay non-empty/non-zero values override base)
-- Procedures merge additively (workspace adds to built-in, doesn't replace)
-- AI command aliases merge additively
-- **Acceptance:** Merging works, workspace overrides global, both override built-in
+**Acceptance criteria:**
+- Track consecutive AI CLI failures (non-zero exit code OR `<promise>FAILURE</promise>`)
+- Reset counter to 0 on any successful iteration
+- Abort loop when consecutive failures >= threshold (default: 3)
+- Exit with code 1 when aborted
 
-### Task 18: Implement Provenance Tracking
-- Track which tier provided each resolved value
-- Display provenance in dry-run and verbose modes
-- **Acceptance:** Provenance correct, displayed in dry-run
+**Rationale:** Without failure tracking, loop continues indefinitely on repeated failures, wasting API calls.
 
-### Task 19: Implement Config Validation
-- Validate at load time (fail fast before execution)
-- Check required fields, type constraints, file existence
-- Clear error messages with file path and line number
-- **Acceptance:** Validation catches errors, messages actionable
-
-### Task 20: Implement Environment Variable Resolution
-- Support `ROODA_LOOP_*` environment variables per configuration.md
-- Override config file values at loop level
-- **Acceptance:** Env vars override config, CLI flags override env vars
-
-### Task 21: Implement AI Command Resolution
-- Resolve with precedence: --ai-cmd > --ai-cmd-alias > procedure ai_cmd > procedure ai_cmd_alias > loop.ai_cmd > loop.ai_cmd_alias
-- Error if no AI command configured (list all ways to set one)
-- **Acceptance:** Resolution follows precedence, error message helpful
-
-### Task 22: Implement Max Iterations Resolution
-- Resolve with precedence: --max-iterations > --unlimited > procedure iteration_mode/default_max_iterations > loop settings
-- **Acceptance:** Resolution follows precedence, unlimited mode works
+**Estimated effort:** 3 hours (add counter, threshold config, abort logic)
 
 ---
 
-## Priority 4: Procedures (Missing 7 of 16)
+### Task 3: Add missing audit procedures
 
-### Task 23: Add Missing Audit Procedures
-- Add `audit-spec`, `audit-impl`, `audit-agents`, `audit-spec-to-impl`, `audit-impl-to-spec`
-- All use existing prompt files (observe_specs.md, observe_impl.md, etc.)
-- Default max iterations: 1 (read-only assessments)
-- **Acceptance:** All 5 audit procedures defined, use correct prompts
+**Description:** Implement 5 missing audit procedures.
 
-### Task 24: Add Missing Planning Procedures
-- Add `draft-plan-spec-feat`, `draft-plan-impl-feat`
-- Use existing prompt files (observe_story_task_specs_impl.md, etc.)
-- Default max iterations: 5
-- **Acceptance:** Both planning procedures defined, use correct prompts
+**Acceptance criteria:**
+- audit-spec procedure exists in rooda-config.yml
+- audit-impl procedure exists in rooda-config.yml
+- audit-agents procedure exists in rooda-config.yml
+- All use existing prompt files (observe_specs.md, observe_impl.md, observe_bootstrap.md)
+- All have default_iterations: 1
 
-### Task 25: Rename Existing Procedures to Match v2
-- Rename `draft-plan-story-to-spec` → `draft-plan-spec-feat`
-- Rename `draft-plan-bug-to-spec` → `draft-plan-spec-fix`
-- Rename `draft-plan-spec-to-impl` → `audit-spec-to-impl` (audit, not planning)
-- Rename `draft-plan-impl-to-spec` → `audit-impl-to-spec` (audit, not planning)
-- Rename `draft-plan-spec-refactor` → `draft-plan-spec-refactor` (no change)
-- Rename `draft-plan-impl-refactor` → `draft-plan-impl-refactor` (no change)
-- Add `draft-plan-spec-chore`, `draft-plan-impl-chore`
-- **Acceptance:** All 16 procedures match v2 naming, categories correct
+**Rationale:** Audits are read-only assessments that feed into planning. Missing audits means no quality gates before planning.
+
+**Estimated effort:** 1 hour (config entries only, prompts already exist)
 
 ---
 
-## Priority 5: CLI Interface
+### Task 4: Add missing planning procedures
 
-### Task 26: Implement CLI Argument Parsing
-- Parse procedure name, flags, and context per cli-interface.md
-- Support short flags (-v, -q, -n, -u, -d, -c, -h)
-- Validate mutually exclusive flags (--verbose/--quiet, --max-iterations/--unlimited)
-- **Acceptance:** All flags parse correctly, validation works
+**Description:** Implement 4 missing planning procedures.
 
-### Task 27: Implement Help Text Generation
-- Global help (--help with no procedure)
-- Procedure-specific help (rooda <procedure> --help)
-- List procedures (--list-procedures)
-- **Acceptance:** Help text matches spec format, all procedures listed
+**Acceptance criteria:**
+- draft-plan-spec-chore procedure exists
+- draft-plan-impl-feat procedure exists
+- draft-plan-impl-fix procedure exists
+- draft-plan-impl-chore procedure exists
+- All use appropriate prompt files (may need to create new prompts)
 
-### Task 28: Implement Exit Codes
-- 0: success, 1: aborted, 2: max-iters, 130: interrupted
-- User errors: 1, config errors: 2, execution errors: 3
-- **Acceptance:** Exit codes match spec
+**Rationale:** Missing planning procedures means incomplete coverage of conventional commit types (feat/fix/refactor/chore).
 
----
+**Estimated effort:** 4 hours (2 hours config, 2 hours new prompts if needed)
 
-## Priority 6: Distribution
+**Dependencies:** May require new prompt files if existing prompts don't cover these use cases.
 
-### Task 29: Implement Single Binary Build
-- Add `go build` target to produce `rooda` binary
-- Embed all 25 prompt files using `go:embed`
-- **Acceptance:** `go build` produces single binary, prompts embedded
+## Priority 1: High-Impact Gaps
 
-### Task 30: Add Cross-Platform Support
-- Test on macOS, Linux
-- Handle platform-specific config directory resolution
-- **Acceptance:** Binary runs on macOS and Linux
+### Task 5: Implement dry-run mode
 
-### Task 31: Add Installation Instructions
-- Update README.md with installation steps
-- Document `go install` or binary download
-- **Acceptance:** Installation instructions clear, tested
+**Description:** Add `--dry-run` flag that validates config and displays assembled prompt without executing.
+
+**Acceptance criteria:**
+- `--dry-run` flag accepted by CLI
+- Validates all OODA phase files exist
+- Validates AI command binary exists and is executable
+- Displays assembled prompt with section markers
+- Displays resolved configuration
+- Exits with code 0 if validation passes, 1 if fails
+- Does not execute AI CLI
+
+**Rationale:** Dry-run is essential for debugging config issues and verifying prompt assembly before execution.
+
+**Estimated effort:** 4 hours (add flag parsing, validation logic, display formatting)
 
 ---
 
-## Priority 7: Testing
+### Task 6: Implement context injection
 
-### Task 32: Add Unit Tests for Core Functions
-- Test prompt composition (AssemblePrompt)
-- Test config loading and merging
-- Test AI command resolution
-- Test max iterations resolution
-- Test promise signal scanning
-- Test failure tracking
-- **Acceptance:** Tests pass, coverage > 70%
+**Description:** Add `--context` and `--context-file` flags for user-provided context.
 
-### Task 33: Add Integration Tests
-- Test full loop execution with mock AI CLI
-- Test dry-run mode
-- Test verbose mode
-- Test signal handling
-- **Acceptance:** Integration tests pass
+**Acceptance criteria:**
+- `--context <text>` flag injects text into prompt
+- `--context-file <path>` flag reads file and injects content
+- Multiple `--context` flags accumulate
+- Multiple `--context-file` flags accumulate
+- Context appears as dedicated section before OODA phases
+- Context passed through verbatim (not interpreted)
+
+**Rationale:** Context injection allows steering the agent without modifying prompt files.
+
+**Estimated effort:** 3 hours (add flag parsing, prompt assembly modification)
 
 ---
 
-## Out of Scope (Documented but Not Implemented in v0.1.0)
+### Task 7: Implement iteration statistics
 
-**Undocumented bash features (working but not in specs):**
-- Git push automation with fallback (creates remote branch if needed)
-- Platform detection (macOS/Linux)
-- Fuzzy procedure name matching (suggests closest match)
-- AI tool preset resolution (hardcoded + custom from config)
+**Description:** Add timing statistics (min/max/mean/stddev) displayed at loop completion.
 
-**Action:** Document these in v2 specs or remove from Go implementation if not needed.
+**Acceptance criteria:**
+- Track start/end time for each iteration
+- Calculate min, max, mean, stddev using Welford's online algorithm
+- Display statistics at loop completion (info level)
+- Format: "Iteration timing: count=N min=Xs max=Xs mean=Xs stddev=Xs"
+- Omit stddev when count < 2
+- Use constant memory (O(1)) regardless of iteration count
+
+**Rationale:** Statistics help identify slow iterations and tune iteration limits.
+
+**Estimated effort:** 4 hours (add timing capture, statistics calculation, display formatting)
+
+## Priority 2: Medium-Impact Gaps
+
+### Task 8: Implement iteration timeout
+
+**Description:** Add per-iteration timeout that kills AI CLI process if exceeded.
+
+**Acceptance criteria:**
+- `loop.iteration_timeout` config field (seconds, nil = no timeout)
+- `procedure.iteration_timeout` overrides loop-level
+- `ROODA_LOOP_ITERATION_TIMEOUT` env var sets loop-level
+- If AI CLI exceeds timeout, process killed
+- Iteration counts as failure (increments consecutive failure counter)
+- Warning logged when timeout occurs
+
+**Rationale:** Timeouts prevent runaway AI processes from blocking the loop indefinitely.
+
+**Estimated effort:** 5 hours (add timeout logic, process kill, config fields)
+
+**Dependencies:** Requires bash timeout command or custom implementation.
 
 ---
 
-## Summary
+### Task 9: Implement signal handling
 
-**Total Tasks:** 33
-- Priority 0 (Foundation): 3 tasks
-- Priority 1 (Core Loop): 7 tasks
-- Priority 2 (Observability): 5 tasks
-- Priority 3 (Configuration): 7 tasks
-- Priority 4 (Procedures): 3 tasks
-- Priority 5 (CLI Interface): 3 tasks
-- Priority 6 (Distribution): 3 tasks
-- Priority 7 (Testing): 2 tasks
+**Description:** Handle SIGINT/SIGTERM cleanly.
 
-**Estimated Effort:** 
-- Foundation: 1-2 days
-- Core Loop: 3-4 days
-- Observability: 2-3 days
-- Configuration: 3-4 days
-- Procedures: 1 day
-- CLI Interface: 2 days
-- Distribution: 1 day
-- Testing: 2-3 days
+**Acceptance criteria:**
+- SIGINT (Ctrl+C) kills AI CLI process and exits with code 130
+- SIGTERM kills AI CLI process and exits with code 130
+- Wait up to 5s for AI CLI to terminate after kill signal
+- Log warning if AI CLI doesn't terminate within timeout
+- Exit anyway after timeout (don't hang forever)
 
-**Total:** 15-23 days (3-5 weeks)
+**Rationale:** Clean shutdown prevents orphaned processes and corrupted state.
 
-**Critical Path:** Foundation → Core Loop → Configuration → CLI Interface → Distribution
+**Estimated effort:** 4 hours (add trap handlers, process kill, timeout logic)
 
-**Parallel Work Possible:** Observability, Procedures, Testing can be done in parallel with Configuration/CLI after Core Loop is complete.
+---
+
+### Task 10: Implement provenance tracking
+
+**Description:** Track where each config value came from (CLI flag, env var, workspace config, built-in default).
+
+**Acceptance criteria:**
+- Provenance tracked for all resolved settings
+- `--verbose` displays provenance at startup
+- Format: "setting: value (source: tier)"
+- Helps debug "where did this value come from?" questions
+
+**Rationale:** Provenance is essential for debugging config issues in multi-tier systems.
+
+**Estimated effort:** 6 hours (add tracking data structure, display logic)
+
+**Dependencies:** Requires config tier implementation (Task 12).
+
+## Priority 3: Low-Impact Gaps
+
+### Task 11: Standardize exit codes
+
+**Description:** Use consistent exit codes across all termination paths.
+
+**Acceptance criteria:**
+- Exit code 0: Success (AI signaled completion)
+- Exit code 1: Aborted (failure threshold exceeded)
+- Exit code 2: Max iterations reached
+- Exit code 130: Interrupted (SIGINT/SIGTERM)
+- All exit paths use correct codes
+
+**Rationale:** Standardized exit codes enable scripting and CI/CD integration.
+
+**Estimated effort:** 2 hours (update all exit statements)
+
+---
+
+### Task 12: Implement config tiers
+
+**Description:** Add global config, environment variables, and built-in defaults.
+
+**Acceptance criteria:**
+- Global config at `~/.config/rooda/rooda-config.yml` (or `$XDG_CONFIG_HOME/rooda/`)
+- `ROODA_CONFIG_HOME` env var overrides global config directory
+- Environment variables with `ROODA_` prefix override config files
+- Built-in defaults for all settings
+- Precedence: CLI flags > env vars > workspace > global > built-in
+- Workspace config overrides global for overlapping fields
+
+**Rationale:** Config tiers enable personal preferences (global) and project-specific settings (workspace) without conflict.
+
+**Estimated effort:** 8 hours (add global config loading, env var parsing, merge logic)
+
+**Dependencies:** Bash implementation is complex; may be better to wait for Go rewrite.
+
+---
+
+### Task 13: Implement output buffering
+
+**Description:** Add max output buffer size with truncation from beginning.
+
+**Acceptance criteria:**
+- `loop.max_output_buffer` config field (bytes, default: 10485760 = 10MB)
+- `procedure.max_output_buffer` overrides loop-level
+- If AI CLI output exceeds buffer, truncate from beginning
+- Keep most recent output (for signal scanning)
+- Warning logged when truncation occurs
+- `Truncated=true` flag in result
+
+**Rationale:** Output buffering prevents memory exhaustion on verbose AI output.
+
+**Estimated effort:** 5 hours (add buffer size tracking, truncation logic)
+
+**Dependencies:** Bash string manipulation may be inefficient; consider Go rewrite.
+
+---
+
+### Task 14: Implement unlimited iteration mode
+
+**Description:** Add `--unlimited` flag and `iteration_mode` config field.
+
+**Acceptance criteria:**
+- `--unlimited` CLI flag sets iteration mode to unlimited
+- `loop.iteration_mode` config field ("max-iterations" or "unlimited")
+- `procedure.iteration_mode` overrides loop-level
+- Unlimited mode runs until SUCCESS signal, failure threshold, or Ctrl+C
+- `default_max_iterations` ignored when mode is unlimited
+
+**Rationale:** Unlimited mode is useful for long-running procedures that rely on AI signals for termination.
+
+**Estimated effort:** 3 hours (add mode field, update termination logic)
+
+## Priority 4: Documentation Gaps
+
+### Task 15: Document undocumented bash features
+
+**Description:** Add undocumented bash features to AGENTS.md Operational Learnings.
+
+**Acceptance criteria:**
+- Git push automation with fallback documented
+- Platform detection documented
+- Fuzzy procedure name matching documented
+- AI tool preset resolution documented
+- Each feature has rationale explaining why it exists
+
+**Rationale:** Undocumented features are invisible to agents and users, leading to confusion.
+
+**Estimated effort:** 1 hour (update AGENTS.md)
+
+## Dependencies
+
+```
+Task 2 (failure tracking) → Task 1 (promise signals)
+Task 8 (timeout) → Task 2 (failure tracking)
+Task 9 (signal handling) → Task 8 (timeout)
+Task 10 (provenance) → Task 12 (config tiers)
+Task 11 (exit codes) → Task 2 (failure tracking)
+```
+
+## Estimated Total Effort
+
+- Priority 0 (critical): 10 hours
+- Priority 1 (high-impact): 11 hours
+- Priority 2 (medium-impact): 15 hours
+- Priority 3 (low-impact): 18 hours
+- Priority 4 (documentation): 1 hour
+
+**Total: 55 hours** (approximately 7 working days)
+
+## Recommendation
+
+**Option A: Implement missing features in bash (short-term)**
+- Pros: Incremental progress, validates features before Go rewrite
+- Cons: Bash is fragile, platform-specific, hard to test
+- Timeline: 7 working days for full feature parity
+
+**Option B: Proceed with Go rewrite per existing PLAN.md (long-term)**
+- Pros: Production-grade implementation, cross-platform, testable
+- Cons: Longer timeline, higher upfront cost
+- Timeline: 23 tasks organized in 6 priorities (per existing PLAN.md)
+
+**Recommendation:** Option B (Go rewrite). The bash implementation has served its purpose as a proof-of-concept. Implementing 13 missing features in bash would take 55 hours and still leave a fragile, platform-specific implementation. The Go rewrite plan is already defined and addresses all gaps systematically.
+
+**Next steps:**
+1. Review existing PLAN.md (Go rewrite plan)
+2. Prioritize Go rewrite tasks
+3. Begin with Priority 0 (foundation) tasks from Go plan
+4. Preserve bash implementation in archive/ for reference
+
+## Notes
+
+**Why this gap exists:**
+- v2 specs were written for a Go rewrite with production-grade features
+- v0.1.0 bash was a proof-of-concept to validate the OODA loop pattern
+- Bash implementation successfully validated: fresh context per iteration, file-based state continuity, composable OODA prompts
+- Gap is expected and intentional — bash was never meant to be the final implementation
+
+**What bash implementation proved:**
+- OODA loop pattern works for autonomous AI coding
+- Fresh context prevents LLM degradation
+- File-based state provides continuity without conversation history
+- Composable prompts enable procedure reuse
+- Git push automation provides backpressure and state persistence
+
+**What bash implementation lacks:**
+- Robustness (no timeouts, no signal handling, no failure tracking)
+- Observability (no statistics, no dry-run, no provenance)
+- Extensibility (no config tiers, no context injection)
+- Portability (bash is platform-specific, requires yq dependency)
+
+**Operational learnings from gap analysis:**
+- Bash implementation has 4 undocumented features that should be preserved in Go rewrite
+- Promise signals are critical for loop termination — must be in v1.0.0
+- Failure tracking prevents wasted API calls — must be in v1.0.0
+- Dry-run mode is essential for debugging — must be in v1.0.0
+- Config tiers are complex in bash but natural in Go — wait for rewrite
