@@ -546,23 +546,17 @@ Planning Procedures (Impl-Targeted):
 
 ```bash
 $ rooda build
-INFO: Executing procedure: build
-INFO: OODA composition:
-  Observe: prompts/observe_plan_specs_impl.md
-  Orient: prompts/orient_build.md
-  Decide: prompts/decide_build.md
-  Act: prompts/act_build.md
-INFO: Default max iterations: 5
-INFO: Starting iteration loop...
+[21:00:00.000] INFO Starting loop procedure=build max_iterations=5
+[21:00:00.100] INFO OODA composition observe=prompts/observe_plan_specs_impl.md orient=prompts/orient_build.md decide=prompts/decide_build.md act=prompts/act_build.md
+[21:00:00.200] INFO Starting iteration 1/5 procedure=build
 ```
 
 ### Override Iteration Limit
 
 ```bash
 $ rooda build --max-iterations 10
-INFO: Executing procedure: build
-INFO: Max iterations overridden: 10 (default: 5)
-INFO: Starting iteration loop...
+[21:00:00.000] INFO Starting loop procedure=build max_iterations=10 max_iterations_source="--max-iterations flag"
+[21:00:00.100] INFO Starting iteration 1/10 procedure=build
 ```
 
 ### Procedure Help
@@ -614,14 +608,9 @@ procedures:
 
 ```bash
 $ rooda custom-audit
-INFO: Executing procedure: custom-audit
-INFO: OODA composition:
-  Observe: custom-prompts/observe-security.md
-  Orient: custom-prompts/orient-security.md
-  Decide: custom-prompts/decide-security.md
-  Act: custom-prompts/act-security.md
-INFO: Default max iterations: 1
-INFO: Starting iteration loop...
+[21:00:00.000] INFO Starting loop procedure=custom-audit max_iterations=1
+[21:00:00.100] INFO OODA composition observe=custom-prompts/observe-security.md orient=custom-prompts/orient-security.md decide=custom-prompts/decide-security.md act=custom-prompts/act-security.md
+[21:00:00.200] INFO Starting iteration 1/1 procedure=custom-audit
 ```
 
 ## Notes
