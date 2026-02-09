@@ -2,12 +2,12 @@
 
 ## Job to be Done
 
-Enable users to install rooda as a single binary with no external dependencies, supporting macOS, Linux, and CI/CD environments.
+Enable users to install rooda as a single binary with no external dependencies, supporting macOS, Linux, Windows, and CI/CD environments.
 
 ## Activities
 
 1. **Build single binary** — Compile Go source to standalone executable with embedded prompts
-2. **Cross-compile for platforms** — Generate binaries for macOS (arm64, amd64), Linux (amd64, arm64)
+2. **Cross-compile for platforms** — Generate binaries for macOS (arm64, amd64), Linux (amd64, arm64), Windows (amd64)
 3. **Embed default prompts** — Package `prompts/*.md` files using `go:embed` so binary is self-contained
 4. **Install via package manager** — Support Homebrew for macOS users
 5. **Install via direct download** — Provide curl-based installation for Linux/CI environments
@@ -17,12 +17,15 @@ Enable users to install rooda as a single binary with no external dependencies, 
 ## Acceptance Criteria
 
 - [ ] `go build` produces single binary with no runtime dependencies (no external yq, no separate prompt files)
-- [ ] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64
+- [ ] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64
+- [ ] SHA256 checksums generated for all binaries in checksums.txt
+- [ ] Install script verifies checksums before installation
+- [ ] Install script hosted in GitHub Releases (not main branch)
 - [ ] `rooda --version` reports correct version string embedded at build time
 - [ ] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
 - [ ] Homebrew formula installs binary to standard location and adds to PATH
 - [ ] `curl | sh` installation script downloads correct binary for detected platform
-- [ ] `go install github.com/maxdunn/ralph-wiggum-ooda@latest` installs from source
+- [ ] `go install github.com/jomadu/rooda@latest` installs from source
 - [ ] Binary size is reasonable (< 20MB uncompressed)
 - [ ] Installation instructions documented in README.md
 
@@ -50,6 +53,7 @@ GOOS=darwin GOARCH=arm64  → rooda-darwin-arm64
 GOOS=darwin GOARCH=amd64  → rooda-darwin-amd64
 GOOS=linux  GOARCH=amd64  → rooda-linux-amd64
 GOOS=linux  GOARCH=arm64  → rooda-linux-arm64
+GOOS=windows GOARCH=amd64 → rooda-windows-amd64.exe
 ```
 
 ## Algorithm
@@ -67,32 +71,36 @@ GOOS=linux  GOARCH=arm64  → rooda-linux-arm64
    var defaultPrompts embed.FS
 
 3. Cross-compile for each platform:
-   for platform in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64; do
+   for platform in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
      GOOS=${platform%/*} GOARCH=${platform#*/} go build -o rooda-$platform
    done
 
-4. Package for distribution:
+4. Generate checksums:
+   sha256sum rooda-* > checksums.txt
+
+5. Package for distribution:
    - Homebrew: Create formula with download URL and SHA256
-   - Direct download: Host binaries with install.sh script
+   - Direct download: Host binaries with install.sh script (includes checksum verification)
    - Go install: Tag release, push to GitHub
+   - Include install.sh and checksums.txt in GitHub Release assets
 ```
 
 ### Installation Methods
 
 **Homebrew (macOS):**
 ```bash
-brew tap maxdunn/rooda
+brew tap jomadu/rooda
 brew install rooda
 ```
 
-**Direct download (Linux/macOS):**
+**Direct download (Linux/macOS/Windows):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/maxdunn/ralph-wiggum-ooda/main/install.sh | sh
+curl -fsSL https://github.com/jomadu/rooda/releases/latest/download/install.sh | sh
 ```
 
 **Go toolchain:**
 ```bash
-go install github.com/maxdunn/ralph-wiggum-ooda@latest
+go install github.com/jomadu/rooda@latest
 ```
 
 ### Runtime Prompt Resolution
@@ -110,9 +118,18 @@ go install github.com/maxdunn/ralph-wiggum-ooda@latest
 - **Handling:** Build fails if any required prompt file is missing from embedded FS
 
 ### Platform Detection Failure
-- **Scenario:** Install script runs on unsupported platform (e.g., Windows, BSD)
+- **Scenario:** Install script runs on unsupported platform (e.g., BSD, Solaris)
 - **Detection:** `uname -s` and `uname -m` don't match known patterns
 - **Handling:** Script prints error with supported platforms and exits
+
+### Windows Support
+- **Scenario:** Windows user wants to install rooda
+- **Options:**
+  1. Direct download: `rooda-windows-amd64.exe` from GitHub Releases
+  2. WSL: Use Linux install script
+  3. Git Bash/MSYS: Install script detects Windows
+- **Path conventions:** Windows uses `%USERPROFILE%\bin` instead of `/usr/local/bin`
+- **Config directory:** Windows uses `%APPDATA%\rooda` instead of `~/.config/rooda` (see configuration.md)
 
 ### Version Mismatch
 - **Scenario:** Binary reports version but doesn't match git tag
@@ -121,8 +138,9 @@ go install github.com/maxdunn/ralph-wiggum-ooda@latest
 
 ### Homebrew Formula Outdated
 - **Scenario:** New release published but Homebrew formula not updated
-- **Detection:** CI checks formula SHA256 matches released binary
-- **Handling:** Automated PR to homebrew-rooda repo with updated formula
+- **Detection:** GitHub Actions workflow updates formula automatically
+- **Handling:** Workflow clones jomadu/homebrew-rooda, updates rooda.rb with new version and SHA256s, commits and pushes
+- **Setup:** Requires HOMEBREW_TAP_TOKEN secret with repo + workflow scopes (see docs/HOMEBREW_SETUP.md)
 
 ### Large Binary Size
 - **Scenario:** Binary exceeds 20MB due to embedded assets
@@ -151,7 +169,7 @@ go install github.com/maxdunn/ralph-wiggum-ooda@latest
 - `internal/prompts/loader.go` — Prompt resolution (custom vs embedded)
 - `scripts/build.sh` — Cross-compilation script
 - `scripts/install.sh` — Platform detection and download script
-- `homebrew-rooda/rooda.rb` — Homebrew formula (separate repo)
+- `jomadu/homebrew-rooda/rooda.rb` — Homebrew formula (separate repo, auto-updated by CI)
 - `.github/workflows/release.yml` — CI pipeline for building and publishing
 
 ### Related Specs
@@ -189,7 +207,7 @@ $ ls -lh rooda-linux-amd64
 
 ### Example 3: Install via Homebrew
 ```bash
-$ brew tap maxdunn/rooda
+$ brew tap jomadu/rooda
 $ brew install rooda
 
 $ which rooda
@@ -203,7 +221,7 @@ rooda v2.0.0 (commit: a1b2c3d4e5f6, built: 2026-02-08T20:00:00Z)
 
 ### Example 4: Install via curl
 ```bash
-$ curl -fsSL https://raw.githubusercontent.com/maxdunn/ralph-wiggum-ooda/main/install.sh | sh
+$ curl -fsSL https://github.com/jomadu/rooda/releases/latest/download/install.sh | sh
 Detecting platform... darwin/arm64
 Downloading rooda v2.0.0...
 Installing to /usr/local/bin/rooda...
@@ -234,7 +252,7 @@ $ rooda build --dry-run
 steps:
   - name: Install rooda
     run: |
-      curl -fsSL https://raw.githubusercontent.com/maxdunn/ralph-wiggum-ooda/main/install.sh | sh
+      curl -fsSL https://github.com/jomadu/rooda/releases/latest/download/install.sh | sh
       rooda --version
   
   - name: Run rooda procedure
@@ -290,12 +308,45 @@ The `curl | sh` pattern is convenient but risky if the script is compromised. Mi
 - Verify binary SHA256 in script before installing
 - Document alternative: download binary directly and verify manually
 
-### Future: Windows Support
+### Windows Support
 
-Current scope is macOS and Linux. Windows support would require:
-- `GOOS=windows GOARCH=amd64` build target
-- `.exe` extension handling
-- PowerShell install script (alternative to bash)
-- Testing on Windows (GitHub Actions supports windows-latest)
+Windows amd64 is supported via:
+- `GOOS=windows GOARCH=amd64` build target produces `rooda-windows-amd64.exe`
+- Install script detects Windows (Git Bash/MSYS) and handles `.exe` extension
+- Config directory: `%APPDATA%\rooda` (e.g., `C:\Users\username\AppData\Roaming\rooda`)
+- Binary install location: `%USERPROFILE%\bin` (user must add to PATH manually)
 
-Deferred until user demand justifies the effort.
+Windows users can also:
+- Download `.exe` directly from GitHub Releases
+- Use WSL (Windows Subsystem for Linux) with Linux binary
+- Use Scoop package manager (future enhancement)
+
+### Binary Naming Convention
+
+**Release artifacts** (platform-specific):
+- `rooda-darwin-arm64`
+- `rooda-darwin-amd64`
+- `rooda-linux-amd64`
+- `rooda-linux-arm64`
+- `rooda-windows-amd64.exe`
+
+**Installed binary** (generic, in PATH):
+- Unix/macOS: `rooda`
+- Windows: `rooda.exe`
+
+Install script renames platform-specific artifact to generic name during installation.
+
+### Checksum Verification
+
+Generate checksums during build:
+```bash
+sha256sum rooda-* > checksums.txt
+```
+
+Install script verifies before execution:
+```bash
+# Uses sha256sum (Linux) or shasum (macOS)
+grep "$BINARY" checksums.txt | sha256sum -c -
+```
+
+Prevents MITM attacks and ensures binary integrity. Checksums.txt included in GitHub Release assets.

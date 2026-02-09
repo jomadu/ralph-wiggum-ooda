@@ -4,14 +4,14 @@
 
 Define custom OODA procedures, AI command aliases, and project-specific settings through a three-tier configuration system — workspace (`./`), global (`<config_dir>/`), and environment variables — with sensible built-in defaults for zero-config startup. Tiers merge with clear precedence (CLI flags > env vars > workspace > global > built-in defaults) and provenance tracking so users know where each setting comes from.
 
-The global config directory resolves as: `ROODA_CONFIG_HOME` env var (if set), else `$XDG_CONFIG_HOME/rooda/` (if `XDG_CONFIG_HOME` is set), else `~/.config/rooda/` (cross-platform default).
+The global config directory resolves as: `ROODA_CONFIG_HOME` env var (if set), else `$XDG_CONFIG_HOME/rooda/` (if `XDG_CONFIG_HOME` is set), else `~/.config/rooda/` (Unix/macOS), else `%APPDATA%\rooda\` (Windows).
 
 The developer wants to start using rooda on a new project with zero configuration, customize behavior as needs evolve, and share team-wide settings across repositories — all without modifying the binary or prompt files.
 
 ## Activities
 
 1. Load built-in default configuration embedded in the Go binary
-2. Resolve global config directory (`ROODA_CONFIG_HOME` > `$XDG_CONFIG_HOME/rooda/` > `~/.config/rooda/`) and parse global config file (`<config_dir>/rooda-config.yml`)
+2. Resolve global config directory (`ROODA_CONFIG_HOME` > `$XDG_CONFIG_HOME/rooda/` > `~/.config/rooda/` (Unix/macOS) > `%APPDATA%\rooda\` (Windows)) and parse global config file (`<config_dir>/rooda-config.yml`)
 3. Discover and parse workspace config file (`./rooda-config.yml`)
 4. Resolve environment variables (`ROODA_*` prefix)
 5. Merge configuration tiers with precedence, tracking provenance of each resolved value
@@ -336,12 +336,17 @@ function resolveGlobalConfigDir() -> string:
     if env("ROODA_CONFIG_HOME") != "":
         return env("ROODA_CONFIG_HOME")
 
-    // 2. XDG_CONFIG_HOME (cross-platform standard)
+    // 2. XDG_CONFIG_HOME (Unix/macOS standard)
     if env("XDG_CONFIG_HOME") != "":
         return filepath.Join(env("XDG_CONFIG_HOME"), "rooda")
 
-    // 3. Default: ~/.config/rooda
-    return filepath.Join(homeDir(), ".config", "rooda")
+    // 3. Platform-specific defaults
+    if runtime.GOOS == "windows":
+        // Windows: %APPDATA%\rooda
+        return filepath.Join(os.Getenv("APPDATA"), "rooda")
+    else:
+        // Unix/macOS: ~/.config/rooda
+        return filepath.Join(homeDir(), ".config", "rooda")
 ```
 
 ### Config Merging
