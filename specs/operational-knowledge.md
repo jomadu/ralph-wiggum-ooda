@@ -8,38 +8,36 @@ The developer wants rooda to adapt to each repository's unique conventions witho
 
 ## Activities
 
-1. **Read** — Load AGENTS.md at procedure start, parse sections into structured data
-2. **Verify** — Empirically validate claims (run commands, check paths, query work tracking)
-3. **Execute** — Use AGENTS.md data to guide procedure behavior (run tests, update issues, commit)
-4. **Detect Drift** — Compare expected vs actual outcomes during execution
-5. **Update** — Modify AGENTS.md in-place when drift detected or new learning occurs
-6. **Bootstrap** — Create AGENTS.md from scratch if it doesn't exist (first-run case)
+1. **Read** — Load AGENTS.md at iteration start, parse sections into structured data
+2. **Execute** — Use AGENTS.md data to guide procedure behavior (run tests, update issues, commit)
+3. **Detect Drift** — Compare expected vs actual outcomes during execution
+4. **Update** — Modify AGENTS.md in-place when drift detected or new learning occurs
+5. **Bootstrap** — Create AGENTS.md from scratch if it doesn't exist (first-run case)
 
 ## Acceptance Criteria
 
-- [ ] All procedures read AGENTS.md before executing any work
-- [ ] If AGENTS.md doesn't exist, procedure creates it by analyzing the repository
+- [ ] All procedures read AGENTS.md at iteration start before executing any work
+- [ ] If AGENTS.md doesn't exist, agent bootstraps it by analyzing the repository
 - [ ] AGENTS.md parsed into structured data (build commands, test commands, spec paths, impl paths, work tracking config)
 - [ ] Build/test/lint commands from AGENTS.md are executed verbatim (no interpretation)
-- [ ] If a command from AGENTS.md fails, procedure attempts to fix the command and updates AGENTS.md
-- [ ] File path patterns from AGENTS.md are validated (glob patterns resolve to actual files)
-- [ ] If path patterns don't match expected files, procedure updates AGENTS.md with correct patterns
+- [ ] If a command from AGENTS.md fails, agent detects drift and updates AGENTS.md with correct command
+- [ ] File path patterns from AGENTS.md are used to locate files (glob patterns resolve to actual files)
+- [ ] If path patterns don't match expected files, agent detects drift and updates AGENTS.md with correct patterns
 - [ ] Work tracking system commands from AGENTS.md are executed to query/update issues
-- [ ] If work tracking commands fail, procedure detects the failure and updates AGENTS.md
+- [ ] If work tracking commands fail, agent detects drift and updates AGENTS.md
 - [ ] Quality criteria from AGENTS.md are evaluated (PASS/FAIL checks)
-- [ ] When a quality criterion fails, procedure logs the failure and may update AGENTS.md if the criterion is incorrect
+- [ ] When a quality criterion fails, agent logs the failure and may update AGENTS.md if the criterion is incorrect
 - [ ] Operational learnings are incorporated into existing AGENTS.md sections (not appended as diary entries)
 - [ ] Updates to AGENTS.md include inline rationale comments explaining why the change was made
-- [ ] AGENTS.md updates are committed with descriptive messages referencing the drift or learning
+- [ ] AGENTS.md updates are included in commits alongside other changes, with commit messages explaining the drift or learning
 - [ ] Bootstrap case (no AGENTS.md) analyzes repository structure, detects build system, identifies spec/impl patterns, and creates initial AGENTS.md
 - [ ] Bootstrap detection heuristics: package.json → npm/yarn, Cargo.toml → cargo, go.mod → go, Makefile → make, etc.
 - [ ] Bootstrap spec detection: looks for specs/, docs/, documentation/, README.md patterns
 - [ ] Bootstrap impl detection: looks for src/, lib/, cmd/, main.*, index.*, etc.
 - [ ] Bootstrap work tracking detection: .beads/ → beads, .github/issues/ → GitHub Issues, TODO.md → file-based
-- [ ] Empirical verification runs before trusting AGENTS.md data (e.g., run `--version` flag to verify command exists)
-- [ ] Verification failures trigger update workflow (fix + commit)
 - [ ] AGENTS.md is treated as living documentation, not static configuration
-- [ ] Procedures never assume AGENTS.md is correct — always verify empirically
+- [ ] Agent detects drift during execution when commands fail or paths are incorrect
+- [ ] Agent never assumes AGENTS.md is correct — verifies empirically during execution
 
 ## Data Structures
 
@@ -100,48 +98,39 @@ type DriftDetection struct {
 
 ## Algorithm
 
-### Read-Verify-Update Lifecycle
+### Read-Execute-Update Lifecycle
 
 ```
 1. Check if AGENTS.md exists
-   - If not: run bootstrap workflow
+   - If not: agent runs bootstrap workflow
    - If yes: proceed to read
 
 2. Read AGENTS.md
-   - Parse file into AgentsMD struct
-   - Extract build/test/lint commands
-   - Extract spec/impl path patterns
-   - Extract work tracking configuration
-   - Extract quality criteria
+   - Load AGENTS.md content into agent context
+   - Agent parses sections (build/test/lint commands, spec/impl paths, work tracking, quality criteria)
 
-3. Verify AGENTS.md Claims
-   - For each command: run with --help or --version to verify it exists
-   - For each path pattern: glob to verify files match
-   - For work tracking: run query command to verify system is accessible
-   - Record verification results
+3. Execute Procedure Using AGENTS.md Data
+   - Agent runs build/test/lint commands as specified
+   - Agent queries work tracking system as specified
+   - Agent evaluates quality criteria as specified
+   - Agent detects drift during execution (expected vs actual outcomes)
 
-4. Execute Procedure Using AGENTS.md Data
-   - Run build/test/lint commands as specified
-   - Query work tracking system as specified
-   - Evaluate quality criteria as specified
-   - Monitor for drift (expected vs actual outcomes)
+4. Detect Drift During Execution
+   - Command failed → AGENTS.md has wrong command
+   - Path pattern matched no files → AGENTS.md has wrong pattern
+   - Work tracking command failed → AGENTS.md has wrong system configuration
+   - Quality criterion failed unexpectedly → AGENTS.md criterion may be incorrect
 
-5. Detect Drift
-   - Command failed but AGENTS.md claimed it should work
-   - Path pattern matched no files but AGENTS.md claimed it should
-   - Work tracking command failed but AGENTS.md claimed system was accessible
-   - Quality criterion failed but AGENTS.md claimed it should pass
+5. Update AGENTS.md (if drift detected)
+   - Agent identifies which section needs update
+   - Agent modifies section in-place (doesn't append)
+   - Agent adds inline rationale comment explaining the change
+   - Agent includes AGENTS.md update in commit alongside other work
 
-6. Update AGENTS.md (if drift detected)
-   - Identify which section needs update
-   - Modify section in-place (don't append)
-   - Add inline rationale comment
-   - Commit with descriptive message
-
-7. Return Execution Results
-   - Success/failure status
-   - Drift detections (if any)
-   - Updated AGENTS.md content (if modified)
+6. Agent Signals Completion
+   - <promise>SUCCESS</promise> if work complete
+   - <promise>FAILURE</promise> if blocked
+   - No signal if more iterations needed
 ```
 
 ### Bootstrap Workflow (No AGENTS.md)
@@ -191,14 +180,10 @@ type DriftDetection struct {
    - Default: "Not configured"
 
 7. Generate AGENTS.md
-   - Create file with detected values
-   - Include rationale comments for each detection
-   - Mark uncertain detections with "# Verify this"
-   - Commit with message "Bootstrap AGENTS.md"
-
-8. Verify Generated AGENTS.md
-   - Run verification workflow on generated file
-   - Update if any detections were incorrect
+   - Agent creates file with detected values
+   - Agent includes rationale comments for each detection
+   - Agent marks uncertain detections with "# Verify this"
+   - Agent commits with message "Bootstrap AGENTS.md"
 ```
 
 ## Edge Cases
@@ -209,11 +194,13 @@ First run on a new repository:
 
 ```
 $ rooda build
-INFO: AGENTS.md not found. Bootstrapping...
-INFO: Detected build system: go build
-INFO: Detected test system: go test ./...
-INFO: Detected spec paths: specs/*.md
-INFO: Detected impl paths: *.go, internal/**/*.go, cmd/**/*.go
+[Iteration 1] Agent: AGENTS.md not found. Bootstrapping...
+[Iteration 1] Agent: Detected build system: go build
+[Iteration 1] Agent: Detected test system: go test ./...
+[Iteration 1] Agent: Detected spec paths: specs/*.md
+[Iteration 1] Agent: Detected impl paths: *.go, internal/**/*.
+[Iteration 1] Agent: Created AGENTS.md and committed
+[Iteration 1] <promise>SUCCESS</promise>go, cmd/**/*.go
 INFO: Detected work tracking: beads (bd CLI)
 INFO: Created AGENTS.md
 INFO: Verifying generated AGENTS.md...
