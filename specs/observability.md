@@ -24,12 +24,12 @@ This spec defines the logging, progress display, and runtime control mechanisms 
 
 - [ ] Log events emitted at four levels: debug, info, warn, error
 - [ ] Log level configurable via `loop.log_level` (debug, info, warn, error, built-in default: info)
-- [ ] `ROODA_LOG_LEVEL` environment variable sets `loop.log_level`
+- [ ] `ROODA_LOOP_LOG_LEVEL` environment variable sets `loop.log_level`
 - [ ] `--log-level=<level>` flag overrides `loop.log_level`
 - [ ] `--quiet` flag overrides `loop.log_level` to warn
 - [ ] Log format includes timestamp, level, message, and structured fields
 - [ ] Timestamp format configurable via `loop.log_timestamp_format` (time, time-ms, relative, iso, none, built-in default: time)
-- [ ] `ROODA_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format`
+- [ ] `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format`
 - [ ] Default timestamp format: `[HH:MM:SS.mmm]` (time/time-ms)
 - [ ] Structured fields formatted as logfmt: space-separated key=value pairs
 - [ ] Structured fields include: procedure, iteration, elapsed_time, exit_code, status
@@ -82,7 +82,7 @@ This spec defines the logging, progress display, and runtime control mechanisms 
 - [ ] Without verbose mode, only loop-level progress displayed (iteration start/complete, timing, outcome)
 - [ ] Verbose mode displays configuration provenance for all resolved settings
 - [ ] `loop.show_ai_output` configurable (true, false, built-in default: false)
-- [ ] `ROODA_SHOW_AI_OUTPUT` environment variable sets `loop.show_ai_output`
+- [ ] `ROODA_LOOP_SHOW_AI_OUTPUT` environment variable sets `loop.show_ai_output`
 - [ ] `--verbose` and `--quiet` are mutually exclusive (error if both provided)
 
 ### Log Format
@@ -104,7 +104,7 @@ This spec defines the logging, progress display, and runtime control mechanisms 
 - [ ] `iso` format produces `2026-02-08T20:59:35.877-08:00` (ISO 8601 with timezone)
 - [ ] `none` format omits timestamp entirely
 - [ ] Built-in default: `time`
-- [ ] `ROODA_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format`
+- [ ] `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format`
 - [ ] Invalid timestamp format produces error: "Invalid timestamp format '<format>'. Valid formats: time, time-ms, relative, iso, none."
 
 ## Data Structures
@@ -321,7 +321,7 @@ INFO Completed iteration 1/5 elapsed=15.1s status=success
 
 Configuration precedence (highest to lowest):
 1. CLI flag: `--log-timestamp-format=<format>`
-2. Environment variable: `ROODA_LOG_TIMESTAMP_FORMAT=<format>`
+2. Environment variable: `ROODA_LOOP_LOG_TIMESTAMP_FORMAT=<format>`
 3. Config file: `loop.log_timestamp_format: <format>`
 4. Built-in default: `time`
 

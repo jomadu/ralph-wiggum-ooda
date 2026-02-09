@@ -69,8 +69,8 @@ Note: Quality gates (tests, lints) and git operations (commit, push) are the AI 
 - [ ] Exit code 0 for `success`, 1 for `aborted`, 2 for `max-iters`, 130 for `interrupted`
 - [ ] Loop log level configurable via `loop.log_level` (debug, info, warn, error, built-in default: info)
 - [ ] AI output streaming configurable via `loop.show_ai_output` (true, false, built-in default: false)
-- [ ] `ROODA_LOG_LEVEL` environment variable sets `loop.log_level`
-- [ ] `ROODA_SHOW_AI_OUTPUT` environment variable sets `loop.show_ai_output`
+- [ ] `ROODA_LOOP_LOG_LEVEL` environment variable sets `loop.log_level`
+- [ ] `ROODA_LOOP_SHOW_AI_OUTPUT` environment variable sets `loop.show_ai_output`
 - [ ] `--verbose` flag overrides `loop.show_ai_output` to true
 - [ ] `--quiet` flag overrides `loop.log_level` to warn
 - [ ] `--log-level=<level>` flag overrides `loop.log_level`
@@ -782,7 +782,7 @@ When the AI CLI crashes (segfault, OOM kill, kernel termination), Go's `exec.Com
 
 **Logging and Verbosity:**
 
-Loop log level and AI output streaming follow the standard precedence chain: CLI flags (`--verbose`, `--quiet`, `--log-level`) > environment variables (`ROODA_LOG_LEVEL`, `ROODA_SHOW_AI_OUTPUT`) > workspace config > global config > built-in defaults (log_level=info, show_ai_output=false).
+Loop log level and AI output streaming follow the standard precedence chain: CLI flags (`--verbose`, `--quiet`, `--log-level`) > environment variables (`ROODA_LOOP_LOG_LEVEL`, `ROODA_LOOP_SHOW_AI_OUTPUT`) > workspace config > global config > built-in defaults (log_level=info, show_ai_output=false).
 
 Log levels:
 - **debug**: Prompt assembly, config resolution, signal scanning, internal state

@@ -51,7 +51,7 @@ The developer wants to start using rooda on a new project with zero configuratio
 - [ ] `ROODA_LOOP_ITERATION_MODE` environment variable sets `loop.iteration_mode` (`max-iterations` or `unlimited`)
 - [ ] `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` environment variable sets the default max iterations (must be >= 1)
 - [ ] `ROODA_LOOP_ITERATION_TIMEOUT` environment variable sets the iteration timeout in seconds (must be >= 1)
-- [ ] `ROODA_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format` (time, time-ms, relative, iso, none)
+- [ ] `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format` (time, time-ms, relative, iso, none)
 - [ ] Prompt file paths in procedures resolved relative to the config file that defines them (workspace or global) or as embedded resources (built-in defaults)
 - [ ] Built-in default procedures include all 16 v2 procedures with embedded prompt files
 - [ ] Custom procedures can reference prompt files on the filesystem
@@ -269,9 +269,9 @@ var BuiltInDefaults = Config{
 | `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` | `loop.default_max_iterations` (must be >= 1) | int |
 | `ROODA_LOOP_ITERATION_TIMEOUT` | `loop.iteration_timeout` (seconds, must be >= 1) | int |
 | `ROODA_LOOP_FAILURE_THRESHOLD` | `loop.failure_threshold` | int |
-| `ROODA_LOG_LEVEL` | `loop.log_level` (debug, info, warn, error) | string |
-| `ROODA_LOG_TIMESTAMP_FORMAT` | `loop.log_timestamp_format` (time, time-ms, relative, iso, none) | string |
-| `ROODA_SHOW_AI_OUTPUT` | `loop.show_ai_output` (true, false) | bool |
+| `ROODA_LOOP_LOG_LEVEL` | `loop.log_level` (debug, info, warn, error) | string |
+| `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` | `loop.log_timestamp_format` (time, time-ms, relative, iso, none) | string |
+| `ROODA_LOOP_SHOW_AI_OUTPUT` | `loop.show_ai_output` (true, false) | bool |
 
 Environment variables use the `ROODA_` prefix. They override config file values but are overridden by CLI flags.
 
@@ -321,14 +321,14 @@ function LoadConfig(cliFlags CLIFlags) -> (Config, error):
     if env("ROODA_LOOP_ITERATION_TIMEOUT") != "":
         config.Loop.IterationTimeout = parseInt(env("ROODA_LOOP_ITERATION_TIMEOUT"))
         provenance["loop.iteration_timeout"] = ConfigSource{TierEnvVar, "", config.Loop.IterationTimeout}
-    if env("ROODA_LOG_LEVEL") != "":
-        config.Loop.LogLevel = LogLevel(env("ROODA_LOG_LEVEL"))
+    if env("ROODA_LOOP_LOG_LEVEL") != "":
+        config.Loop.LogLevel = LogLevel(env("ROODA_LOOP_LOG_LEVEL"))
         provenance["loop.log_level"] = ConfigSource{TierEnvVar, "", config.Loop.LogLevel}
-    if env("ROODA_LOG_TIMESTAMP_FORMAT") != "":
-        config.Loop.LogTimestampFormat = TimestampFormat(env("ROODA_LOG_TIMESTAMP_FORMAT"))
+    if env("ROODA_LOOP_LOG_TIMESTAMP_FORMAT") != "":
+        config.Loop.LogTimestampFormat = TimestampFormat(env("ROODA_LOOP_LOG_TIMESTAMP_FORMAT"))
         provenance["loop.log_timestamp_format"] = ConfigSource{TierEnvVar, "", config.Loop.LogTimestampFormat}
-    if env("ROODA_SHOW_AI_OUTPUT") != "":
-        config.Loop.ShowAIOutput = parseBool(env("ROODA_SHOW_AI_OUTPUT"))
+    if env("ROODA_LOOP_SHOW_AI_OUTPUT") != "":
+        config.Loop.ShowAIOutput = parseBool(env("ROODA_LOOP_SHOW_AI_OUTPUT"))
         provenance["loop.show_ai_output"] = ConfigSource{TierEnvVar, "", config.Loop.ShowAIOutput}
 
     // 5. Apply CLI flags (highest precedence)
@@ -643,7 +643,7 @@ function ResolveMaxIterations(config Config, procedureName string, cliFlags CLIF
 | Environment variable `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` set to non-integer | Error: "ROODA_LOOP_DEFAULT_MAX_ITERATIONS must be an integer, got 'abc'" |
 | Environment variable `ROODA_LOOP_DEFAULT_MAX_ITERATIONS=0` | Error: "ROODA_LOOP_DEFAULT_MAX_ITERATIONS must be >= 1, got 0" |
 | `ROODA_LOOP_ITERATION_MODE=invalid-value` | Error at config validation: "loop.iteration_mode must be 'max-iterations' or 'unlimited'" |
-| `ROODA_LOG_TIMESTAMP_FORMAT=invalid-value` | Error at config validation: "loop.log_timestamp_format must be 'time', 'time-ms', 'relative', 'iso', or 'none'" |
+| `ROODA_LOOP_LOG_TIMESTAMP_FORMAT=invalid-value` | Error at config validation: "loop.log_timestamp_format must be 'time', 'time-ms', 'relative', 'iso', or 'none'" |
 | Config file has invalid YAML | Error with file path and parse error details |
 | Config file has unknown top-level key | Warning logged, key ignored (forward compatibility) |
 | Config file has unknown key inside `procedures` | Warning logged, key ignored |
@@ -882,13 +882,13 @@ ai_cmd: aider --yes          (loop.ai_cmd)
 
 **Input:**
 ```bash
-export ROODA_LOG_TIMESTAMP_FORMAT=relative
+export ROODA_LOOP_LOG_TIMESTAMP_FORMAT=relative
 rooda build --ai-cmd "kiro-cli chat"
 ```
 
 **Config resolution:**
 ```
-loop.log_timestamp_format: relative   (env: ROODA_LOG_TIMESTAMP_FORMAT)
+loop.log_timestamp_format: relative   (env: ROODA_LOOP_LOG_TIMESTAMP_FORMAT)
 loop.ai_cmd: kiro-cli chat           (cli: --ai-cmd)
 ```
 
@@ -900,7 +900,7 @@ loop.ai_cmd: kiro-cli chat           (cli: --ai-cmd)
 ```
 
 **Verification:**
-- `ROODA_LOG_TIMESTAMP_FORMAT` sets `loop.log_timestamp_format`
+- `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` sets `loop.log_timestamp_format`
 - Timestamps show relative time since loop start
 - Valid formats: `time`, `time-ms`, `relative`, `iso`, `none`
 
