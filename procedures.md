@@ -101,6 +101,47 @@ procedures:
     ai_cmd_alias: string               # Model configuration alias (optional)
 ```
 
+## Template Example
+
+Fragments support Go's text/template syntax. When parameters are supplied, the file at path is processed as a template.
+
+**Fragment file** (`fragments/observe/read_files.md`):
+```markdown
+Read the following {{.file_type}} files from the repository:
+
+{{range .paths}}
+- {{.}}
+{{end}}
+
+{{if .include_tests}}
+Also include any associated test files.
+{{end}}
+```
+
+**Procedure configuration**:
+```yaml
+procedures:
+  custom-audit:
+    observe:
+      - path: "fragments/observe/read_files.md"
+        parameters:
+          file_type: "specification"
+          paths:
+            - "specs/api.md"
+            - "specs/database.md"
+          include_tests: true
+```
+
+**Rendered output**:
+```markdown
+Read the following specification files from the repository:
+
+- specs/api.md
+- specs/database.md
+
+Also include any associated test files.
+```
+
 ## Built-in Procedures Config
 
 ```yml
