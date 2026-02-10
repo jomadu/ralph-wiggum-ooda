@@ -23,7 +23,7 @@ The `./procedures.md` file defines a fragment-based composition system that repl
 
 ### 1. Create Missing Procedures Spec
 **File**: `specs/procedures.md`
-**Status**: Missing
+**Status**: ✅ COMPLETE
 **Authority**: `./procedures.md` (complete content migration required)
 
 **Requirements from `./procedures.md`**:
@@ -131,3 +131,27 @@ All spec changes must be validated against `./procedures.md` to ensure:
 - Template examples are identical
 - Built-in procedure definitions are complete
 - Specs are self-contained after `./procedures.md` removal
+
+---
+
+## Notes
+
+### Task 1 Completion: Create Missing Procedures Spec
+**Completed**: specs/procedures.md created with complete content migration from procedures.md
+
+**What was done**:
+- Created comprehensive procedures.md specification in specs/ directory
+- Copied complete fragment directory structure (55 total fragments across 4 OODA phases)
+- Copied exact schema definition for procedures configuration
+- Copied complete Go text/template system with example
+- Copied all 16 built-in procedure definitions with full configuration
+- Added implementation requirements section for fragment loading, template processing, and validation
+- Made spec fully self-contained with no references to procedures.md
+
+**Key learnings**:
+- The fragment-based system is well-organized with clear separation by OODA phase
+- Built-in procedures cover 3 categories: direct actions (3), audits (5), and planning (8)
+- Template system uses Go text/template for parameterized fragments
+- Path resolution supports both builtin: prefix and relative paths from config file directory
+- Each OODA phase uses array concatenation to compose full prompts from fragments
+- Spec already follows JTBD template structure from specs/README.md with all required sections
