@@ -4,8 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/jomadu/rooda/internal/config"
+	"github.com/jomadu/rooda/internal/prompt"
 )
 
 var (
@@ -65,6 +68,12 @@ func main() {
 	if flags.ProcedureName == "" {
 		fmt.Fprintln(os.Stderr, "Error: No procedure specified. Run 'rooda --help' for usage.")
 		os.Exit(ExitUserError)
+	}
+
+	// Handle dry-run mode
+	if flags.DryRun {
+		exitCode := runDryRun(flags)
+		os.Exit(exitCode)
 	}
 
 	fmt.Fprintln(os.Stderr, "rooda: OODA loop implementation not yet available")
@@ -133,8 +142,25 @@ func parseFlags() config.CLIFlags {
 		return nil
 	})
 
-	// Parse flags
-	if err := fs.Parse(os.Args[1:]); err != nil {
+	// Parse flags - we need to handle procedure name specially
+	// First, extract procedure name if it's the first non-flag arg
+	args := os.Args[1:]
+	procedureIdx := -1
+	for i, arg := range args {
+		if !strings.HasPrefix(arg, "-") && procedureIdx == -1 {
+			flags.ProcedureName = arg
+			procedureIdx = i
+			break
+		}
+	}
+
+	// Remove procedure name from args for flag parsing
+	flagArgs := args
+	if procedureIdx >= 0 {
+		flagArgs = append(args[:procedureIdx], args[procedureIdx+1:]...)
+	}
+
+	if err := fs.Parse(flagArgs); err != nil {
 		if err == flag.ErrHelp {
 			flags.ShowHelp = true
 			return flags
@@ -147,11 +173,6 @@ func parseFlags() config.CLIFlags {
 		flags.MaxIterations = &maxIterLong
 	} else if maxIterShort >= 0 {
 		flags.MaxIterations = &maxIterShort
-	}
-
-	// Get procedure name from remaining args
-	if fs.NArg() > 0 {
-		flags.ProcedureName = fs.Arg(0)
 	}
 
 	return flags
@@ -306,5 +327,141 @@ func listProcedures(flags config.CLIFlags) {
 			desc = desc[:77] + "..."
 		}
 		fmt.Printf("  %-20s %s\n", name, desc)
+	}
+}
+
+func runDryRun(flags config.CLIFlags) int {
+	fmt.Println("=== DRY RUN MODE ===")
+	fmt.Println()
+
+	// 1. Load and validate configuration
+	fmt.Println("Loading configuration...")
+	cfg, err := config.LoadConfig(flags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Configuration validation failed: %v\n", err)
+		return ExitConfigError
+	}
+	fmt.Println("✓ Configuration valid")
+	fmt.Println()
+
+	// 2. Validate procedure exists
+	proc, exists := cfg.Procedures[flags.ProcedureName]
+	if !exists {
+		fmt.Fprintf(os.Stderr, "Error: Unknown procedure '%s'\n", flags.ProcedureName)
+		fmt.Fprintln(os.Stderr, "Run 'rooda --list-procedures' to see available procedures.")
+		return ExitUserError
+	}
+	fmt.Printf("✓ Procedure '%s' found\n\n", flags.ProcedureName)
+
+	// 3. Assemble prompt
+	fmt.Println("Assembling prompt...")
+	userContext := strings.Join(flags.Contexts, "\n\n")
+	
+	// Determine config directory for fragment resolution
+	configPath := "./rooda-config.yml"
+	if flags.ConfigPath != "" {
+		configPath = flags.ConfigPath
+	}
+	configDir := "."
+	if dir := filepath.Dir(configPath); dir != "" {
+		configDir = dir
+	}
+	
+	assembledPrompt, err := prompt.AssemblePrompt(proc, userContext, configDir)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: Prompt assembly failed: %v\n", err)
+		return ExitUserError
+	}
+	fmt.Printf("✓ Prompt assembled (%d characters)\n", len(assembledPrompt))
+	fmt.Println()
+
+	// 4. Display assembled prompt with section markers
+	fmt.Println("=== ASSEMBLED PROMPT ===")
+	fmt.Println(assembledPrompt)
+	fmt.Println("=== END PROMPT ===")
+	fmt.Println()
+
+	// 5. Display resolved configuration with provenance
+	fmt.Println("=== RESOLVED CONFIGURATION ===")
+	displayConfigWithProvenance(cfg, flags.ProcedureName)
+	fmt.Println("=== END CONFIGURATION ===")
+	fmt.Println()
+
+	fmt.Println("✓ Dry-run validation passed")
+	return ExitSuccess
+}
+
+func displayConfigWithProvenance(cfg *config.Config, procedureName string) {
+	// Display loop-level configuration
+	fmt.Println("Loop Configuration:")
+	displaySetting("  iteration_mode", cfg.Loop.IterationMode, cfg.Provenance["loop.iteration_mode"])
+	if cfg.Loop.DefaultMaxIterations != nil {
+		displaySetting("  default_max_iterations", *cfg.Loop.DefaultMaxIterations, cfg.Provenance["loop.default_max_iterations"])
+	}
+	displaySetting("  max_output_buffer", cfg.Loop.MaxOutputBuffer, cfg.Provenance["loop.max_output_buffer"])
+	displaySetting("  failure_threshold", cfg.Loop.FailureThreshold, cfg.Provenance["loop.failure_threshold"])
+	displaySetting("  log_level", cfg.Loop.LogLevel, cfg.Provenance["loop.log_level"])
+	displaySetting("  log_timestamp_format", cfg.Loop.LogTimestampFormat, cfg.Provenance["loop.log_timestamp_format"])
+	displaySetting("  show_ai_output", cfg.Loop.ShowAIOutput, cfg.Provenance["loop.show_ai_output"])
+	if cfg.Loop.AICmd != "" {
+		displaySetting("  ai_cmd", cfg.Loop.AICmd, cfg.Provenance["loop.ai_cmd"])
+	}
+
+	// Display procedure-specific configuration
+	if proc, exists := cfg.Procedures[procedureName]; exists {
+		fmt.Printf("\nProcedure '%s' Configuration:\n", procedureName)
+		if proc.Display != "" {
+			fmt.Printf("  display: %s\n", proc.Display)
+		}
+		if proc.Summary != "" {
+			fmt.Printf("  summary: %s\n", proc.Summary)
+		}
+		if proc.IterationMode != "" {
+			fmt.Printf("  iteration_mode: %s (procedure override)\n", proc.IterationMode)
+		}
+		if proc.DefaultMaxIterations != nil {
+			fmt.Printf("  default_max_iterations: %d (procedure override)\n", *proc.DefaultMaxIterations)
+		}
+		if proc.IterationTimeout != nil {
+			fmt.Printf("  iteration_timeout: %ds (procedure override)\n", *proc.IterationTimeout)
+		}
+		if proc.MaxOutputBuffer != nil {
+			fmt.Printf("  max_output_buffer: %d (procedure override)\n", *proc.MaxOutputBuffer)
+		}
+		if proc.AICmd != "" {
+			fmt.Printf("  ai_cmd: %s (procedure override)\n", proc.AICmd)
+		}
+		if proc.AICmdAlias != "" {
+			fmt.Printf("  ai_cmd_alias: %s (procedure override)\n", proc.AICmdAlias)
+		}
+		fmt.Printf("  observe_fragments: %d\n", len(proc.Observe))
+		fmt.Printf("  orient_fragments: %d\n", len(proc.Orient))
+		fmt.Printf("  decide_fragments: %d\n", len(proc.Decide))
+		fmt.Printf("  act_fragments: %d\n", len(proc.Act))
+	}
+}
+
+func displaySetting(name string, value interface{}, source config.ConfigSource) {
+	if source.Tier == "" {
+		fmt.Printf("%s: %v\n", name, value)
+	} else {
+		fmt.Printf("%s: %v (from: %s)\n", name, value, formatProvenance(source))
+	}
+}
+
+func formatProvenance(source config.ConfigSource) string {
+	switch source.Tier {
+	case config.TierBuiltIn:
+		return "built-in default"
+	case config.TierGlobal:
+		return "global config"
+	case config.TierWorkspace:
+		return "workspace config"
+	case config.TierEnvVar:
+		return "environment variable"
+	case config.TierCLIFlag:
+		return "CLI flag"
+	default:
+		return string(source.Tier)
 	}
 }
