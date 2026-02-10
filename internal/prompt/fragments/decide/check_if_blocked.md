@@ -10,4 +10,4 @@ Check for:
 - Required resources not available
 - Conflicting requirements
 
-If blocked, emit FAILURE with explanation. Otherwise, proceed.
+If blocked, output the exact signal `<promise>FAILURE</promise>` then explain blockers. Otherwise, proceed.
