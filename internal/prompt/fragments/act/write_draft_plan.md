@@ -1,5 +1,7 @@
 # Write Draft Plan
 
+You must create a draft plan file (PLAN.md) with the prioritized tasks. Use the file writing tool.
+
 Create or update PLAN.md with task breakdown.
 
 Include:

@@ -1,5 +1,7 @@
 # Emit Success
 
+You must output a SUCCESS promise to indicate the procedure completed successfully.
+
 Output SUCCESS promise to indicate procedure completed successfully.
 
 Actions:

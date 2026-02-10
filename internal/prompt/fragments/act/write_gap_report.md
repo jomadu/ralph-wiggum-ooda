@@ -1,5 +1,7 @@
 # Write Gap Report
 
+You must create a gap analysis report documenting the findings. Use the file writing tool.
+
 Create a gap analysis report.
 
 Include:

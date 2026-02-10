@@ -1,5 +1,7 @@
 # Check If Blocked
 
+Your task is to determine if work can proceed or if blockers exist.
+
 Determine if work can proceed or if blockers exist.
 
 Check for:

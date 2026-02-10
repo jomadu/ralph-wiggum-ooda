@@ -1,5 +1,7 @@
 # Emit Failure
 
+You must output a FAILURE promise to indicate the procedure cannot proceed.
+
 Output FAILURE promise to indicate procedure cannot proceed.
 
 Actions:
