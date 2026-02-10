@@ -315,3 +315,233 @@ func TestLoadContextContent_Inline(t *testing.T) {
 		t.Errorf("expected %q, got %q", inline, content)
 	}
 }
+
+// Integration Tests
+
+func TestAssemblePrompt_Integration_SeparatorFormat(t *testing.T) {
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{
+			{Path: "builtin:fragments/observe/read_agents_md.md"},
+			{Path: "builtin:fragments/observe/read_specs.md"},
+		},
+		Orient: []config.FragmentAction{
+			{Path: "builtin:fragments/orient/understand_task_requirements.md"},
+		},
+		Decide: []config.FragmentAction{
+			{Path: "builtin:fragments/decide/plan_implementation_approach.md"},
+		},
+		Act: []config.FragmentAction{
+			{Path: "builtin:fragments/act/modify_files.md"},
+			{Path: "builtin:fragments/act/run_tests.md"},
+		},
+	}
+
+	result, err := AssemblePrompt(procedure, "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Verify === separator format for all phases
+	expectedSeparators := []string{
+		"=== OBSERVE ===",
+		"=== ORIENT ===",
+		"=== DECIDE ===",
+		"=== ACT ===",
+	}
+
+	for _, sep := range expectedSeparators {
+		if !strings.Contains(result, sep) {
+			t.Errorf("expected separator %q in assembled prompt", sep)
+		}
+	}
+
+	// Verify phase order
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
+	orientIdx := strings.Index(result, "=== ORIENT ===")
+	decideIdx := strings.Index(result, "=== DECIDE ===")
+	actIdx := strings.Index(result, "=== ACT ===")
+
+	if observeIdx >= orientIdx || orientIdx >= decideIdx || decideIdx >= actIdx {
+		t.Errorf("phases not in correct order: OBSERVE(%d) ORIENT(%d) DECIDE(%d) ACT(%d)",
+			observeIdx, orientIdx, decideIdx, actIdx)
+	}
+
+	// Verify fragments within phases are separated by double newlines
+	if !strings.Contains(result, "\n\n") {
+		t.Errorf("expected double newlines between fragments")
+	}
+}
+
+func TestAssemblePrompt_Integration_ContextFileWithSource(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "context-*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+
+	contextContent := "Focus on authentication and authorization modules.\nEnsure backward compatibility."
+	if _, err := tmpFile.WriteString(contextContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{{Content: "Observe phase"}},
+		Orient:  []config.FragmentAction{{Content: "Orient phase"}},
+		Decide:  []config.FragmentAction{{Content: "Decide phase"}},
+		Act:     []config.FragmentAction{{Content: "Act phase"}},
+	}
+
+	result, err := AssemblePrompt(procedure, tmpFile.Name(), "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Verify CONTEXT section exists
+	if !strings.Contains(result, "=== CONTEXT ===") {
+		t.Errorf("expected CONTEXT section marker")
+	}
+
+	// Verify Source: line with file path
+	expectedSource := "Source: " + tmpFile.Name()
+	if !strings.Contains(result, expectedSource) {
+		t.Errorf("expected Source line %q", expectedSource)
+	}
+
+	// Verify file content is included
+	if !strings.Contains(result, contextContent) {
+		t.Errorf("expected file content in prompt")
+	}
+
+	// Verify Source line comes before content
+	sourceIdx := strings.Index(result, "Source:")
+	contentIdx := strings.Index(result, contextContent)
+	if sourceIdx >= contentIdx {
+		t.Errorf("expected Source line before content")
+	}
+
+	// Verify CONTEXT comes before OBSERVE
+	contextIdx := strings.Index(result, "=== CONTEXT ===")
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
+	if contextIdx >= observeIdx {
+		t.Errorf("expected CONTEXT before OBSERVE")
+	}
+}
+
+func TestAssemblePrompt_Integration_InlineContextNoSource(t *testing.T) {
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{{Content: "Observe phase"}},
+		Orient:  []config.FragmentAction{{Content: "Orient phase"}},
+		Decide:  []config.FragmentAction{{Content: "Decide phase"}},
+		Act:     []config.FragmentAction{{Content: "Act phase"}},
+	}
+
+	inlineContext := "Focus on performance optimization and reduce memory usage"
+	result, err := AssemblePrompt(procedure, inlineContext, "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Verify CONTEXT section exists
+	if !strings.Contains(result, "=== CONTEXT ===") {
+		t.Errorf("expected CONTEXT section marker")
+	}
+
+	// Verify NO Source: line for inline content
+	if strings.Contains(result, "Source:") {
+		t.Errorf("expected no Source line for inline context")
+	}
+
+	// Verify inline content is included directly
+	if !strings.Contains(result, inlineContext) {
+		t.Errorf("expected inline context in prompt")
+	}
+
+	// Verify CONTEXT comes before OBSERVE
+	contextIdx := strings.Index(result, "=== CONTEXT ===")
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
+	if contextIdx >= observeIdx {
+		t.Errorf("expected CONTEXT before OBSERVE")
+	}
+}
+
+func TestAssemblePrompt_Integration_MixedFileAndInlineContexts(t *testing.T) {
+	tmpFile1, err := os.CreateTemp("", "context1-*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file 1: %v", err)
+	}
+	defer os.Remove(tmpFile1.Name())
+
+	content1 := "File context 1: API requirements"
+	if _, err := tmpFile1.WriteString(content1); err != nil {
+		t.Fatalf("failed to write temp file 1: %v", err)
+	}
+	tmpFile1.Close()
+
+	tmpFile2, err := os.CreateTemp("", "context2-*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file 2: %v", err)
+	}
+	defer os.Remove(tmpFile2.Name())
+
+	content2 := "File context 2: Database schema"
+	if _, err := tmpFile2.WriteString(content2); err != nil {
+		t.Fatalf("failed to write temp file 2: %v", err)
+	}
+	tmpFile2.Close()
+
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{{Content: "Observe phase"}},
+		Orient:  []config.FragmentAction{{Content: "Orient phase"}},
+		Decide:  []config.FragmentAction{{Content: "Decide phase"}},
+		Act:     []config.FragmentAction{{Content: "Act phase"}},
+	}
+
+	// Simulate multiple --context flags: file, inline, file
+	mixedContext := tmpFile1.Name() + "\n\n" + "Inline: ensure backward compatibility" + "\n\n" + tmpFile2.Name()
+	result, err := AssemblePrompt(procedure, mixedContext, "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Verify CONTEXT section exists
+	if !strings.Contains(result, "=== CONTEXT ===") {
+		t.Errorf("expected CONTEXT section marker")
+	}
+
+	// Verify first file has Source line
+	expectedSource1 := "Source: " + tmpFile1.Name()
+	if !strings.Contains(result, expectedSource1) {
+		t.Errorf("expected Source line for first file")
+	}
+
+	// Verify first file content
+	if !strings.Contains(result, content1) {
+		t.Errorf("expected first file content")
+	}
+
+	// Verify inline content (no Source line for this part)
+	if !strings.Contains(result, "Inline: ensure backward compatibility") {
+		t.Errorf("expected inline context")
+	}
+
+	// Verify second file has Source line
+	expectedSource2 := "Source: " + tmpFile2.Name()
+	if !strings.Contains(result, expectedSource2) {
+		t.Errorf("expected Source line for second file")
+	}
+
+	// Verify second file content
+	if !strings.Contains(result, content2) {
+		t.Errorf("expected second file content")
+	}
+
+	// Verify order: file1, inline, file2
+	source1Idx := strings.Index(result, expectedSource1)
+	inlineIdx := strings.Index(result, "Inline: ensure backward compatibility")
+	source2Idx := strings.Index(result, expectedSource2)
+
+	if source1Idx >= inlineIdx || inlineIdx >= source2Idx {
+		t.Errorf("contexts not in correct order")
+	}
+}
