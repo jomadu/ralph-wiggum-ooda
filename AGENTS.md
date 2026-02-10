@@ -143,7 +143,7 @@ go vet ./...         # Built-in Go linter
 - `specs/` — specifications
 - `AGENTS.md`, `PLAN.md`, `TASK.md` — operational files
 
-**v2 Rewrite Status:** Go implementation in progress. Completed: fragment embedding (P0.3), config loader with backward compatibility, AI executor, loop state management, error handling, observability/logging. Test suite exists with 10 test files covering all implemented packages. Binary builds successfully (`./bin/rooda --list-procedures` works). Not yet implemented: full loop integration, all 16 planned procedures. The v0.1.0 bash implementation (`rooda.sh`) remains the current working version.
+**v2 Rewrite Status:** Go implementation in progress. Completed: fragment embedding (P0.3), config loader with backward compatibility, AI executor, loop state management, error handling, observability/logging, full loop integration (P7.2). Test suite exists with 10 test files covering all implemented packages. Binary builds successfully and executes procedures end-to-end (`./bin/rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1` works). Not yet implemented: all 16 planned procedures (only agents-sync defined). The v0.1.0 bash implementation (`rooda.sh`) remains available but v2 Go is now functional for single-procedure execution.
 
 ## Quality Criteria
 
@@ -181,11 +181,13 @@ go vet ./...         # Built-in Go linter
 - Config loader supports both v0.1.0 string format and v2 array format (backward compatible)
 - Go test suite exists with 10 test files across internal/ packages
 - `go build -o bin/rooda ./cmd/rooda` succeeds
+- `./bin/rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1` executes end-to-end successfully
+- `go test ./...` passes all tests
 
 **Verified Not Working / Missing:**
 - shellcheck not installed on this machine — `shellcheck rooda.sh` cannot run
 - No CI/CD pipeline configured
-- v2 Go implementation partial — fragment embedding complete (P0.3), config/AI/loop not implemented
+- v2 Go implementation partial — only agents-sync procedure defined, 15 more procedures needed
 
 **Why These Definitions:**
 - Implementation is at root level (not `src/`) because `goify` branch restructured the project

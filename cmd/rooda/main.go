@@ -6,8 +6,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/jomadu/rooda/internal/config"
+	"github.com/jomadu/rooda/internal/loop"
+	"github.com/jomadu/rooda/internal/observability"
 	"github.com/jomadu/rooda/internal/procedures"
 	"github.com/jomadu/rooda/internal/prompt"
 )
@@ -82,8 +85,9 @@ func main() {
 		os.Exit(exitCode)
 	}
 
-	fmt.Fprintln(os.Stderr, "rooda: OODA loop implementation not yet available")
-	os.Exit(ExitExecutionError)
+	// Execute OODA loop
+	exitCode := runLoop(flags)
+	os.Exit(exitCode)
 }
 
 func parseFlags() config.CLIFlags {
@@ -395,6 +399,107 @@ func runDryRun(flags config.CLIFlags) int {
 
 	fmt.Println("✓ Dry-run validation passed")
 	return ExitSuccess
+}
+
+func runLoop(flags config.CLIFlags) int {
+	// Load configuration
+	cfg, err := config.LoadConfig(flags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return ExitConfigError
+	}
+
+	// Resolve AI command
+	aiCmd, err := config.ResolveAICommand(*cfg, flags.ProcedureName, flags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		return ExitConfigError
+	}
+
+	// Determine max iterations
+	var maxIterations *int
+	if flags.Unlimited {
+		maxIterations = nil
+	} else if flags.MaxIterations != nil {
+		maxIterations = flags.MaxIterations
+	} else {
+		// Use procedure override or loop default
+		proc, ok := cfg.Procedures[flags.ProcedureName]
+		if ok && proc.DefaultMaxIterations != nil {
+			maxIterations = proc.DefaultMaxIterations
+		} else if cfg.Loop.DefaultMaxIterations != nil {
+			maxIterations = cfg.Loop.DefaultMaxIterations
+		} else {
+			defaultMax := config.DefaultMaxIterations
+			maxIterations = &defaultMax
+		}
+	}
+
+	// Determine iteration timeout
+	var iterationTimeout *int
+	proc, ok := cfg.Procedures[flags.ProcedureName]
+	if ok && proc.IterationTimeout != nil {
+		iterationTimeout = proc.IterationTimeout
+	} else {
+		iterationTimeout = cfg.Loop.IterationTimeout
+	}
+
+	// Determine max output buffer
+	maxOutputBuffer := cfg.Loop.MaxOutputBuffer
+	if ok && proc.MaxOutputBuffer != nil {
+		maxOutputBuffer = *proc.MaxOutputBuffer
+	}
+
+	// Determine log level
+	logLevel := cfg.Loop.LogLevel
+	if flags.Verbose {
+		logLevel = config.LogLevelDebug
+	} else if flags.Quiet {
+		logLevel = config.LogLevelError
+	}
+
+	// Determine show AI output
+	showAIOutput := cfg.Loop.ShowAIOutput
+	if flags.Verbose {
+		showAIOutput = true
+	}
+
+	// Create logger
+	logger := observability.NewLogger(logLevel, cfg.Loop.LogTimestampFormat, time.Now())
+
+	// Create iteration state
+	state := &loop.IterationState{
+		Iteration:           0,
+		MaxIterations:       maxIterations,
+		IterationTimeout:    iterationTimeout,
+		MaxOutputBuffer:     maxOutputBuffer,
+		ConsecutiveFailures: 0,
+		FailureThreshold:    cfg.Loop.FailureThreshold,
+		StartedAt:           time.Now(),
+		Status:              loop.StatusRunning,
+		ProcedureName:       flags.ProcedureName,
+		Stats:               loop.IterationStats{},
+	}
+
+	// Join user contexts
+	userContext := strings.Join(flags.Contexts, "\n\n")
+
+	// Run loop
+	status := loop.RunLoop(state, *cfg, aiCmd, userContext, showAIOutput, logger)
+
+	// Map status to exit code
+	switch status {
+	case loop.StatusSuccess:
+		return ExitSuccess
+	case loop.StatusMaxIters:
+		return ExitSuccess // Max iterations is not an error
+	case loop.StatusInterrupted:
+		return ExitSuccess // User interrupt is not an error
+	case loop.StatusAborted:
+		return ExitExecutionError
+	default:
+		return ExitExecutionError
+	}
 }
 
 func displayConfigWithProvenance(cfg *config.Config, procedureName string) {
