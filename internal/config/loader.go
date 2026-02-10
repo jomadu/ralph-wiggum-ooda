@@ -176,16 +176,38 @@ type procedureYAML struct {
 	Display              string                   `yaml:"display"`
 	Summary              string                   `yaml:"summary"`
 	Description          string                   `yaml:"description"`
-	Observe              []fragmentActionYAML     `yaml:"observe"`
-	Orient               []fragmentActionYAML     `yaml:"orient"`
-	Decide               []fragmentActionYAML     `yaml:"decide"`
-	Act                  []fragmentActionYAML     `yaml:"act"`
+	Observe              phaseFragments           `yaml:"observe"`
+	Orient               phaseFragments           `yaml:"orient"`
+	Decide               phaseFragments           `yaml:"decide"`
+	Act                  phaseFragments           `yaml:"act"`
 	IterationMode        string                   `yaml:"iteration_mode"`
 	DefaultMaxIterations *int                     `yaml:"default_max_iterations"`
 	IterationTimeout     *int                     `yaml:"iteration_timeout"`
 	MaxOutputBuffer      *int                     `yaml:"max_output_buffer"`
 	AICmd                string                   `yaml:"ai_cmd"`
 	AICmdAlias           string                   `yaml:"ai_cmd_alias"`
+}
+
+// phaseFragments handles both v0.1.0 string format and v2 array format
+type phaseFragments []fragmentActionYAML
+
+func (p *phaseFragments) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	// Try v2 array format first
+	var fragments []fragmentActionYAML
+	if err := unmarshal(&fragments); err == nil {
+		*p = fragments
+		return nil
+	}
+
+	// Fall back to v0.1.0 string format
+	var path string
+	if err := unmarshal(&path); err != nil {
+		return err
+	}
+
+	// Convert string to single-element array
+	*p = []fragmentActionYAML{{Path: path}}
+	return nil
 }
 
 type fragmentActionYAML struct {

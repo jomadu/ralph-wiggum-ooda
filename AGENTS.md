@@ -126,7 +126,7 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `specs/` — specifications
 - `AGENTS.md`, `PLAN.md`, `TASK.md` — operational files
 
-**v2 Rewrite Status:** Go skeleton exists (go.mod, cmd/rooda/main.go stub, internal/ directories). Fragment embedding complete (P0.3). Config types, YAML parsing, AI execution, and loop logic not yet implemented. The v0.1.0 bash implementation (`rooda.sh`) remains the current working version.
+**v2 Rewrite Status:** Go skeleton exists (go.mod, cmd/rooda/main.go stub, internal/ directories). Fragment embedding complete (P0.3). Config loader complete with backward compatibility for v0.1.0 string format. AI execution, loop logic not yet implemented. The v0.1.0 bash implementation (`rooda.sh`) remains the current working version.
 
 ## Quality Criteria
 
@@ -158,6 +158,8 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - All 25 prompt files in `prompts/` exist and are referenced by rooda-config.yml
 - rooda-config.yml parses without errors
 - All 11 v2 specs complete with JTBD structure, acceptance criteria, examples
+- v2 Go binary `./bin/rooda --list-procedures` works with v0.1.0 config format
+- Config loader supports both v0.1.0 string format and v2 array format (backward compatible)
 
 **Verified Not Working / Missing:**
 - shellcheck not installed on this machine — `shellcheck rooda.sh` cannot run

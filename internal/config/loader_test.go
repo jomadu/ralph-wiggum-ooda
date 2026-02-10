@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -400,5 +401,188 @@ func TestProvenance(t *testing.T) {
 		t.Error("expected provenance for iteration_mode")
 	} else if src.Tier != TierBuiltIn {
 		t.Errorf("expected built-in tier, got %s", src.Tier)
+	}
+}
+
+// TestBackwardCompatibility_V01StringFormat verifies v0.1.0 string format loads correctly
+func TestBackwardCompatibility_V01StringFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "rooda-config.yml")
+
+	// Write v0.1.0 format config (string paths instead of arrays)
+	configContent := `
+procedures:
+  bootstrap:
+    display: "Bootstrap Repository"
+    observe: prompts/observe_bootstrap.md
+    orient: prompts/orient_bootstrap.md
+    decide: prompts/decide_bootstrap.md
+    act: prompts/act_bootstrap.md
+    default_max_iterations: 1
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	config, err := LoadConfig(CLIFlags{})
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	proc, exists := config.Procedures["bootstrap"]
+	if !exists {
+		t.Fatal("expected bootstrap procedure to exist")
+	}
+
+	// Verify string paths were converted to FragmentAction arrays
+	if len(proc.Observe) != 1 {
+		t.Errorf("expected 1 observe fragment, got %d", len(proc.Observe))
+	}
+	if !strings.HasSuffix(proc.Observe[0].Path, "prompts/observe_bootstrap.md") {
+		t.Errorf("expected observe path to end with prompts/observe_bootstrap.md, got %s", proc.Observe[0].Path)
+	}
+
+	if len(proc.Orient) != 1 {
+		t.Errorf("expected 1 orient fragment, got %d", len(proc.Orient))
+	}
+	if !strings.HasSuffix(proc.Orient[0].Path, "prompts/orient_bootstrap.md") {
+		t.Errorf("expected orient path to end with prompts/orient_bootstrap.md, got %s", proc.Orient[0].Path)
+	}
+
+	if len(proc.Decide) != 1 {
+		t.Errorf("expected 1 decide fragment, got %d", len(proc.Decide))
+	}
+	if !strings.HasSuffix(proc.Decide[0].Path, "prompts/decide_bootstrap.md") {
+		t.Errorf("expected decide path to end with prompts/decide_bootstrap.md, got %s", proc.Decide[0].Path)
+	}
+
+	if len(proc.Act) != 1 {
+		t.Errorf("expected 1 act fragment, got %d", len(proc.Act))
+	}
+	if !strings.HasSuffix(proc.Act[0].Path, "prompts/act_bootstrap.md") {
+		t.Errorf("expected act path to end with prompts/act_bootstrap.md, got %s", proc.Act[0].Path)
+	}
+
+	if *proc.DefaultMaxIterations != 1 {
+		t.Errorf("expected default_max_iterations 1, got %d", *proc.DefaultMaxIterations)
+	}
+}
+
+// TestBackwardCompatibility_V2ArrayFormat verifies v2 array format loads correctly
+func TestBackwardCompatibility_V2ArrayFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "rooda-config.yml")
+
+	// Write v2 format config (array of FragmentAction)
+	configContent := `
+procedures:
+  build:
+    display: "Build from Plan"
+    observe:
+      - path: prompts/observe_plan.md
+      - path: prompts/observe_specs.md
+    orient:
+      - path: prompts/orient_build.md
+    decide:
+      - path: prompts/decide_build.md
+    act:
+      - path: prompts/act_build.md
+    default_max_iterations: 5
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	config, err := LoadConfig(CLIFlags{})
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	proc, exists := config.Procedures["build"]
+	if !exists {
+		t.Fatal("expected build procedure to exist")
+	}
+
+	// Verify array format loaded correctly
+	if len(proc.Observe) != 2 {
+		t.Errorf("expected 2 observe fragments, got %d", len(proc.Observe))
+	}
+	if !strings.HasSuffix(proc.Observe[0].Path, "prompts/observe_plan.md") {
+		t.Errorf("expected first observe path to end with prompts/observe_plan.md, got %s", proc.Observe[0].Path)
+	}
+	if !strings.HasSuffix(proc.Observe[1].Path, "prompts/observe_specs.md") {
+		t.Errorf("expected second observe path to end with prompts/observe_specs.md, got %s", proc.Observe[1].Path)
+	}
+
+	if len(proc.Orient) != 1 {
+		t.Errorf("expected 1 orient fragment, got %d", len(proc.Orient))
+	}
+
+	if *proc.DefaultMaxIterations != 5 {
+		t.Errorf("expected default_max_iterations 5, got %d", *proc.DefaultMaxIterations)
+	}
+}
+
+// TestBackwardCompatibility_MixedFormat verifies mixed v0.1.0 and v2 formats work
+func TestBackwardCompatibility_MixedFormat(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "rooda-config.yml")
+
+	// Write config with both formats
+	configContent := `
+procedures:
+  bootstrap:
+    observe: prompts/observe_bootstrap.md
+    orient: prompts/orient_bootstrap.md
+    decide: prompts/decide_bootstrap.md
+    act: prompts/act_bootstrap.md
+  build:
+    observe:
+      - path: prompts/observe_plan.md
+      - path: prompts/observe_specs.md
+    orient:
+      - path: prompts/orient_build.md
+    decide:
+      - path: prompts/decide_build.md
+    act:
+      - path: prompts/act_build.md
+`
+	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	origDir, _ := os.Getwd()
+	defer os.Chdir(origDir)
+	os.Chdir(tmpDir)
+
+	config, err := LoadConfig(CLIFlags{})
+	if err != nil {
+		t.Fatalf("LoadConfig failed: %v", err)
+	}
+
+	// Verify v0.1.0 format procedure
+	bootstrap, exists := config.Procedures["bootstrap"]
+	if !exists {
+		t.Fatal("expected bootstrap procedure to exist")
+	}
+	if len(bootstrap.Observe) != 1 {
+		t.Errorf("expected 1 observe fragment for bootstrap, got %d", len(bootstrap.Observe))
+	}
+
+	// Verify v2 format procedure
+	build, exists := config.Procedures["build"]
+	if !exists {
+		t.Fatal("expected build procedure to exist")
+	}
+	if len(build.Observe) != 2 {
+		t.Errorf("expected 2 observe fragments for build, got %d", len(build.Observe))
 	}
 }
