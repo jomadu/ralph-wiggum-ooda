@@ -1,0 +1,1151 @@
+# Configuration
+
+## Job to be Done
+
+Define custom OODA procedures, AI command aliases, and project-specific settings through a three-tier configuration system — workspace (`./`), global (`<config_dir>/`), and environment variables — with sensible built-in defaults for zero-config startup. Tiers merge with clear precedence (CLI flags > env vars > workspace > global > built-in defaults) and provenance tracking so users know where each setting comes from.
+
+The global config directory resolves as: `ROODA_CONFIG_HOME` env var (if set), else `$XDG_CONFIG_HOME/rooda/` (if `XDG_CONFIG_HOME` is set), else `~/.config/rooda/` (Unix/macOS), else `%APPDATA%\rooda\` (Windows).
+
+The developer wants to start using rooda on a new project with zero configuration, customize behavior as needs evolve, and share team-wide settings across repositories — all without modifying the binary or prompt files.
+
+## Activities
+
+1. Load built-in default configuration embedded in the Go binary
+2. Resolve global config directory (`ROODA_CONFIG_HOME` > `$XDG_CONFIG_HOME/rooda/` > `~/.config/rooda/` (Unix/macOS) > `%APPDATA%\rooda\` (Windows)) and parse global config file (`<config_dir>/rooda-config.yml`)
+3. Discover and parse workspace config file (`./rooda-config.yml`)
+4. Resolve environment variables (`ROODA_*` prefix)
+5. Merge configuration tiers with precedence, tracking provenance of each resolved value
+6. Apply CLI flag overrides (highest precedence)
+7. Validate merged configuration (required fields, type constraints, file path existence)
+8. Expose resolved configuration to iteration loop, prompt composition, and AI CLI integration
+
+## Acceptance Criteria
+
+- [ ] Zero-config startup works for procedures and loop settings — `rooda build` uses built-in defaults (embedded procedures, default iteration limits) but requires the user to configure an AI command
+- [ ] If no AI command is configured via any source, rooda exits with a clear error listing all ways to set one (`--ai-cmd`, `--ai-cmd-alias`, `ROODA_LOOP_AI_CMD`, `ROODA_LOOP_AI_CMD_ALIAS`, `loop.ai_cmd`, `loop.ai_cmd_alias`, procedure-level `ai_cmd`/`ai_cmd_alias`)
+- [ ] Global config at `<config_dir>/rooda-config.yml` is loaded if present, ignored if absent
+- [ ] Global config directory resolved as: `ROODA_CONFIG_HOME` env var > `$XDG_CONFIG_HOME/rooda/` > `~/.config/rooda/`
+- [ ] Workspace config at `./rooda-config.yml` is loaded if present, ignored if absent
+- [ ] `--config <path>` CLI flag specifies an alternate workspace config file path (overrides `./rooda-config.yml`)
+- [ ] Environment variables with `ROODA_` prefix override config file values
+- [ ] CLI flags override all other sources
+- [ ] Precedence order is: CLI flags > env vars > workspace config > global config > built-in defaults
+- [ ] Workspace config overrides global config for all overlapping fields
+- [ ] Procedure definitions in workspace config merge with (not replace) built-in defaults — workspace procedures add to or override individual built-in procedures, but don't remove other built-in procedures
+- [ ] When a workspace or global config overrides a procedure field, only the specified fields override the built-in; unspecified fields inherit from the built-in procedure (field-level merging, not full replacement)
+- [ ] AI command aliases in workspace config merge with built-in aliases — workspace aliases add to or override individual built-in aliases
+- [ ] Loop settings (`iteration_mode`, `default_max_iterations`, `failure_threshold`, `ai_cmd`, `ai_cmd_alias`) follow the same precedence chain
+- [ ] `iteration_mode` field accepted at loop and procedure levels, resolved through tier precedence
+- [ ] When `iteration_mode` is `unlimited`, `default_max_iterations` is ignored
+- [ ] Procedure `ai_cmd` or `ai_cmd_alias` overrides `loop.ai_cmd` / `loop.ai_cmd_alias` for that procedure
+- [ ] Within any level, `ai_cmd` (direct command) takes precedence over `ai_cmd_alias`
+- [ ] Provenance tracked for each resolved setting — can report which tier provided each value
+- [ ] `--verbose` displays provenance for resolved configuration
+- [ ] Config file validated at load time — invalid YAML produces clear error with file path and line number
+- [ ] Unknown top-level keys in config files produce warnings (not errors) for forward compatibility
+- [ ] Missing config files are silently skipped (not errors)
+- [ ] Procedure `iteration_mode` overrides `loop.iteration_mode` for that procedure
+- [ ] Procedure `default_max_iterations` overrides `loop.default_max_iterations` for that procedure
+- [ ] `ROODA_LOOP_AI_CMD` environment variable sets `loop.ai_cmd` (overrides config file, but procedure-level overrides it)
+- [ ] `ROODA_LOOP_AI_CMD_ALIAS` environment variable sets `loop.ai_cmd_alias` (overrides config file, but procedure-level overrides it)
+- [ ] `ROODA_LOOP_ITERATION_MODE` environment variable sets `loop.iteration_mode` (`max-iterations` or `unlimited`)
+- [ ] `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` environment variable sets the default max iterations (must be >= 1)
+- [ ] `ROODA_LOOP_ITERATION_TIMEOUT` environment variable sets the iteration timeout in seconds (must be >= 1)
+- [ ] `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` environment variable sets `loop.log_timestamp_format` (time, time-ms, relative, iso, none)
+- [ ] Prompt file paths in procedures resolved relative to the config file that defines them (workspace or global) or as embedded resources (built-in defaults)
+- [ ] Built-in default procedures include all 16 v2 procedures with embedded prompt files
+- [ ] Custom procedures can reference prompt files on the filesystem
+
+## Data Structures
+
+### Config
+
+The fully resolved configuration after merging all tiers.
+
+```go
+type Config struct {
+    Loop          LoopConfig              // Global loop settings
+    Procedures    map[string]Procedure    // Named procedure definitions
+    AICmdAliases  map[string]string       // AI command alias name -> command string
+    Provenance    map[string]ConfigSource // Setting path -> source that provided it
+}
+```
+
+**Fields:**
+- `Loop` — Global defaults for iteration behavior
+- `Procedures` — Map of procedure names to their definitions; includes both built-in and user-defined
+- `AICmdAliases` — Map of alias names to AI command strings; includes built-in aliases (`kiro-cli`, `claude`, `copilot`, `cursor-agent`) and user-defined
+- `Provenance` — Records which tier provided each resolved value, keyed by dot-path (e.g., `"loop.default_max_iterations"`, `"procedures.build.default_max_iterations"`)
+
+### LoopConfig
+
+```go
+type LoopConfig struct {
+    IterationMode        IterationMode // Iteration mode (built-in default: ModeMaxIterations)
+    DefaultMaxIterations *int          // Global default (built-in default: 5). Must be >= 1 when set. nil = not set (inherit).
+    IterationTimeout     *int          // Per-iteration timeout in seconds (built-in default: nil). nil = no timeout.
+    MaxOutputBuffer      int           // Max AI CLI output buffer in bytes (built-in default: 10485760 = 10MB). Must be >= 1024.
+    FailureThreshold     int              // Consecutive failures before abort (built-in default: 3)
+    LogLevel             LogLevel         // Loop log level (built-in default: LogLevelInfo)
+    LogTimestampFormat   TimestampFormat  // Log timestamp format (built-in default: TimestampTime)
+    ShowAIOutput         bool             // Stream AI CLI output to terminal (built-in default: false)
+    AICmd                string           // Default AI command (direct command string, optional)
+    AICmdAlias           string           // Default AI command alias name (resolved from AICmdAliases, optional)
+}
+
+type LogLevel string
+
+const (
+    LogLevelDebug LogLevel = "debug"
+    LogLevelInfo  LogLevel = "info"
+    LogLevelWarn  LogLevel = "warn"
+    LogLevelError LogLevel = "error"
+)
+
+type TimestampFormat string
+
+const (
+    TimestampTime     TimestampFormat = "time"      // [HH:MM:SS.mmm]
+    TimestampTimeMs   TimestampFormat = "time-ms"   // [HH:MM:SS.mmm] (alias for time)
+    TimestampRelative TimestampFormat = "relative"  // [+0.123s] relative to loop start
+    TimestampISO      TimestampFormat = "iso"       // 2026-02-08T20:59:35.877-08:00
+    TimestampNone     TimestampFormat = "none"      // No timestamp
+)
+```
+
+**Fields:**
+- `IterationMode` — Controls whether iterations are limited or unlimited. Built-in default: `ModeMaxIterations`. Empty string means not set (for merging — after built-in defaults are applied, always has a value).
+- `DefaultMaxIterations` — Global default iteration limit. Built-in default: pointer to 5. nil means not set (for merging). When not nil, must be >= 1. Ignored when `IterationMode` is `ModeUnlimited`.
+- `IterationTimeout` — Per-iteration timeout in seconds. Built-in default: nil (no timeout). nil means not set (for merging) or no timeout (after merging). When not nil, must be >= 1. If AI CLI execution exceeds this duration, process is killed and iteration counts as failure.
+- `MaxOutputBuffer` — Maximum AI CLI output buffer size in bytes. Built-in default: 10485760 (10MB). Must be >= 1024. If output exceeds this, buffer is truncated from beginning (keeping most recent output for signal scanning).
+- `FailureThreshold` — Consecutive failures before the loop aborts. Built-in default: 3. Must be >= 1.
+- `LogLevel` — Loop log level. Built-in default: `LogLevelInfo`. Valid values: `debug`, `info`, `warn`, `error`.
+- `LogTimestampFormat` — Log timestamp format. Built-in default: `TimestampTime`. Valid values: `time`, `time-ms`, `relative`, `iso`, `none`.
+- `ShowAIOutput` — Stream AI CLI output to terminal. Built-in default: false.
+- `AICmd` — Direct AI command string. If set, takes precedence over `AICmdAlias`. Empty means not set.
+- `AICmdAlias` — Name of an alias from `AICmdAliases` to use as the default AI command. Empty means not set. If both `AICmd` and `AICmdAlias` are set, `AICmd` wins.
+
+### Procedure
+
+```go
+type FragmentAction struct {
+    Content    string                 // Inline prompt content (optional)
+    Path       string                 // Path to fragment file (optional)
+    Parameters map[string]interface{} // Template parameters (optional)
+}
+
+type Procedure struct {
+    Display              string            // Human-readable name (optional)
+    Summary              string            // One-line description (optional)
+    Description          string            // Detailed description (optional)
+    Observe              []FragmentAction  // Array of observe phase fragments
+    Orient               []FragmentAction  // Array of orient phase fragments
+    Decide               []FragmentAction  // Array of decide phase fragments
+    Act                  []FragmentAction  // Array of act phase fragments
+    IterationMode        IterationMode     // Override loop iteration mode ("" = inherit from loop)
+    DefaultMaxIterations *int              // Override loop.default_max_iterations (nil = inherit from loop). Must be >= 1 when set.
+    IterationTimeout     *int              // Override loop.iteration_timeout (nil = inherit from loop). Must be >= 1 when set. Seconds.
+    MaxOutputBuffer      *int              // Override loop.max_output_buffer (nil = inherit from loop). Must be >= 1024 when set. Bytes.
+    AICmd                string            // Override AI command for this procedure (optional)
+    AICmdAlias           string            // Override AI command alias for this procedure (optional)
+}
+```
+
+**Fields:**
+- `Observe`, `Orient`, `Decide`, `Act` — Arrays of fragment actions that compose each OODA phase. Each fragment can specify inline content or a path to a fragment file. For built-in procedures, paths use `builtin:` prefix for embedded resources. For user-defined procedures, paths are resolved relative to the config file location. Fragments are concatenated with double newlines to form the complete phase prompt.
+- `IterationMode` — Optional per-procedure override. Empty string means inherit from loop settings. When set to `ModeUnlimited`, `DefaultMaxIterations` is ignored.
+- `DefaultMaxIterations` — Optional per-procedure override. nil means inherit from `loop.default_max_iterations`. When not nil, must be >= 1.
+- `IterationTimeout` — Optional per-procedure timeout override in seconds. nil means inherit from `loop.iteration_timeout`. When not nil, must be >= 1.
+- `MaxOutputBuffer` — Optional per-procedure output buffer size override in bytes. nil means inherit from `loop.max_output_buffer`. When not nil, must be >= 1024.
+- `AICmd` — Optional per-procedure AI command override. If set, takes precedence over `AICmdAlias`. Empty means inherit from loop settings.
+- `AICmdAlias` — Optional per-procedure AI command alias. Empty means inherit from loop settings. If both `AICmd` and `AICmdAlias` are set, `AICmd` wins.
+
+**FragmentAction Fields:**
+- `Content` — Inline prompt text. Mutually exclusive with `Path`. Use for short, procedure-specific prompts.
+- `Path` — Path to a fragment file. Mutually exclusive with `Content`. Use `builtin:` prefix for embedded fragments (e.g., `builtin:fragments/observe/read_agents_md.md`) or relative paths for custom fragments (e.g., `fragments/observe/custom.md`).
+- `Parameters` — Template parameters for Go text/template processing. Only used when `Path` is specified. Allows parameterized fragments.
+
+### ConfigSource
+
+```go
+type ConfigSource struct {
+    Tier  ConfigTier // Which tier provided this value
+    File  string     // File path (for workspace/global tiers) or "" for built-in/env/cli
+    Value any        // The resolved value
+}
+
+type ConfigTier string
+
+const (
+    TierBuiltIn   ConfigTier = "built-in"
+    TierGlobal    ConfigTier = "global"    // <config_dir>/rooda-config.yml
+    TierWorkspace ConfigTier = "workspace" // ./rooda-config.yml
+    TierEnvVar    ConfigTier = "env"       // ROODA_* environment variables
+    TierCLIFlag   ConfigTier = "cli"       // --flag values
+)
+
+type IterationMode string
+
+const (
+    ModeMaxIterations IterationMode = "max-iterations" // Run up to DefaultMaxIterations
+    ModeUnlimited     IterationMode = "unlimited"      // Run until SUCCESS signal, failure threshold, or Ctrl+C
+)
+```
+
+### YAML Config File Schema
+
+Both workspace and global config files share the same schema:
+
+```yaml
+# Loop settings (all optional — built-in defaults apply)
+loop:
+  iteration_mode: max-iterations  # "max-iterations" or "unlimited" (built-in default: max-iterations)
+  default_max_iterations: 5       # Default max iterations (must be >= 1). Ignored when mode is unlimited.
+  iteration_timeout: 300          # Per-iteration timeout in seconds (nil/omitted = no timeout, built-in default: nil)
+  max_output_buffer: 10485760     # Max AI CLI output buffer in bytes (built-in default: 10485760 = 10MB)
+  failure_threshold: 3            # Consecutive failures before abort
+  log_level: info                 # "debug", "info", "warn", "error" (built-in default: info)
+  log_timestamp_format: time      # "time", "time-ms", "relative", "iso", "none" (built-in default: time)
+  show_ai_output: false           # Stream AI CLI output to terminal (built-in default: false)
+  ai_cmd_alias: claude            # Default AI command alias for all procedures
+  # ai_cmd: "custom-cli --flags"  # Or set a direct command (overrides ai_cmd_alias)
+
+# AI command aliases (optional — merges with built-in aliases)
+ai_cmd_aliases:
+  fast: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
+  thorough: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-7-sonnet-20250219"
+
+# Procedure definitions (optional — merges with built-in procedures)
+procedures:
+  build:
+    display: "Build from Plan"
+    summary: "Implements tasks from plan"
+    description: "Reads from work tracking, picks task, implements, tests, commits"
+    observe:
+      - path: prompts/observe_plan.md
+      - path: prompts/observe_specs.md
+    orient:
+      - path: prompts/orient_build.md
+    decide:
+      - path: prompts/decide_build.md
+    act:
+      - path: prompts/act_build.md
+    default_max_iterations: 10
+    ai_cmd_alias: thorough     # This procedure uses a beefier model
+
+  my-custom-procedure:
+    observe:
+      - content: "Read the current repository state."
+      - path: my-prompts/observe_details.md
+    orient:
+      - path: my-prompts/orient.md
+    decide:
+      - path: my-prompts/decide.md
+    act:
+      - path: my-prompts/act.md
+    default_max_iterations: 3
+    # ai_cmd_alias inherits from loop.ai_cmd_alias if not set
+
+  my-long-running:
+    observe:
+      - path: my-prompts/observe.md
+    orient:
+      - path: my-prompts/orient.md
+    decide:
+      - path: my-prompts/decide.md
+    act:
+      - path: my-prompts/act.md
+    iteration_mode: unlimited    # This procedure runs until SUCCESS or failure threshold
+    # default_max_iterations ignored when mode is unlimited
+```
+
+### Built-in Defaults
+
+These are compiled into the Go binary and always available:
+
+```go
+var BuiltInDefaults = Config{
+    Loop: LoopConfig{
+        IterationMode:        ModeMaxIterations,
+        DefaultMaxIterations: 5,
+        MaxOutputBuffer:      10485760,  // 10MB
+        FailureThreshold:     3,
+        LogLevel:             LogLevelInfo,
+        ShowAIOutput:         false,
+    },
+    AICmdAliases: map[string]string{
+        "kiro-cli":     "kiro-cli chat --no-interactive --trust-all-tools",
+        "claude":       "claude-cli --no-interactive",
+        "copilot":      "github-copilot-cli",
+        "cursor-agent": "cursor-agent -p -f --stream-partial-output --output-format stream-json",
+    },
+    Procedures: builtInProcedures, // All 16 procedures with embedded prompts
+}
+```
+
+### Environment Variable Mapping
+
+| Environment Variable | Config Path | Type |
+|---|---|---|
+| `ROODA_CONFIG_HOME` | Global config directory (overrides XDG resolution) | string (path) |
+| `ROODA_LOOP_AI_CMD` | AI command (direct, overrides alias selection) | string |
+| `ROODA_LOOP_AI_CMD_ALIAS` | AI command alias name (resolved from merged config) | string |
+| `ROODA_LOOP_ITERATION_MODE` | `loop.iteration_mode` (`max-iterations` or `unlimited`) | string |
+| `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` | `loop.default_max_iterations` (must be >= 1) | int |
+| `ROODA_LOOP_ITERATION_TIMEOUT` | `loop.iteration_timeout` (seconds, must be >= 1) | int |
+| `ROODA_LOOP_FAILURE_THRESHOLD` | `loop.failure_threshold` | int |
+| `ROODA_LOOP_LOG_LEVEL` | `loop.log_level` (debug, info, warn, error) | string |
+| `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` | `loop.log_timestamp_format` (time, time-ms, relative, iso, none) | string |
+| `ROODA_LOOP_SHOW_AI_OUTPUT` | `loop.show_ai_output` (true, false) | bool |
+
+Environment variables use the `ROODA_` prefix. They override config file values but are overridden by CLI flags.
+
+## Algorithm
+
+### Config Loading
+
+```
+function LoadConfig(cliFlags CLIFlags) -> (Config, error):
+    // 1. Start with built-in defaults
+    config = BuiltInDefaults.DeepCopy()
+    provenance = initProvenance(config, TierBuiltIn)
+
+    // 2. Resolve global config directory and load config
+    globalDir = resolveGlobalConfigDir()  // ROODA_CONFIG_HOME > XDG_CONFIG_HOME/rooda > ~/.config/rooda
+    globalPath = filepath.Join(globalDir, "rooda-config.yml")
+    if fileExists(globalPath):
+        globalConfig, err = parseYAML(globalPath)
+        if err:
+            return error("global config %s: %v", globalPath, err)
+        config = mergeConfig(config, globalConfig, provenance, TierGlobal, globalPath)
+
+    // 3. Load workspace config (./rooda-config.yml)
+    workspacePath = "./rooda-config.yml"
+    if fileExists(workspacePath):
+        workspaceConfig, err = parseYAML(workspacePath)
+        if err:
+            return error("workspace config %s: %v", workspacePath, err)
+        config = mergeConfig(config, workspaceConfig, provenance, TierWorkspace, workspacePath)
+
+    // 4. Apply environment variables (override config file values at loop level)
+    if env("ROODA_LOOP_AI_CMD") != "":
+        config.Loop.AICmd = env("ROODA_LOOP_AI_CMD")
+        provenance["loop.ai_cmd"] = ConfigSource{TierEnvVar, "", config.Loop.AICmd}
+    if env("ROODA_LOOP_AI_CMD_ALIAS") != "":
+        config.Loop.AICmdAlias = env("ROODA_LOOP_AI_CMD_ALIAS")
+        provenance["loop.ai_cmd_alias"] = ConfigSource{TierEnvVar, "", config.Loop.AICmdAlias}
+    if env("ROODA_LOOP_ITERATION_MODE") != "":
+        config.Loop.IterationMode = IterationMode(env("ROODA_LOOP_ITERATION_MODE"))
+        provenance["loop.iteration_mode"] = ConfigSource{TierEnvVar, "", config.Loop.IterationMode}
+    if env("ROODA_LOOP_DEFAULT_MAX_ITERATIONS") != "":
+        config.Loop.DefaultMaxIterations = parseInt(env("ROODA_LOOP_DEFAULT_MAX_ITERATIONS"))
+        provenance["loop.default_max_iterations"] = ConfigSource{TierEnvVar, "", config.Loop.DefaultMaxIterations}
+    if env("ROODA_LOOP_FAILURE_THRESHOLD") != "":
+        config.Loop.FailureThreshold = parseInt(env("ROODA_LOOP_FAILURE_THRESHOLD"))
+        provenance["loop.failure_threshold"] = ConfigSource{TierEnvVar, "", config.Loop.FailureThreshold}
+    if env("ROODA_LOOP_ITERATION_TIMEOUT") != "":
+        config.Loop.IterationTimeout = parseInt(env("ROODA_LOOP_ITERATION_TIMEOUT"))
+        provenance["loop.iteration_timeout"] = ConfigSource{TierEnvVar, "", config.Loop.IterationTimeout}
+    if env("ROODA_LOOP_LOG_LEVEL") != "":
+        config.Loop.LogLevel = LogLevel(env("ROODA_LOOP_LOG_LEVEL"))
+        provenance["loop.log_level"] = ConfigSource{TierEnvVar, "", config.Loop.LogLevel}
+    if env("ROODA_LOOP_LOG_TIMESTAMP_FORMAT") != "":
+        config.Loop.LogTimestampFormat = TimestampFormat(env("ROODA_LOOP_LOG_TIMESTAMP_FORMAT"))
+        provenance["loop.log_timestamp_format"] = ConfigSource{TierEnvVar, "", config.Loop.LogTimestampFormat}
+    if env("ROODA_LOOP_SHOW_AI_OUTPUT") != "":
+        config.Loop.ShowAIOutput = parseBool(env("ROODA_LOOP_SHOW_AI_OUTPUT"))
+        provenance["loop.show_ai_output"] = ConfigSource{TierEnvVar, "", config.Loop.ShowAIOutput}
+
+    // 5. Apply CLI flags (highest precedence)
+    if cliFlags.MaxIterations != nil:
+        config.Loop.DefaultMaxIterations = cliFlags.MaxIterations
+        provenance["loop.default_max_iterations"] = ConfigSource{TierCLIFlag, "", *cliFlags.MaxIterations}
+    // Additional CLI flag overrides applied by caller (--ai-cmd, --ai-cmd-alias, etc.)
+
+    // 6. Validate
+    err = validateConfig(config)
+    if err:
+        return error("config validation: %v", err)
+
+    config.Provenance = provenance
+    return config, nil
+```
+
+### Global Config Directory Resolution
+
+```
+function resolveGlobalConfigDir() -> string:
+    // 1. ROODA_CONFIG_HOME env var (highest precedence, explicit override)
+    if env("ROODA_CONFIG_HOME") != "":
+        return env("ROODA_CONFIG_HOME")
+
+    // 2. XDG_CONFIG_HOME (Unix/macOS standard)
+    if env("XDG_CONFIG_HOME") != "":
+        return filepath.Join(env("XDG_CONFIG_HOME"), "rooda")
+
+    // 3. Platform-specific defaults
+    if runtime.GOOS == "windows":
+        // Windows: %APPDATA%\rooda
+        return filepath.Join(os.Getenv("APPDATA"), "rooda")
+    else:
+        // Unix/macOS: ~/.config/rooda
+        return filepath.Join(homeDir(), ".config", "rooda")
+```
+
+### Config Merging
+
+```
+function mergeConfig(base Config, overlay ConfigFile, provenance map, tier ConfigTier, filePath string) -> Config:
+    // Merge loop settings (overlay wins if non-zero/non-empty)
+    if overlay.Loop.IterationMode != "":
+        base.Loop.IterationMode = overlay.Loop.IterationMode
+        provenance["loop.iteration_mode"] = ConfigSource{tier, filePath, overlay.Loop.IterationMode}
+    if overlay.Loop.DefaultMaxIterations != nil:
+        base.Loop.DefaultMaxIterations = overlay.Loop.DefaultMaxIterations
+        provenance["loop.default_max_iterations"] = ConfigSource{tier, filePath, *overlay.Loop.DefaultMaxIterations}
+    if overlay.Loop.FailureThreshold != 0:
+        base.Loop.FailureThreshold = overlay.Loop.FailureThreshold
+        provenance["loop.failure_threshold"] = ConfigSource{tier, filePath, overlay.Loop.FailureThreshold}
+    if overlay.Loop.IterationTimeout != nil:
+        base.Loop.IterationTimeout = overlay.Loop.IterationTimeout
+        provenance["loop.iteration_timeout"] = ConfigSource{tier, filePath, *overlay.Loop.IterationTimeout}
+    if overlay.Loop.MaxOutputBuffer != 0:
+        base.Loop.MaxOutputBuffer = overlay.Loop.MaxOutputBuffer
+        provenance["loop.max_output_buffer"] = ConfigSource{tier, filePath, overlay.Loop.MaxOutputBuffer}
+    if overlay.Loop.LogLevel != "":
+        base.Loop.LogLevel = overlay.Loop.LogLevel
+        provenance["loop.log_level"] = ConfigSource{tier, filePath, overlay.Loop.LogLevel}
+    if overlay.Loop.ShowAIOutput:
+        base.Loop.ShowAIOutput = overlay.Loop.ShowAIOutput
+        provenance["loop.show_ai_output"] = ConfigSource{tier, filePath, overlay.Loop.ShowAIOutput}
+    if overlay.Loop.AICmd != "":
+        base.Loop.AICmd = overlay.Loop.AICmd
+        provenance["loop.ai_cmd"] = ConfigSource{tier, filePath, overlay.Loop.AICmd}
+    if overlay.Loop.AICmdAlias != "":
+        base.Loop.AICmdAlias = overlay.Loop.AICmdAlias
+        provenance["loop.ai_cmd_alias"] = ConfigSource{tier, filePath, overlay.Loop.AICmdAlias}
+
+    // Merge AI command aliases (overlay adds to or overrides individual aliases)
+    for name, command in overlay.AICmdAliases:
+        base.AICmdAliases[name] = command
+        provenance["ai_cmd_aliases." + name] = ConfigSource{tier, filePath, command}
+
+    // Merge procedures (field-level merge: overlay fields override built-in, unspecified fields inherit)
+    for name, proc in overlay.Procedures:
+        baseProcedure, exists = base.Procedures[name]
+        if !exists:
+            // New procedure not in base — must have all required fields specified
+            baseProcedure = Procedure{}
+        
+        // Merge fields: overlay non-empty/non-zero values override base, else inherit from base
+        if proc.Display != "":
+            baseProcedure.Display = proc.Display
+        if proc.Summary != "":
+            baseProcedure.Summary = proc.Summary
+        if proc.Description != "":
+            baseProcedure.Description = proc.Description
+        if len(proc.Observe) > 0:
+            baseProcedure.Observe = resolveFragmentPaths(dirname(filePath), proc.Observe)
+        if len(proc.Orient) > 0:
+            baseProcedure.Orient = resolveFragmentPaths(dirname(filePath), proc.Orient)
+        if len(proc.Decide) > 0:
+            baseProcedure.Decide = resolveFragmentPaths(dirname(filePath), proc.Decide)
+        if len(proc.Act) > 0:
+            baseProcedure.Act = resolveFragmentPaths(dirname(filePath), proc.Act)
+        if proc.IterationMode != "":
+            baseProcedure.IterationMode = proc.IterationMode
+        if proc.DefaultMaxIterations != nil:
+            baseProcedure.DefaultMaxIterations = proc.DefaultMaxIterations
+        if proc.IterationTimeout != nil:
+            baseProcedure.IterationTimeout = proc.IterationTimeout
+        if proc.MaxOutputBuffer != nil:
+            baseProcedure.MaxOutputBuffer = proc.MaxOutputBuffer
+        if proc.AICmd != "":
+            baseProcedure.AICmd = proc.AICmd
+        if proc.AICmdAlias != "":
+            baseProcedure.AICmdAlias = proc.AICmdAlias
+        
+        base.Procedures[name] = baseProcedure
+        provenance["procedures." + name] = ConfigSource{tier, filePath, baseProcedure}
+
+    return base
+
+function resolveFragmentPaths(configDir string, fragments []FragmentAction) -> []FragmentAction:
+    resolved = make([]FragmentAction, len(fragments))
+    for i, fragment in fragments:
+        resolved[i] = fragment
+        // Only resolve path if it's not a builtin: reference and path is specified
+        if fragment.Path != "" && !strings.HasPrefix(fragment.Path, "builtin:"):
+            resolved[i].Path = filepath.Join(configDir, fragment.Path)
+    return resolved
+```
+
+### Prompt File Loading
+
+Fragment loading is handled by the procedures system (see procedures.md). The configuration system resolves fragment paths during config merging:
+
+```
+function resolveFragmentPaths(configDir string, fragments []FragmentAction) -> []FragmentAction:
+    resolved = make([]FragmentAction, len(fragments))
+    for i, fragment in fragments:
+        resolved[i] = fragment
+        // Only resolve path if it's not a builtin: reference and path is specified
+        if fragment.Path != "" && !strings.HasPrefix(fragment.Path, "builtin:"):
+            resolved[i].Path = filepath.Join(configDir, fragment.Path)
+    return resolved
+```
+
+**Implementation notes:**
+- Built-in procedures use internal `builtin:` prefix (e.g., `builtin:fragments/observe/read_agents_md.md`) in code
+- The prefix is never exposed in config files or to users
+- Custom procedures use filesystem paths (e.g., `fragments/observe/custom.md`) resolved relative to config directory
+- To override a built-in fragment, specify the filesystem path in config (e.g., `path: fragments/observe/read_agents_md.md`)
+- Field-level merge preserves `builtin:` prefixed paths when not overridden
+- No naming conflicts possible — built-in paths always have prefix, user paths never do
+- Fragment arrays replace entire phase when specified (not merged element-by-element)
+
+### Config Validation
+
+```
+function validateConfig(config Config) -> error:
+    // Validate loop settings
+    if config.Loop.IterationMode != ModeMaxIterations && config.Loop.IterationMode != ModeUnlimited:
+        return error("loop.iteration_mode must be 'max-iterations' or 'unlimited', got '%s'", config.Loop.IterationMode)
+    if config.Loop.IterationMode == ModeMaxIterations && config.Loop.DefaultMaxIterations == nil:
+        return error("loop.default_max_iterations must be set when iteration_mode is 'max-iterations'")
+    if config.Loop.DefaultMaxIterations != nil && *config.Loop.DefaultMaxIterations < 1:
+        return error("loop.default_max_iterations must be >= 1 when set, got %d", *config.Loop.DefaultMaxIterations)
+    if config.Loop.FailureThreshold < 1:
+        return error("loop.failure_threshold must be >= 1, got %d", config.Loop.FailureThreshold)
+    if config.Loop.IterationTimeout != nil && *config.Loop.IterationTimeout < 1:
+        return error("loop.iteration_timeout must be >= 1 when set, got %d", *config.Loop.IterationTimeout)
+    if config.Loop.MaxOutputBuffer < 1024:
+        return error("loop.max_output_buffer must be >= 1024, got %d", config.Loop.MaxOutputBuffer)
+    if config.Loop.LogLevel != LogLevelDebug && config.Loop.LogLevel != LogLevelInfo && config.Loop.LogLevel != LogLevelWarn && config.Loop.LogLevel != LogLevelError:
+        return error("loop.log_level must be 'debug', 'info', 'warn', or 'error', got '%s'", config.Loop.LogLevel)
+    if config.Loop.LogTimestampFormat != TimestampTime && config.Loop.LogTimestampFormat != TimestampTimeMs && config.Loop.LogTimestampFormat != TimestampRelative && config.Loop.LogTimestampFormat != TimestampISO && config.Loop.LogTimestampFormat != TimestampNone:
+        return error("loop.log_timestamp_format must be 'time', 'time-ms', 'relative', 'iso', or 'none', got '%s'", config.Loop.LogTimestampFormat)
+
+    // Validate procedures
+    for name, proc in config.Procedures:
+        if len(proc.Observe) == 0:
+            return error("procedure %s: observe is required (must have at least one fragment)", name)
+        if len(proc.Orient) == 0:
+            return error("procedure %s: orient is required (must have at least one fragment)", name)
+        if len(proc.Decide) == 0:
+            return error("procedure %s: decide is required (must have at least one fragment)", name)
+        if len(proc.Act) == 0:
+            return error("procedure %s: act is required (must have at least one fragment)", name)
+        
+        // Validate each fragment in all phases
+        for _, fragment in append(append(append(proc.Observe, proc.Orient...), proc.Decide...), proc.Act...):
+            hasContent = fragment.Content != ""
+            hasPath = fragment.Path != ""
+            if hasContent && hasPath:
+                return error("procedure %s: fragment cannot specify both content and path", name)
+            if !hasContent && !hasPath:
+                return error("procedure %s: fragment must specify either content or path", name)
+        
+        if proc.IterationMode != "" && proc.IterationMode != ModeMaxIterations && proc.IterationMode != ModeUnlimited:
+            return error("procedure %s: iteration_mode must be '', 'max-iterations', or 'unlimited', got '%s'", name, proc.IterationMode)
+        if proc.DefaultMaxIterations != nil && *proc.DefaultMaxIterations < 1:
+            return error("procedure %s: default_max_iterations must be >= 1 when set, got %d", name, *proc.DefaultMaxIterations)
+        if proc.IterationTimeout != nil && *proc.IterationTimeout < 1:
+            return error("procedure %s: iteration_timeout must be >= 1 when set, got %d", name, *proc.IterationTimeout)
+        if proc.MaxOutputBuffer != nil && *proc.MaxOutputBuffer < 1024:
+            return error("procedure %s: max_output_buffer must be >= 1024 when set, got %d", name, *proc.MaxOutputBuffer)
+
+    // Validate AI command aliases (values must be non-empty strings)
+    for name, command in config.AICmdAliases:
+        if command == "":
+            return error("ai_cmd_aliases.%s: command must be non-empty", name)
+
+    // Validate alias references exist in merged alias map
+    if config.Loop.AICmdAlias != "":
+        if _, exists = config.AICmdAliases[config.Loop.AICmdAlias]; !exists:
+            return error("loop.ai_cmd_alias references unknown alias: %s\nAvailable: %v",
+                config.Loop.AICmdAlias, keys(config.AICmdAliases))
+    for name, proc in config.Procedures:
+        if proc.AICmdAlias != "":
+            if _, exists = config.AICmdAliases[proc.AICmdAlias]; !exists:
+                return error("procedure %s: ai_cmd_alias references unknown alias: %s\nAvailable: %v",
+                    name, proc.AICmdAlias, keys(config.AICmdAliases))
+
+    return nil
+```
+
+### AI Command Resolution
+
+The AI command is resolved from multiple sources with precedence. This happens after config loading, using the merged config, procedure name, and CLI flags:
+
+```
+function ResolveAICommand(config Config, procedureName string, cliFlags CLIFlags) -> (string, ConfigSource):
+    // 1. --ai-cmd flag (direct command, highest precedence)
+    if cliFlags.AICmd != "":
+        return cliFlags.AICmd, ConfigSource{TierCLIFlag, "", cliFlags.AICmd}
+
+    // 2. --ai-cmd-alias flag (alias name, resolved from merged config)
+    if cliFlags.AICmdAlias != "":
+        return resolveAlias(config, cliFlags.AICmdAlias, "flag --ai-cmd-alias")
+
+    // 3. Procedure-level ai_cmd (direct command)
+    proc, exists = config.Procedures[procedureName]
+    if exists && proc.AICmd != "":
+        return proc.AICmd, config.Provenance["procedures." + procedureName]
+
+    // 4. Procedure-level ai_cmd_alias
+    if exists && proc.AICmdAlias != "":
+        return resolveAlias(config, proc.AICmdAlias, "procedure " + procedureName)
+
+    // 5. loop.ai_cmd (direct command, already merged from config tiers + env vars)
+    if config.Loop.AICmd != "":
+        return config.Loop.AICmd, config.Provenance["loop.ai_cmd"]
+
+    // 6. loop.ai_cmd_alias (already merged from config tiers + env vars)
+    if config.Loop.AICmdAlias != "":
+        return resolveAlias(config, config.Loop.AICmdAlias, "loop.ai_cmd_alias")
+
+    // 7. No AI command configured — error with guidance
+    return error("no AI command configured\n\nSet one via:\n" +
+        "  --ai-cmd \"your-command\"           CLI flag (direct command)\n" +
+        "  --ai-cmd-alias <name>             CLI flag (alias from config)\n" +
+        "  ROODA_LOOP_AI_CMD=your-command    Environment variable\n" +
+        "  ROODA_LOOP_AI_CMD_ALIAS=<name>    Environment variable\n" +
+        "  loop.ai_cmd or loop.ai_cmd_alias  rooda-config.yml\n" +
+        "\nAvailable aliases: %v", keys(config.AICmdAliases))
+
+function resolveAlias(config Config, aliasName string, source string) -> (string, ConfigSource):
+    command, exists = config.AICmdAliases[aliasName]
+    if !exists:
+        return error("unknown AI command alias: %s (from %s)\nAvailable: %v", aliasName, source, keys(config.AICmdAliases))
+    return command, ConfigSource{source, "", command}
+```
+
+**Precedence summary (consistent with max iterations):**
+1. `--ai-cmd` (CLI flag, direct command)
+2. `--ai-cmd-alias` (CLI flag, alias)
+3. Procedure `ai_cmd` (config, direct command)
+4. Procedure `ai_cmd_alias` (config, alias)
+5. `loop.ai_cmd` (merged: env var > workspace > global > built-in)
+6. `loop.ai_cmd_alias` (merged: env var > workspace > global > built-in)
+7. Error — no AI command configured
+
+Note: `ROODA_LOOP_AI_CMD` and `ROODA_LOOP_AI_CMD_ALIAS` environment variables set `loop.ai_cmd` and `loop.ai_cmd_alias` respectively (same as how `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` sets `loop.default_max_iterations`). Procedure-level settings still override them.
+
+### Max Iterations Resolution
+
+```
+function ResolveMaxIterations(config Config, procedureName string, cliFlags CLIFlags) -> (*int, ConfigSource):
+    // 1. --max-iterations N CLI flag (highest precedence, must be >= 1)
+    if cliFlags.MaxIterations != nil:
+        return cliFlags.MaxIterations, ConfigSource{TierCLIFlag, "", *cliFlags.MaxIterations}
+
+    // 2. --unlimited CLI flag
+    if cliFlags.Unlimited:
+        return nil, ConfigSource{TierCLIFlag, "", "unlimited"}
+
+    // 3. Procedure-level iteration_mode and default_max_iterations
+    proc, exists = config.Procedures[procedureName]
+    if exists:
+        if proc.IterationMode == ModeUnlimited:
+            return nil, config.Provenance["procedures." + procedureName]
+        if proc.IterationMode == ModeMaxIterations && proc.DefaultMaxIterations != nil:
+            return proc.DefaultMaxIterations, config.Provenance["procedures." + procedureName]
+        // proc.IterationMode == ModeMaxIterations && proc.DefaultMaxIterations == nil:
+        //   mode set but count inherits from loop — fall through
+        // proc.IterationMode == "": inherit everything from loop — fall through
+        if proc.IterationMode == "" && proc.DefaultMaxIterations != nil:
+            // No mode override but explicit count — use count with loop's mode
+            if config.Loop.IterationMode == ModeUnlimited:
+                return nil, config.Provenance["loop.iteration_mode"]  // mode governs
+            return proc.DefaultMaxIterations, config.Provenance["procedures." + procedureName]
+
+    // 4. Loop-level iteration_mode and default_max_iterations (already merged from tiers)
+    if config.Loop.IterationMode == ModeUnlimited:
+        return nil, config.Provenance["loop.iteration_mode"]
+    return config.Loop.DefaultMaxIterations, config.Provenance["loop.default_max_iterations"]
+```
+
+## Edge Cases
+
+| Condition | Expected Behavior |
+|-----------|-------------------|
+| No config files exist, no env vars, no AI cmd flag | Error: "no AI command configured" with guidance on all ways to set one |
+| No config files exist, AI command provided via flag | Works using built-in defaults for procedures and loop settings |
+| Global config exists, no workspace config | Global config merges with built-in defaults |
+| Both global and workspace config exist | Workspace overrides global for overlapping values; non-overlapping values from both are kept |
+| Workspace config defines procedure that overrides a built-in | Workspace procedure fields override the built-in; unspecified fields inherit from built-in (field-level merge) |
+| Workspace config defines new procedure not in built-ins | New procedure added alongside built-in procedures |
+| Global config defines procedure, workspace does not | Global procedure is available alongside built-in procedures |
+| Environment variable `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` set to non-integer | Error: "ROODA_LOOP_DEFAULT_MAX_ITERATIONS must be an integer, got 'abc'" |
+| Environment variable `ROODA_LOOP_DEFAULT_MAX_ITERATIONS=0` | Error: "ROODA_LOOP_DEFAULT_MAX_ITERATIONS must be >= 1, got 0" |
+| `ROODA_LOOP_ITERATION_MODE=invalid-value` | Error at config validation: "loop.iteration_mode must be 'max-iterations' or 'unlimited'" |
+| `ROODA_LOOP_LOG_TIMESTAMP_FORMAT=invalid-value` | Error at config validation: "loop.log_timestamp_format must be 'time', 'time-ms', 'relative', 'iso', or 'none'" |
+| Config file has invalid YAML | Error with file path and parse error details |
+| Config file has unknown top-level key | Warning logged, key ignored (forward compatibility) |
+| Config file has unknown key inside `procedures` | Warning logged, key ignored |
+| Procedure references prompt file that doesn't exist | Error at validation time: "procedure 'X': fragment file not found: path/to/file.md" |
+| Built-in procedure prompt file (embedded) | Loaded from Go binary via `go:embed` using internal `builtin:` prefix |
+| Workspace procedure prompt file path | Resolved relative to workspace config file directory |
+| Global procedure prompt file path | Resolved relative to global config file directory |
+| User creates `./fragments/observe/read_agents_md.md` file | No conflict — built-in uses `builtin:fragments/observe/read_agents_md.md`, user file ignored unless explicitly referenced in config |
+| Workspace config overrides built-in prompt path | User specifies `observe: [{path: fragments/observe/read_agents_md.md}]` → loads from filesystem, overriding built-in |
+| Workspace config at `./rooda-config.yml`, invoked from subdirectory | Fragment paths resolved relative to `./` (workspace config directory), not current working directory |
+| Fragment has both content and path | Error at config load: "fragment cannot specify both content and path" |
+| Fragment has neither content nor path | Error at config load: "fragment must specify either content or path" |
+| Empty fragment array for OODA phase | Error at validation: "procedure X: observe is required (must have at least one fragment)" |
+| Fragment with inline content | Content used directly, no file loading |
+| Fragment with parameters but no template syntax | Parameters ignored, content returned as-is |
+| Workspace overrides procedure with different fragment count | Entire fragment array replaced (not merged element-by-element) |
+| Global config directory doesn't exist | Silently skipped (no global config) |
+| `ROODA_CONFIG_HOME` set to non-existent directory | Silently skipped (same as missing directory) |
+| `XDG_CONFIG_HOME` set, `ROODA_CONFIG_HOME` not set | Global config at `$XDG_CONFIG_HOME/rooda/rooda-config.yml` |
+| Both `ROODA_CONFIG_HOME` and `XDG_CONFIG_HOME` set | `ROODA_CONFIG_HOME` wins (more specific override) |
+| Config file is empty | Valid — all built-in defaults apply |
+| Config file has only `ai_cmd_aliases` section | Valid — procedures and loop use built-in defaults |
+| Two config files define same AI command alias | Workspace wins over global, both override built-in |
+| `ROODA_LOOP_AI_CMD_ALIAS` references non-existent alias | Error at config validation: "loop.ai_cmd_alias references unknown alias: X" |
+| Both `ROODA_LOOP_AI_CMD` and `ROODA_LOOP_AI_CMD_ALIAS` set | Both set on `config.Loop`; `loop.ai_cmd` wins over `loop.ai_cmd_alias` during resolution |
+| `loop.ai_cmd` and `loop.ai_cmd_alias` both set | `loop.ai_cmd` wins (direct command overrides alias at same level) |
+| Procedure `ai_cmd_alias` set, `loop.ai_cmd_alias` also set | Procedure-level wins for that procedure; other procedures use loop-level |
+| Procedure `ai_cmd_alias` references non-existent alias | Error at config validation: "procedure X: ai_cmd_alias references unknown alias: Y" |
+| Global config sets `loop.ai_cmd_alias`, workspace does not | Global loop-level alias is used (merged through config tiers) |
+| Workspace sets `loop.ai_cmd_alias`, overriding global | Workspace wins per standard tier precedence |
+| `ROODA_LOOP_AI_CMD` set, procedure has `ai_cmd_alias` | Procedure-level wins — env vars set loop-level defaults, procedure overrides loop (same as max iterations) |
+| `loop.failure_threshold: 0` in config | Error: "loop.failure_threshold must be >= 1" |
+| `loop.default_max_iterations: 0` in config | Error: "loop.default_max_iterations must be >= 1 when set, got 0". Use omission (not specified) to inherit from parent tier. |
+| Procedure `default_max_iterations: 0` in config | Error: "procedure X: default_max_iterations must be >= 1 when set, got 0". Use omission (not specified) to inherit from loop. |
+| `iteration_mode: unlimited` at global, `default_max_iterations: 10` at workspace without mode | Unlimited — mode governs. Workspace only set count, didn't override mode, so global mode applies. |
+| `iteration_mode: invalid-value` in config | Error at validation: "loop.iteration_mode must be 'max-iterations' or 'unlimited'" |
+| Procedure `iteration_mode: unlimited` with `default_max_iterations: 5` | Unlimited for that procedure — mode governs, count ignored |
+| Procedure `iteration_mode: max-iterations` without `default_max_iterations` | Valid — count inherits from `loop.default_max_iterations` |
+| Workspace config and `--config` flag both present | `--config` flag specifies which config file to load as workspace config |
+
+## Dependencies
+
+- **Go standard library** — `os`, `path/filepath`, `encoding/json` for file operations and path resolution
+- **Go YAML library** — `gopkg.in/yaml.v3` or `github.com/goccy/go-yaml` for YAML parsing (replaces yq dependency)
+- **go:embed** — For embedding built-in default prompts and config in the binary
+- **cli-interface** — Provides CLI flags that override config values
+- **prompt-composition** — Consumes procedure definitions to assemble prompts
+- **ai-cli-integration** — Consumes AI command aliases and resolved AI command
+- **iteration-loop** — Consumes loop settings and resolved max iterations
+
+## Implementation Mapping
+
+**Source files:**
+- `internal/config/config.go` — Core config types, loading, and merging logic
+- `internal/config/defaults.go` — Built-in default configuration and embedded prompts
+- `internal/config/validate.go` — Config validation
+- `internal/config/provenance.go` — Provenance tracking
+- `internal/config/env.go` — Environment variable resolution
+- `cmd/rooda/main.go` — CLI flag parsing, calls `LoadConfig`
+
+**Related specs:**
+- `iteration-loop.md` — Consumes `LoopConfig`, max iterations resolution, and AI command resolution
+- `prompt-composition.md` — Consumes `Procedure` definitions to assemble prompts
+- `ai-cli-integration.md` — Consumes `AICmdAliases` and resolved AI command
+- `cli-interface.md` — Defines CLI flags that override config values
+- `procedures.md` — Defines the 16 built-in procedures that ship as defaults
+
+## Examples
+
+### Example 1: Minimal Startup
+
+**Scenario:** Developer installs rooda and runs it with only an AI command specified.
+
+**Input:**
+```bash
+rooda build --ai-cmd-alias claude
+```
+
+**Config resolution:**
+```
+loop.iteration_mode: max-iterations   (built-in)
+loop.default_max_iterations: 5        (built-in)
+loop.failure_threshold: 3             (built-in)
+procedure: build                      (built-in, embedded prompts)
+ai_cmd: claude-cli --no-interactive (cli: --ai-cmd-alias "claude" → built-in alias)
+```
+
+**Verification:**
+- No config files needed
+- Built-in `build` procedure uses embedded prompt files
+- Default mode `max-iterations` with 5 iterations, 3 failure threshold
+- AI command must be explicitly chosen — no built-in default command
+
+### Example 1b: No AI Command Configured
+
+**Scenario:** Developer runs rooda without configuring an AI command.
+
+**Input:**
+```bash
+rooda build
+```
+
+**Expected Output:**
+```
+Error: no AI command configured
+
+Set one via:
+  --ai-cmd "your-command"           CLI flag (direct command)
+  --ai-cmd-alias <name>             CLI flag (alias from config)
+  ROODA_LOOP_AI_CMD=your-command    Environment variable
+  ROODA_LOOP_AI_CMD_ALIAS=<name>    Environment variable
+  loop.ai_cmd or loop.ai_cmd_alias  rooda-config.yml
+
+Available aliases: claude, copilot, cursor-agent, kiro-cli
+```
+
+**Verification:**
+- Clear error with all configuration options listed
+- Available built-in aliases shown to guide the user
+- No silent fallback to a default command
+
+### Example 2: Workspace Config Override
+
+**Scenario:** Team wants to use claude by default and customize build procedure with additional fragments.
+
+**Workspace config (`./rooda-config.yml`):**
+```yaml
+loop:
+  ai_cmd_alias: claude
+
+procedures:
+  build:
+    observe:
+      - path: "builtin:fragments/observe/read_agents_md.md"
+      - path: "builtin:fragments/observe/query_work_tracking.md"
+      - content: "Also check for any blocking dependencies."
+    default_max_iterations: 10
+```
+
+**Input:**
+```bash
+rooda build
+```
+
+**Config resolution:**
+```
+loop.default_max_iterations: 5        (built-in)
+loop.failure_threshold: 3             (built-in)
+loop.ai_cmd_alias: claude             (workspace: ./rooda-config.yml)
+procedure: build
+  observe: [read_agents_md, query_work_tracking, inline content]  (workspace: ./rooda-config.yml)
+  orient/decide/act:                  (built-in, embedded — not overridden)
+  default_max_iterations: 10          (workspace: ./rooda-config.yml)
+ai_cmd: claude-cli --no-interactive (loop.ai_cmd_alias → built-in alias)
+```
+
+**Verification:**
+- Build procedure observe phase uses custom fragment array (replaces built-in observe fragments entirely)
+- Other phases (orient, decide, act) still use built-in embedded defaults
+- Iteration limit increased to 10
+- Claude CLI used via `loop.ai_cmd_alias` — no flag needed
+- Provenance shows `default_max_iterations` came from workspace config
+
+### Example 3: Three-Tier Merge with Procedure-Level AI Command
+
+**Scenario:** Developer has global preferences, project uses a default AI command, and one procedure uses a different model.
+
+**Global config (`$XDG_CONFIG_HOME/rooda/rooda-config.yml` or `~/.config/rooda/rooda-config.yml`):**
+```yaml
+loop:
+  default_max_iterations: 8
+  ai_cmd_alias: claude
+
+ai_cmd_aliases:
+  fast: "kiro-cli chat --no-interactive --trust-all-tools --model claude-3-5-haiku-20241022"
+```
+
+**Workspace config (`./rooda-config.yml`):**
+```yaml
+loop:
+  failure_threshold: 5
+
+procedures:
+  my-lint:
+    observe:
+      - path: prompts/observe_lint.md
+    orient:
+      - path: prompts/orient_lint.md
+    decide:
+      - path: prompts/decide_lint.md
+    act:
+      - path: prompts/act_lint.md
+    default_max_iterations: 1
+    ai_cmd_alias: fast               # Lint is cheap — use a faster model
+```
+
+**Input:**
+```bash
+rooda my-lint
+```
+
+**Config resolution:**
+```
+loop.default_max_iterations: 8        (global: ~/.config/rooda/rooda-config.yml)
+loop.failure_threshold: 5             (workspace: ./rooda-config.yml)
+loop.ai_cmd_alias: claude             (global: ~/.config/rooda/rooda-config.yml)
+ai_cmd_aliases.fast: kiro-cli ... haiku (global: ~/.config/rooda/rooda-config.yml)
+ai_cmd_aliases.kiro-cli: kiro-cli ...  (built-in)
+ai_cmd_aliases.claude: claude-cli ...  (built-in)
+ai_cmd_aliases.copilot: github-copilot-cli (built-in)
+ai_cmd_aliases.cursor-agent: cursor-agent ... (built-in)
+procedure: my-lint                    (workspace: ./rooda-config.yml)
+  default_max_iterations: 1           (workspace: ./rooda-config.yml)
+  ai_cmd_alias: fast                  (workspace: ./rooda-config.yml)
+ai_cmd: kiro-cli ... haiku   (procedure my-lint.ai_cmd_alias "fast" → global alias)
+```
+
+**Verification:**
+- `default_max_iterations` from global (8), but overridden by procedure-level (1) for `my-lint`
+- `failure_threshold` from workspace (5) overrides global which used built-in default
+- `loop.ai_cmd_alias: claude` from global provides the default, but `my-lint` overrides with `fast`
+- Running `rooda build` would use `claude` (from `loop.ai_cmd_alias`), since `build` has no procedure-level override
+- All 16 built-in procedures still available alongside custom `my-lint`
+- Custom procedure prompt paths resolved relative to workspace config directory
+
+### Example 4: Environment Variable Override
+
+**Input:**
+```bash
+export ROODA_LOOP_AI_CMD="aider --yes"
+export ROODA_LOOP_DEFAULT_MAX_ITERATIONS=3
+rooda build
+```
+
+**Config resolution:**
+```
+loop.default_max_iterations: 3        (env: ROODA_LOOP_DEFAULT_MAX_ITERATIONS)
+loop.failure_threshold: 3             (built-in)
+loop.ai_cmd: aider --yes             (env: ROODA_LOOP_AI_CMD)
+procedure: build                      (built-in, embedded prompts)
+ai_cmd: aider --yes          (loop.ai_cmd)
+```
+
+**Verification:**
+- Environment variables override config file values at the loop level
+- `ROODA_LOOP_AI_CMD` sets `loop.ai_cmd` directly (not an alias name)
+- `ROODA_LOOP_DEFAULT_MAX_ITERATIONS` overrides `loop.default_max_iterations`
+- Procedure-level `ai_cmd`/`ai_cmd_alias` or `default_max_iterations` would still override these env vars
+- Built-in procedure still used
+
+### Example 5: Log Timestamp Format Configuration
+
+**Input:**
+```bash
+export ROODA_LOOP_LOG_TIMESTAMP_FORMAT=relative
+rooda build --ai-cmd "kiro-cli chat"
+```
+
+**Config resolution:**
+```
+loop.log_timestamp_format: relative   (env: ROODA_LOOP_LOG_TIMESTAMP_FORMAT)
+loop.ai_cmd: kiro-cli chat           (cli: --ai-cmd)
+```
+
+**Expected log output:**
+```
+[+0.000s] INFO Starting loop procedure=build max_iterations=5
+[+0.100s] INFO Starting iteration 1/5 procedure=build
+[+15.200s] INFO Completed iteration 1/5 elapsed=15.1s status=success
+```
+
+**Verification:**
+- `ROODA_LOOP_LOG_TIMESTAMP_FORMAT` sets `loop.log_timestamp_format`
+- Timestamps show relative time since loop start
+- Valid formats: `time`, `time-ms`, `relative`, `iso`, `none`
+
+### Example 6: CLI Flag Takes Precedence Over Everything
+
+**Input:**
+```bash
+export ROODA_LOOP_DEFAULT_MAX_ITERATIONS=3
+rooda build --max-iterations 1 --ai-cmd "claude-cli --no-interactive"
+```
+
+**Config resolution:**
+```
+max_iterations: 1                     (cli: --max-iterations)
+ai_cmd: claude-cli --no-interactive (cli: --ai-cmd)
+```
+
+**Verification:**
+- CLI `--max-iterations 1` overrides everything (env var, procedure, loop config)
+- CLI `--ai-cmd` overrides everything (env var, procedure, loop config)
+- CLI flags have highest precedence
+
+### Example 7: Provenance Display (Verbose)
+
+**Input:**
+```bash
+rooda build --ai-cmd-alias claude --verbose
+```
+
+**Expected Output (provenance section at startup):**
+```
+[VERBOSE] Configuration provenance:
+  loop.iteration_mode: max-iterations (built-in)
+  loop.default_max_iterations: 5 (built-in)
+  loop.failure_threshold: 3 (built-in)
+  procedure: build (built-in)
+  ai_cmd: claude-cli --no-interactive (cli: --ai-cmd-alias "claude" → built-in alias)
+```
+
+**Verification:**
+- Every resolved setting shows its source tier
+- Only shown with `--verbose` flag
+- Helps diagnose "where did this value come from?" questions
+
+### Example 8: Invalid Config File
+
+**Workspace config (`./rooda-config.yml`):**
+```yaml
+loop:
+  default_max_iterations: abc  # Not an integer
+```
+
+**Input:**
+```bash
+rooda build
+```
+
+**Expected Output:**
+```
+Error: workspace config ./rooda-config.yml: line 2: cannot unmarshal "abc" into int for field default_max_iterations
+```
+
+**Verification:**
+- Clear error with file path and line number
+- Error identifies the field and type mismatch
+
+### Example 9: Custom Procedure with Filesystem Prompts
+
+**Workspace config (`./rooda-config.yml`):**
+```yaml
+procedures:
+  security-audit:
+    display: "Security Audit"
+    summary: "Audit codebase for security vulnerabilities"
+    observe:
+      - path: .rooda/fragments/observe_security.md
+      - path: .rooda/fragments/observe_dependencies.md
+    orient:
+      - path: .rooda/fragments/orient_security.md
+    decide:
+      - path: .rooda/fragments/decide_security.md
+    act:
+      - path: .rooda/fragments/act_security.md
+    default_max_iterations: 1
+```
+
+**Input:**
+```bash
+rooda security-audit
+```
+
+**Verification:**
+- Custom procedure loads from workspace config
+- Fragment files resolved relative to `./` (workspace config directory)
+- Multiple fragments in observe phase concatenated with double newlines
+- Runs alongside all 16 built-in procedures
+- If fragment files don't exist, clear error at startup
+
+### Example 9: `--config` Flag Override
+
+**Input:**
+```bash
+rooda build --config /path/to/team-config.yml
+```
+
+**Config resolution:**
+```
+# Built-in defaults loaded first
+# Global config at <config_dir>/rooda-config.yml loaded if present
+# /path/to/team-config.yml loaded as workspace config (instead of ./rooda-config.yml)
+```
+
+**Verification:**
+- `--config` flag replaces the workspace config file path
+- Global config still loads from resolved global config directory
+- Prompt paths in team config resolved relative to `/path/to/`
+
+### Example 10: Unlimited Iterations via Config
+
+**Scenario:** Team wants the build procedure to run without iteration limits, relying on `<promise>SUCCESS</promise>` signals or failure threshold to terminate.
+
+**Workspace config (`./rooda-config.yml`):**
+```yaml
+loop:
+  ai_cmd_alias: claude
+
+procedures:
+  build:
+    iteration_mode: unlimited
+```
+
+**Input:**
+```bash
+rooda build
+```
+
+**Config resolution:**
+```
+loop.iteration_mode: max-iterations   (built-in)
+loop.default_max_iterations: 5        (built-in)
+loop.failure_threshold: 3             (built-in)
+loop.ai_cmd_alias: claude             (workspace: ./rooda-config.yml)
+procedure: build
+  iteration_mode: unlimited           (workspace: ./rooda-config.yml)
+  observe/orient/decide/act:          (built-in, embedded — not overridden)
+max_iterations: nil                   (procedure build.iteration_mode → unlimited)
+ai_cmd: claude-cli --no-interactive (loop.ai_cmd_alias → built-in alias)
+```
+
+**Verification:**
+- Build procedure runs unlimited despite loop-level `max-iterations` mode — procedure `iteration_mode` overrides loop
+- `loop.default_max_iterations: 5` is ignored for build (mode is unlimited)
+- Other procedures without `iteration_mode` override still use loop defaults (max-iterations, 5)
+- Loop terminates on `<promise>SUCCESS</promise>`, failure threshold (3), or Ctrl+C
+
+## Notes
+
+**Design Rationale — Three-Tier System:**
+
+The three-tier system (built-in > global > workspace) mirrors established tooling conventions (Git, npm, EditorConfig). Each tier serves a distinct use case:
+- **Built-in defaults** — Zero-config startup, always available, ships with the binary
+- **Global config** — Personal preferences that follow the developer across projects (preferred AI command, iteration limits). Located via `ROODA_CONFIG_HOME` > `$XDG_CONFIG_HOME/rooda/` > `~/.config/rooda/`, following the [XDG Base Directory Specification](https://specifications.freedesktop.org/basedir-spec/latest/)
+- **Workspace config** — Project-specific settings committed to the repo (custom procedures, team aliases)
+
+This separation means a developer can set their preferred AI command globally, while each project can define custom procedures — without conflict.
+
+**Why Merge Instead of Replace:**
+
+Config merging (additive) instead of replacement (destructive) is critical for a good experience. If a workspace config defining one custom procedure replaced all built-in procedures, the developer would lose access to `build`, `bootstrap`, etc. Merging means workspace configs only need to specify what's different.
+
+**Provenance Tracking:**
+
+Provenance answers the question "where did this value come from?" — essential for debugging configuration issues. When a developer runs `rooda build --dry-run` and sees unexpected settings, provenance immediately shows which file or environment variable set each value.
+
+**Environment Variable Convention:**
+
+The `ROODA_` prefix follows Go CLI conventions and avoids namespace collisions. Only a small set of environment variables is supported — complex configuration belongs in YAML files. `ROODA_CONFIG_HOME` provides a rooda-specific override for the global config directory, useful for CI/CD environments or when XDG isn't appropriate. When not set, the standard `XDG_CONFIG_HOME` is respected, falling back to `~/.config/` — the conventional default for CLI tools across Linux and macOS.
+
+**Procedure-Level Environment Variables:**
+
+Procedure-specific settings (e.g., `iteration_mode`, `ai_cmd_alias`) cannot be set via environment variables. Use CLI flags (`--unlimited`, `--ai-cmd`) or config files (global or workspace) instead. This keeps the environment variable surface area minimal and encourages using config files for procedure-specific customization.
+
+**Path Resolution:**
+
+Prompt file paths in config files are resolved relative to the config file's directory, not the current working directory. This ensures a workspace config committed to a repo works regardless of where `rooda` is invoked from within the project. Built-in procedure fragment files are embedded in the binary via `go:embed` and don't need filesystem resolution. Fragment arrays replace entire OODA phase arrays when specified (not merged element-by-element).
+
+**Forward Compatibility:**
+
+Unknown keys produce warnings, not errors. This allows newer config files to work with older rooda versions — new keys are simply ignored. This is important for teams where not everyone upgrades simultaneously.
+
+**Migration from v1:**
+
+v1 used a single `rooda-config.yml` file with yq for YAML parsing. The v2 workspace config file uses the same filename and a compatible schema, so existing v1 config files work as v2 workspace configs with minimal changes:
+- Rename `default_iterations` to `default_max_iterations`
+- Replace `default_iterations: 0` (unlimited) with `iteration_mode: unlimited` — v2 no longer uses 0 to mean unlimited; `default_max_iterations` must be >= 1 when set

@@ -1,499 +1,538 @@
 # CLI Interface
 
 ## Job to be Done
-Enable users to invoke OODA loop procedures through a command-line interface, supporting both named procedures from configuration and explicit OODA phase file specification.
+
+Expose all framework capabilities through a CLI that supports named procedures, explicit OODA phase flags, global options, and helpful error messages.
+
+The developer wants to invoke rooda procedures with minimal typing, override configuration at runtime, get clear feedback when something goes wrong, and discover available procedures and flags through help text — all without reading documentation.
 
 ## Activities
-1. Parse command-line arguments to determine invocation mode
-2. Resolve procedure configuration or explicit OODA phase files
-3. Validate all required arguments and file paths
-4. Display execution parameters before starting loop
-5. Execute iteration loop with configured parameters
+
+1. Parse command-line arguments into procedure name, flags, and context
+2. Validate procedure name exists in merged configuration
+3. Resolve flag values and merge with configuration (flags have highest precedence)
+4. Display help text when requested or when invoked incorrectly
+5. Execute the specified procedure with resolved configuration
+6. Report errors with actionable messages and exit codes
 
 ## Acceptance Criteria
-- [x] Procedure-based invocation loads OODA files from config
-- [x] Explicit flag invocation accepts four OODA phase files directly
-- [x] Explicit flags override config-based procedure settings
-- [x] --ai-cli flag overrides all other AI CLI settings
-- [x] --ai-tool flag resolves preset to command (hardcoded or config)
-- [x] Precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config ai_cli_command > default
-- [x] Config file resolves relative to script location
-- [x] Missing files produce clear error messages
-- [x] Invalid arguments produce usage help
-- [x] Max iterations can be specified or defaults to procedure config
-- [x] --version flag shows version number and exits
-- [x] --help flag shows usage help and exits
-- [x] --verbose flag shows detailed execution including full prompt
-- [x] --quiet flag suppresses non-error output
-- [x] Short flags work identically to long flags (-o, -r, -d, -a, -m, -c, -h)
+
+- [ ] `rooda <procedure>` invokes the named procedure with default configuration
+- [ ] `rooda --help` displays usage summary, global flags, and available procedures
+- [ ] `rooda <procedure> --help` displays procedure-specific help (description, OODA phases, iteration limits)
+- [ ] `rooda --list-procedures` lists all available procedures (built-in and custom) with one-line descriptions
+- [ ] `rooda --version` displays version number and build information
+- [ ] Unknown procedure name produces error: "Unknown procedure '<name>'. Run 'rooda --list-procedures' to see available procedures."
+- [ ] `--max-iterations <n>` overrides default max iterations for the procedure (must be >= 1)
+- [ ] `--unlimited` sets iteration mode to unlimited (overrides `--max-iterations`)
+- [ ] `--dry-run` displays assembled prompt without executing AI CLI
+- [ ] `--dry-run` exits with code 0 if validation passes (config valid, prompts exist, AI command found)
+- [ ] `--dry-run` exits with code 1 if validation fails (invalid flags, unknown procedure, missing AI command, invalid config, missing prompt files)
+- [ ] `--context <value>` accepts file path or inline text (file existence check determines interpretation)
+- [ ] Multiple `--context` flags accumulate (all values processed in order)
+- [ ] Context file existence heuristic: if value exists as file, read it; otherwise treat as inline content
+- [ ] `--ai-cmd <command>` overrides AI command for this execution (direct command string)
+- [ ] `--ai-cmd-alias <alias>` overrides AI command using a named alias
+- [ ] `--ai-cmd` takes precedence over `--ai-cmd-alias` when both provided
+- [ ] `--verbose` enables verbose output (sets show_ai_output=true and log_level=debug)
+- [ ] `--quiet` suppresses all non-error output
+- [ ] `--log-level <level>` sets log level (debug, info, warn, error)
+- [ ] `--config <path>` specifies alternate workspace config file path
+- [ ] Fragment values in CLI overrides (--observe, --orient, --decide, --act) resolve relative to --config file's directory if --config provided, else relative to ./rooda-config.yml directory
+- [ ] Multiple `--observe` flags accumulate into fragment array
+- [ ] Multiple `--orient` flags accumulate into fragment array
+- [ ] Multiple `--decide` flags accumulate into fragment array
+- [ ] Multiple `--act` flags accumulate into fragment array
+- [ ] OODA phase flags use file existence heuristic (file path vs inline content)
+- [ ] Providing any OODA phase flag replaces entire phase array (not appended to config)
+- [ ] Fragment order preserved: processed left-to-right as specified on CLI
+- [ ] OODA phase override fragments validated at config load time (fail fast before execution)
+- [ ] OODA phase validation skipped for --list-procedures and --version (info commands only)
+- [ ] `--verbose` and `--quiet` are mutually exclusive (error if both provided)
+- [ ] `--max-iterations` and `--unlimited` are mutually exclusive (error if both provided)
+- [ ] Invalid flag values produce clear error messages with expected format
+- [ ] Missing required AI command produces error listing all ways to configure it
+- [ ] Exit code 0 on success, non-zero on failure
+- [ ] Exit code 1 for user errors (invalid flags, unknown procedure)
+- [ ] Exit code 2 for configuration errors (invalid config file, missing AI command)
+- [ ] Exit code 3 for execution errors (AI CLI failure, iteration timeout)
+- [ ] Flag parsing follows POSIX conventions (supports `--flag=value` and `--flag value`)
+- [ ] Short flags supported for common options: `-v` (verbose), `-q` (quiet), `-n` (max-iterations), `-u` (unlimited), `-d` (dry-run), `-c` (context)
+- [ ] Help text includes examples for common use cases
+- [ ] Help text groups flags by category (Loop Control, AI Command, Prompt Overrides, Output Control, Configuration)
 
 ## Data Structures
 
-### Command-Line Arguments
-```bash
-# Procedure-based invocation
-./rooda.sh <procedure> [--config <file>] [--max-iterations N] [--ai-cli <command>] [--ai-tool <preset>]
+### CLIArgs
 
-# Explicit flag invocation
-./rooda.sh --observe <file> --orient <file> --decide <file> --act <file> [--max-iterations N] [--ai-cli <command>] [--ai-tool <preset>]
+Parsed command-line arguments before merging with configuration.
+
+```go
+type CLIArgs struct {
+    ProcedureName      string            // Procedure to execute
+    MaxIterations      *int              // --max-iterations <n>
+    Unlimited          bool              // --unlimited
+    DryRun             bool              // --dry-run
+    Contexts           []string          // --context <value> (file path or inline, multiple allowed)
+    AICmd              string            // --ai-cmd <command>
+    AICmdAlias         string            // --ai-cmd-alias <alias>
+    Verbose            bool              // --verbose
+    Quiet              bool              // --quiet
+    LogLevel           string            // --log-level <level>
+    ConfigPath         string            // --config <path>
+    ObserveFragments   []string          // --observe <value> (file path or inline, multiple allowed)
+    OrientFragments    []string          // --orient <value> (file path or inline, multiple allowed)
+    DecideFragments    []string          // --decide <value> (file path or inline, multiple allowed)
+    ActFragments       []string          // --act <value> (file path or inline, multiple allowed)
+    ShowHelp           bool              // --help
+    ShowVersion        bool              // --version
+    ListProcedures     bool              // --list-procedures
+}
 ```
 
-**Arguments:**
-- `<procedure>` - Named procedure from config (optional, positional)
-- `--config|-c <file>` - Path to config file (default: rooda-config.yml in script directory)
-- `--observe|-o <file>` - Path to observe phase prompt
-- `--orient|-r <file>` - Path to orient phase prompt
-- `--decide|-d <file>` - Path to decide phase prompt
-- `--act|-a <file>` - Path to act phase prompt
-- `--max-iterations|-m N` - Maximum iterations (default: from config or 0 for unlimited)
-- `--ai-cli <command>` - AI CLI command to use (overrides config, default: kiro-cli chat --no-interactive --trust-all-tools)
-- `--ai-tool <preset>` - AI tool preset (kiro-cli, claude, aider, or custom from config). Resolves to command via config or hardcoded presets
-- `--version` - Show version number and exit
-- `--help|-h` - Show usage help and exit
-- `--verbose` - Show detailed execution including full prompt
-- `--quiet` - Suppress non-error output
+### ExitCode
+
+```go
+const (
+    ExitSuccess         = 0  // Successful execution
+    ExitUserError       = 1  // Invalid flags, unknown procedure, validation failures
+    ExitConfigError     = 2  // Invalid config file, missing AI command (runtime only, not dry-run)
+    ExitExecutionError  = 3  // AI CLI failure, iteration timeout
+)
+```
 
 ## Algorithm
 
-1. Check for yq dependency, exit if missing
-2. Initialize variables (OBSERVE, ORIENT, DECIDE, ACT, MAX_ITERATIONS, PROCEDURE, CONFIG_FILE, AI_CLI_COMMAND, AI_TOOL_PRESET, AI_CLI_FLAG)
-3. Resolve CONFIG_FILE relative to script location
-4. Parse first positional argument as PROCEDURE if not flag
-5. Parse remaining arguments in while loop (including --ai-cli and --ai-tool)
-6. Resolve AI CLI command with precedence: --ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config ai_cli_command > default
-7. If PROCEDURE specified:
-   - Validate config file exists
-   - Query config for procedure OODA files using yq
-   - Exit if procedure not found
-   - Load default_iterations if MAX_ITERATIONS not specified
-8. Validate all four OODA phase files specified
-9. Validate all four files exist on filesystem
-10. Display execution parameters
-11. Enter iteration loop
+### Main CLI Flow
 
-**Pseudocode:**
-```bash
-if ! command -v yq; then
-    error "yq required"
-    exit 1
+```
+1. Parse command-line arguments into CLIArgs
+2. If ShowHelp:
+   - If ProcedureName empty: display global help
+   - Else: display procedure-specific help
+   - Exit 0
+3. If ShowVersion:
+   - Display version and build info
+   - Exit 0
+4. If ListProcedures:
+   - Load configuration (built-in + global + workspace)
+   - List all procedures with descriptions
+   - Exit 0
+5. If ProcedureName empty:
+   - Display error: "No procedure specified. Run 'rooda --help' for usage."
+   - Exit 1
+6. Load configuration (built-in + global + workspace + env vars)
+7. Validate ProcedureName exists in configuration
+   - If not: display error with suggestion to run --list-procedures
+   - Exit 1
+8. Merge CLIArgs with configuration (flags override config)
+9. Validate merged configuration (skip validation for --list-procedures and --version)
+   - Check mutually exclusive flags
+   - Validate flag value constraints
+   - Resolve AI command (see configuration.md AI Command Resolution)
+   - If no AI command configured: error with guidance, exit 2
+   - Validate OODA phase override files exist (if provided)
+   - If errors: display clear messages, exit 1 or 2
+10. Execute procedure with merged configuration
+11. Exit with appropriate code based on outcome
+```
 
-# Parse arguments
-if first_arg not starts_with "--"; then
-    PROCEDURE = first_arg
-    shift
+### Flag Precedence Resolution
 
-while has_args:
-    case arg:
-        --config: CONFIG_FILE = next_arg
-        --observe: OBSERVE = next_arg
-        --orient: ORIENT = next_arg
-        --decide: DECIDE = next_arg
-        --act: ACT = next_arg
-        --max-iterations: MAX_ITERATIONS = next_arg
-        --ai-cli: AI_CLI_COMMAND = next_arg
-        --ai-tool: AI_TOOL_PRESET = next_arg
-        default: error "Unknown option"
+When merging CLIArgs with Config:
 
-# Resolve from config if procedure specified
-if PROCEDURE:
-    if not exists(CONFIG_FILE):
-        error "Config not found"
-    
-    # Resolve AI CLI command (--ai-cli flag > --ai-tool preset > $ROODA_AI_CLI > config > default)
-    if not AI_CLI_COMMAND:
-        if AI_TOOL_PRESET:
-            AI_CLI_COMMAND = resolve_ai_tool_preset(AI_TOOL_PRESET, CONFIG_FILE)
-        else if ROODA_AI_CLI:
-            AI_CLI_COMMAND = ROODA_AI_CLI
-        else:
-            AI_CLI_CONFIG = yq(".ai_cli_command", CONFIG_FILE)
-            if AI_CLI_CONFIG:
-                AI_CLI_COMMAND = AI_CLI_CONFIG
-            else:
-                AI_CLI_COMMAND = "kiro-cli chat --no-interactive --trust-all-tools"
-    
-    OBSERVE = yq(".procedures.$PROCEDURE.observe", CONFIG_FILE)
-    ORIENT = yq(".procedures.$PROCEDURE.orient", CONFIG_FILE)
-    DECIDE = yq(".procedures.$PROCEDURE.decide", CONFIG_FILE)
-    ACT = yq(".procedures.$PROCEDURE.act", CONFIG_FILE)
-    if any_null:
-        error "Procedure not found"
-    if MAX_ITERATIONS == 0:
-        MAX_ITERATIONS = yq(".procedures.$PROCEDURE.default_iterations", CONFIG_FILE)
+```
+For each setting:
+  If CLI flag provided:
+    Use CLI flag value (highest precedence)
+  Else if environment variable set:
+    Use environment variable value
+  Else if workspace config defines it:
+    Use workspace config value
+  Else if global config defines it:
+    Use global config value
+  Else:
+    Use built-in default value
 
-# Validate
-if not all(OBSERVE, ORIENT, DECIDE, ACT):
-    error "All four OODA phases required"
-for file in [OBSERVE, ORIENT, DECIDE, ACT]:
-    if not exists(file):
-        error "File not found: $file"
+For context values (Contexts array):
+  For each value in array:
+    If file exists at path:
+      Read file content and use as context
+    Else:
+      Use value directly as inline content
+
+For OODA phase fragments (ObserveFragments, OrientFragments, DecideFragments, ActFragments):
+  If CLI provides any fragments for a phase:
+    Replace entire phase array (do not merge with config)
+  For each fragment value:
+    If file exists at path:
+      Create FragmentAction with {path: <file>, content: "", parameters: nil}
+    Else:
+      Create FragmentAction with {path: "", content: <value>, parameters: nil}
+  Preserve order from CLI arguments (left to right)
 ```
 
 ## Edge Cases
 
-| Condition | Expected Behavior |
-|-----------|-------------------|
-| yq not installed | Error message with installation instructions, exit 1 |
-| No arguments provided | Error with usage help, exit 1 |
-| Unknown flag | Error with flag name and usage help, exit 1 |
-| Procedure not in config | Error "Procedure 'X' not found in config", exit 1 |
-| Config file missing | Error "Config not found", exit 1 |
-| OODA phase file missing | Error "File not found: path", exit 1 |
-| Only some OODA phases specified | Error "All four OODA phases required", exit 1 |
-| Explicit flags with procedure | Explicit flags take precedence, procedure ignored |
-| --ai-cli flag specified | Overrides all other AI CLI settings (--ai-tool, $ROODA_AI_CLI, config) |
-| --ai-cli with invalid command | Command fails at runtime when invoked |
-| --ai-tool with unknown preset | Error message listing available presets (kiro-cli, claude, aider) and instructions for custom presets in config, exit 1 |
-| --ai-tool with hardcoded preset | Resolves to hardcoded command (kiro-cli, claude, aider) |
-| --ai-tool with custom preset | Resolves to command from config ai_tools section |
-| --ai-cli and --ai-tool both specified | --ai-cli takes precedence, --ai-tool ignored |
-| ai_cli_command not in config | Defaults to kiro-cli chat --no-interactive --trust-all-tools |
-| --max-iterations 0 | Unlimited iterations (loop until Ctrl+C) |
-| --max-iterations not specified | Use default_iterations from config, or 0 if not in config |
-| --version flag | Shows version and exits immediately |
-| --help or -h flag | Shows usage help and exits immediately |
-| --verbose with --quiet | Last flag wins (both set VERBOSE variable) |
-| Short flag with long flag | Both work identically (-m 5 same as --max-iterations 5) |
+### No Procedure Specified
+
+```bash
+$ rooda
+Error: No procedure specified. Run 'rooda --help' for usage.
+```
+
+Exit code: 1
+
+### Unknown Procedure
+
+```bash
+$ rooda unknown-proc
+Error: Unknown procedure 'unknown-proc'. Run 'rooda --list-procedures' to see available procedures.
+```
+
+Exit code: 1
+
+### Mutually Exclusive Flags
+
+```bash
+$ rooda build --verbose --quiet
+Error: --verbose and --quiet are mutually exclusive.
+```
+
+Exit code: 1
+
+```bash
+$ rooda build --max-iterations 10 --unlimited
+Error: --max-iterations and --unlimited are mutually exclusive.
+```
+
+Exit code: 1
+
+### Invalid Flag Value
+
+```bash
+$ rooda build --max-iterations 0
+Error: --max-iterations must be >= 1.
+```
+
+Exit code: 1
+
+```bash
+$ rooda build --log-level invalid
+Error: Invalid log level 'invalid'. Valid levels: debug, info, warn, error.
+```
+
+Exit code: 1
+
+### Missing AI Command
+
+```bash
+$ rooda build
+Error: No AI command configured. Set one of:
+  - CLI flag: --ai-cmd <command> or --ai-cmd-alias <alias>
+  - Environment: ROODA_LOOP_AI_CMD or ROODA_LOOP_AI_CMD_ALIAS
+  - Config file: loop.ai_cmd or loop.ai_cmd_alias
+  - Procedure-level: procedures.<name>.ai_cmd or procedures.<name>.ai_cmd_alias
+```
+
+Exit code: 2
+
+### Empty Inline Content
+
+```bash
+$ rooda build --observe ""
+Error: Empty inline content not allowed for --observe flag.
+```
+
+Exit code: 1
+
+```bash
+$ rooda build --context ""
+Error: Empty inline content not allowed for --context flag.
+```
+
+Exit code: 1
+
+### Ambiguous Filename
+
+If user wants inline content "file.md" but a file named "file.md" exists, the file wins (file existence heuristic).
+
+```bash
+$ rooda build --observe "file.md"
+# If file.md exists: uses file content
+# If file.md doesn't exist: uses "file.md" as inline content
+```
+
+To force inline content that looks like a filename, ensure the file doesn't exist or use a non-existent absolute path.
+
+### Dry-Run Validation Success
+
+```bash
+$ rooda build --dry-run
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] INFO Configuration validated procedure=build
+[21:00:15.202] INFO Prompt files validated procedure=build
+[21:00:15.203] INFO AI command found path=/usr/local/bin/kiro-cli procedure=build
+[21:00:15.204] INFO Assembled prompt (1234 chars) procedure=build
+--- OBSERVE ---
+...prompt content...
+--- END ---
+```
+
+Exit code: 0
+
+### Dry-Run Validation Failure
+
+```bash
+$ rooda build --dry-run --ai-cmd nonexistent
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] ERROR AI command binary not found path=nonexistent procedure=build
+Error: AI command binary not found: nonexistent
+```
+
+Exit code: 1
+
+```bash
+$ rooda build --dry-run --observe missing.md
+[21:00:15.200] INFO Dry-run mode enabled procedure=build
+[21:00:15.201] ERROR Observe file not found path=missing.md procedure=build
+Error: Observe file not found: missing.md
+```
+
+Exit code: 1
 
 ## Dependencies
 
-- yq - YAML query tool for parsing rooda-config.yml
-- bash - Shell interpreter
-- rooda-config.yml - Configuration file with procedure definitions
+- **configuration.md** — Defines Config, LoopConfig, Procedure structures and merge logic
+- **iteration-loop.md** — Defines iteration modes, max iterations, timeout behavior
+- **prompt-composition.md** — Defines fragment processing and how --context and OODA phase overrides are used
+- **procedures.md** — Defines fragment array structure and template system
+- **ai-cli-integration.md** — Defines AI command resolution and execution
 
 ## Implementation Mapping
 
 **Source files:**
-- `src/rooda.sh` - Lines 1-141 implement argument parsing and validation
+- `cmd/rooda/main.go` — CLI entry point, argument parsing
+- `internal/cli/parser.go` — Flag parsing logic
+- `internal/cli/help.go` — Help text generation
+- `internal/cli/validator.go` — Flag validation and mutual exclusion checks
+- `internal/config/merge.go` — Configuration merging with CLI flag precedence
 
 **Related specs:**
-- `configuration-schema.md` - Defines rooda-config.yml structure (to be created)
-- `iteration-loop.md` - Defines loop execution behavior (to be created)
+- `configuration.md` — Configuration system
+- `iteration-loop.md` — Loop execution
+- `prompt-composition.md` — Prompt assembly
+- `ai-cli-integration.md` — AI command execution
 
 ## Examples
 
-### Example 1: Procedure-Based Invocation
+### Basic Procedure Invocation
 
-**Input:**
 ```bash
-./rooda.sh bootstrap
+$ rooda build
+# Executes 'build' procedure with default configuration
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Procedure: bootstrap
-Observe:   src/prompts/observe_bootstrap.md
-Orient:    src/prompts/orient_bootstrap.md
-Decide:    src/prompts/decide_bootstrap.md
-Act:       src/prompts/act_bootstrap.md
-Branch:    main
-Max:       1 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+### Override Max Iterations
 
-**Verification:**
-- OODA files loaded from config
-- default_iterations from config used (1 for bootstrap)
-- Iteration loop starts
-
-### Example 2: Explicit Flag Invocation
-
-**Input:**
 ```bash
-./rooda.sh \
-  --observe src/prompts/observe_specs.md \
-  --orient src/prompts/orient_gap.md \
-  --decide src/prompts/decide_gap_plan.md \
-  --act src/prompts/act_plan.md \
-  --max-iterations 1
+$ rooda build --max-iterations 10
+# Runs build procedure with max 10 iterations
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Observe:   src/prompts/observe_specs.md
-Orient:    src/prompts/orient_gap.md
-Decide:    src/prompts/decide_gap_plan.md
-Act:       src/prompts/act_plan.md
-Branch:    main
-Max:       1 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+### Unlimited Iterations
 
-**Verification:**
-- No procedure name shown
-- Explicit files used
-- Max iterations from command line
-
-### Example 3: Override Default Iterations
-
-**Input:**
 ```bash
-./rooda.sh build --max-iterations 10
+$ rooda build --unlimited
+# Runs build procedure until convergence (no iteration limit)
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Procedure: build
-Observe:   src/prompts/observe_plan_specs_impl.md
-Orient:    src/prompts/orient_build.md
-Decide:    src/prompts/decide_build.md
-Act:       src/prompts/act_build.md
-Branch:    main
-Max:       10 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+### Dry Run
 
-**Verification:**
-- Procedure loaded from config
-- Command-line --max-iterations overrides config default (5)
-
-### Example 4: Missing yq Dependency
-
-**Input:**
 ```bash
-./rooda.sh bootstrap
-# (with yq not installed)
+$ rooda build --dry-run
+# Displays assembled prompt without executing AI CLI
 ```
 
-**Expected Output:**
-```
-Error: yq is required for YAML parsing
-Install with: brew install yq
-```
+### Inject Context
 
-**Verification:**
-- Script exits with status 1
-- Clear installation instructions provided
-
-### Example 5: Unknown Procedure
-
-**Input:**
 ```bash
-./rooda.sh nonexistent
+$ rooda build --context "Focus on the auth module"
+# Injects inline context into prompt composition
 ```
 
-**Expected Output:**
-```
-Error: Procedure 'nonexistent' not found in /path/to/rooda-config.yml
-```
-
-**Verification:**
-- Script exits with status 1
-- Error message includes procedure name and config path
-
-### Example 6: Override AI CLI via Flag
-
-**Input:**
 ```bash
-./rooda.sh build --ai-cli "claude-cli --autonomous --trust-tools"
+$ rooda build --context task.md
+# Reads context from task.md file and injects into prompt
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Procedure: build
-Observe:   src/prompts/observe_plan_specs_impl.md
-Orient:    src/prompts/orient_build.md
-Decide:    src/prompts/decide_build.md
-Act:       src/prompts/act_build.md
-AI CLI:    claude-cli --autonomous --trust-tools
-Branch:    main
-Max:       5 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**Verification:**
-- Procedure loaded from config
-- --ai-cli flag overrides config ai_cli_command and default
-- claude-cli used instead of kiro-cli
-
-### Example 7: Override AI CLI via Preset
-
-**Input:**
 ```bash
-./rooda.sh build --ai-tool claude
+$ rooda build --context task.md --context "Additional notes"
+# Mixed: file content + inline content (processed in order)
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Procedure: build
-Observe:   src/prompts/observe_plan_specs_impl.md
-Orient:    src/prompts/orient_build.md
-Decide:    src/prompts/decide_build.md
-Act:       src/prompts/act_build.md
-AI CLI:    claude-cli --no-interactive
-Branch:    main
-Max:       5 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
+### Override AI Command
 
-**Verification:**
-- Procedure loaded from config
-- --ai-tool preset resolves to claude-cli command
-- claude-cli used instead of default kiro-cli
-
-### Example 8: Unknown AI Tool Preset
-
-**Input:**
 ```bash
-./rooda.sh build --ai-tool unknown-tool
+$ rooda build --ai-cmd "kiro-cli chat"
+# Uses direct command string
 ```
 
-**Expected Output:**
-```
-Error: Unknown AI tool preset: unknown-tool
-
-Available hardcoded presets:
-  - kiro-cli
-  - claude
-  - aider
-
-To define custom presets, add to rooda-config.yml:
-  ai_tools:
-    unknown-tool: "command here"
-```
-
-**Verification:**
-- Script exits with status 1
-- Error message lists available presets
-- Instructions for custom presets shown
-
-### Example 9: Missing OODA Phase File
-
-**Input:**
 ```bash
-./rooda.sh --observe missing.md --orient o.md --decide d.md --act a.md
+$ rooda build --ai-cmd-alias claude
+# Uses 'claude' alias from configuration
 ```
 
-**Expected Output:**
-```
-Error: File not found: missing.md
-```
+### Verbose Output
 
-**Verification:**
-- Script exits with status 1
-- Error message includes missing file path
-
-### Example 10: Version Flag
-
-**Input:**
 ```bash
-./rooda.sh --version
+$ rooda build --verbose
+# Sets show_ai_output=true and log_level=debug
+# Streams AI CLI output and shows debug-level logs
 ```
 
-**Expected Output:**
-```
-rooda.sh version 0.1.0
-```
+### Override OODA Phase
 
-**Verification:**
-- Script exits with status 0
-- Version number displayed
-
-### Example 11: Verbose Mode
-
-**Input:**
 ```bash
-./rooda.sh build --verbose --max-iterations 1
+$ rooda build --observe custom.md
+# Single file fragment (replaces entire observe phase)
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Procedure: build
-Observe:   src/prompts/observe_plan_specs_impl.md
-Orient:    src/prompts/orient_build.md
-Decide:    src/prompts/decide_build.md
-Act:       src/prompts/act_build.md
-Branch:    main
-Max:       1 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[Full combined prompt content displayed]
-
-[AI CLI execution output]
-```
-
-**Verification:**
-- Full prompt content shown before execution
-- Detailed execution output visible
-
-### Example 12: Quiet Mode
-
-**Input:**
 ```bash
-./rooda.sh build --quiet --max-iterations 1
+$ rooda build --observe file1.md --observe file2.md
+# Multiple file fragments (replaces entire observe phase)
 ```
 
-**Expected Output:**
-```
-[Minimal output, only errors shown]
-```
-
-**Verification:**
-- Execution banner suppressed
-- Non-error output suppressed
-- Only errors displayed
-
-### Example 13: Short Flags
-
-**Input:**
 ```bash
-./rooda.sh -o src/prompts/observe_specs.md -r src/prompts/orient_gap.md -d src/prompts/decide_gap_plan.md -a src/prompts/act_plan.md -m 1
+$ rooda build --observe "Focus on auth module"
+# Inline content fragment (replaces entire observe phase)
 ```
 
-**Expected Output:**
-```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Observe:   src/prompts/observe_specs.md
-Orient:    src/prompts/orient_gap.md
-Decide:    src/prompts/decide_gap_plan.md
-Act:       src/prompts/act_plan.md
-Branch:    main
-Max:       1 iterations
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```bash
+$ rooda build --observe custom.md --observe "Additional instructions"
+# Mixed: file + inline content (replaces entire observe phase)
 ```
 
-**Verification:**
-- Short flags work identically to long flags
-- All OODA phases loaded correctly
-- Max iterations set correctly
+### Multiple Contexts (Unified Flag)
+
+```bash
+$ rooda build --context "Focus on auth" --context "Prioritize security"
+# Both inline contexts injected into prompt (in order)
+```
+
+```bash
+$ rooda build --context task.md --context notes.md
+# Both file contents injected into prompt (in order)
+```
+
+```bash
+$ rooda build --context task.md --context "Focus on auth" --context notes.md
+# Mixed: file + inline + file (all processed in order)
+```
+
+### Procedure Help
+
+```bash
+$ rooda build --help
+# Displays build procedure details
+```
+
+### List Procedures
+
+```bash
+$ rooda --list-procedures
+# Lists all available procedures with descriptions
+```
+
+### Version
+
+```bash
+$ rooda --version
+# Displays version and build info
+```
 
 ## Notes
 
-**Design Rationale:**
+### Design Rationale
 
-The CLI supports two invocation modes to balance convenience and flexibility:
+**Why named procedures instead of explicit OODA flags?**
+Procedures are the primary abstraction — they encapsulate OODA phase composition, iteration limits, and use cases. Explicit OODA flags (`--observe`, `--orient`, etc.) are overrides for customization, not the primary interface.
 
-1. **Procedure-based** - Named procedures in config provide convenient shortcuts for common workflows (bootstrap, build, draft-plan-*). This reduces typing and ensures consistent OODA phase combinations.
+**Why allow both `--ai-cmd` and `--ai-cmd-alias`?**
+Direct commands (`--ai-cmd`) are useful for one-off testing or custom tools. Aliases (`--ai-cmd-alias`) are better for shared team configurations. Supporting both provides flexibility.
 
-2. **Explicit flags** - Direct OODA file specification enables custom procedures without modifying config. This supports experimentation and one-off workflows.
+**Why accumulate multiple `--context` flags?**
+Users may want to inject multiple independent contexts (e.g., task description + architectural constraints). Accumulating them is more flexible than requiring a single concatenated string.
 
-**Precedence Rules:**
+**Why unify `--context` and `--context-file` into a single flag?**
+Consistency with OODA phase flags and reduced cognitive load. The file existence heuristic is intuitive: if it looks like a file and exists, it's a file; otherwise it's inline content. This eliminates the need to remember two separate flags.
 
-Explicit flags always override config-based procedure settings. This allows users to customize a procedure's behavior (e.g., swap one OODA phase) without creating a new config entry.
+**Why use file existence heuristic for context and OODA phases?**
+Intuitive and requires no special syntax. Users naturally specify file paths for files and text for inline content. The heuristic makes the right choice 99% of the time without requiring quotes or prefixes.
 
-**Config Resolution:**
+**Why do OODA phase overrides replace the entire phase array?**
+Predictability. Users specify complete phase composition, not partial modifications. Element-by-element merging would create ambiguity about which fragments come from config vs CLI.
 
-CONFIG_FILE resolves relative to script location (`SCRIPT_DIR`), not current working directory. This ensures the script finds its config regardless of where it's invoked from. Users can override with `--config` if needed.
+**Why support repeatable flags for OODA phases?**
+Standard CLI convention (matches `--context` pattern). Enables composing phases from multiple fragments without requiring array syntax in shell.
 
-**Iteration Defaults:**
+**Why preserve fragment order from CLI arguments?**
+Predictable fragment composition. Left-to-right order matches user intent and makes debugging easier.
 
-The three-tier default system provides flexibility:
-1. Command-line `--max-iterations` (highest priority)
-2. Config `default_iterations` per procedure
-3. 0 (unlimited) if neither specified
+**Why doesn't CLI support template parameters for fragments?**
+Template parameters are a config-only feature. CLI focuses on simple overrides (file paths or inline content). Complex parameterization belongs in configuration files where it can be documented and versioned.
 
-This allows procedures to define sensible defaults (bootstrap=1, build=5) while letting users override when needed.
+**What about ambiguous filenames?**
+File existence wins. This is a design tradeoff for simplicity. If a user wants inline content "file.md" but a file exists with that name, the file will be used. To force inline content, ensure the file doesn't exist or use a non-existent absolute path.
 
-## Known Issues
+**Why mutually exclusive `--verbose` and `--quiet`?**
+These represent opposite intents. Allowing both would create ambiguity about which takes precedence.
 
-**Duplicate validation blocks:** Lines 95-103 and 117-125 contain identical validation logic. This duplication exists in the current implementation but should be refactored.
+**What does `--verbose` actually do?**
+Sets two configuration values: `show_ai_output=true` (streams AI CLI output to console) and `log_level=debug` (shows debug-level logs). This provides maximum visibility into loop execution.
 
-**Inconsistent usage messages:** Error messages show different usage patterns (some include `<task-id>`, some don't). The actual implementation doesn't use task-id as a positional argument.
+**Why does dry-run use exit code 1 for all validation failures?**
+Dry-run is a pre-flight check tool. All validation failures (missing files, invalid config, missing AI command) are actionable by the user before execution. Using a single exit code (1) simplifies scripting: 0 means "ready to run", 1 means "fix something first". Exit code 2 is reserved for runtime configuration errors that occur during actual execution.
 
-**Config validation:** Script doesn't validate config file structure before querying with yq. Invalid YAML or missing required fields cause cryptic yq errors rather than clear validation messages.
+**Why different exit codes for different error types?**
+Enables scripting and CI/CD integration to distinguish user errors (fix the command) from configuration errors (fix the config) from execution errors (retry or investigate).
+
+**Why support both `--flag=value` and `--flag value`?**
+POSIX convention — users expect both forms to work.
+
+**Why short flags for common options?**
+Reduces typing for frequently used flags. Only the most common flags get short versions to avoid namespace pollution.
+
+**Short Flag Policy:**
+Short flags are reserved for the most frequently used operations only. Future flags will use long form only to avoid namespace pollution. Current short flags (`-v`, `-q`, `-n`, `-u`, `-d`, `-c`, `-h`) are considered stable and will not change.
+
+### Flag Categories
+
+**Loop Control:**
+- `--max-iterations`, `-n`
+- `--unlimited`, `-u`
+- `--dry-run`, `-d`
+
+**AI Command:**
+- `--ai-cmd`
+- `--ai-cmd-alias`
+
+**Prompt Overrides:**
+- `--observe` (repeatable, file or inline)
+- `--orient` (repeatable, file or inline)
+- `--decide` (repeatable, file or inline)
+- `--act` (repeatable, file or inline)
+- `--context`, `-c` (repeatable, file or inline)
+
+**Output Control:**
+- `--verbose`, `-v`
+- `--quiet`, `-q`
+- `--log-level`
+
+**Configuration:**
+- `--config`
+
+**Help & Info:**
+- `--help`, `-h`
+- `--version`
+- `--list-procedures`

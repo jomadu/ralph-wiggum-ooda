@@ -1,229 +1,797 @@
-# Iteration Loop Control
+# Iteration Loop
 
 ## Job to be Done
-Execute OODA loop procedures through controlled iteration cycles that clear context between runs, preventing LLM degradation while maintaining file-based state continuity.
+
+Execute AI coding agents through controlled OODA iteration cycles that clear AI context between runs, preventing LLM degradation while maintaining file-based state continuity. Each iteration invokes the AI CLI as a fresh process — the agent starts clean, processes the assembled prompt, executes tools, then exits. The loop orchestrator persists across iterations, managing termination and state.
+
+This is the core loop — everything else feeds into or out of it.
 
 ## Activities
-1. Initialize iteration counter to 0
+
+1. Initialize iteration state (counter, config, termination criteria)
 2. Check termination conditions before each iteration
-3. Execute single OODA cycle (create prompt, pipe to AI CLI, push changes)
-4. Increment iteration counter
-5. Display iteration progress
-6. Repeat until termination condition met
+3. Assemble the OODA prompt from four phase files and optional context
+4. Pipe assembled prompt to AI CLI tool, capturing output (stream to terminal if `--verbose`)
+5. Scan captured output for `<promise>` signals
+6. Capture AI CLI exit status and detect failures
+7. Increment iteration counter and record timing
+8. Display iteration progress
+9. Repeat until termination condition met
+
+Note: Output is always captured and scanned for `<promise>` signals regardless of `--verbose`. The flag only controls whether output is also displayed to the terminal.
+
+Note: Quality gates (tests, lints) and git operations (commit, push) are the AI agent's responsibility within each iteration, driven by the prompts — not orchestrated by the loop.
 
 ## Acceptance Criteria
-- [x] Loop executes until max iterations reached or Ctrl+C pressed
-- [x] Each iteration exits completely, clearing AI context (kiro-cli exits after each invocation; bash script persists by design)
-- [x] Iteration counter increments correctly
-- [x] Max iterations of 0 means unlimited (loop until Ctrl+C)
-- [x] Max iterations defaults to procedure config or 0 if not specified
-- [x] Progress displayed between iterations
-- [x] Git push happens after each iteration
+
+- [ ] Loop executes until max iterations reached, Ctrl+C pressed, consecutive failure threshold hit, or AI signals success
+- [ ] If AI CLI output contains `<promise>SUCCESS</promise>`, loop terminates with status `success` regardless of exit code
+- [ ] If AI CLI output contains `<promise>FAILURE</promise>`, iteration counts as a failure (increments `ConsecutiveFailures`) even if exit code is 0
+- [ ] If both `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>` are present, FAILURE takes precedence (conservative choice)
+- [ ] Each iteration invokes the AI CLI as a separate process, ensuring fresh context
+- [ ] Iteration counter increments correctly (0-indexed internal, 1-indexed display)
+- [ ] Iteration counting example: `--max-iterations 5` runs iterations 0-4 (displayed as 1-5), termination check `Iteration >= 5` prevents iteration 5 from starting
+- [ ] Max iterations resolved with precedence: `--max-iterations` CLI flag > `--unlimited` CLI flag > procedure `iteration_mode`/`default_max_iterations` > `loop.iteration_mode`/`loop.default_max_iterations` > built-in default (mode=max-iterations, count=5)
+- [ ] `--unlimited` flag overrides max iterations to nil (no limit)
+- [ ] Procedure-level `iteration_mode` overrides global `loop.iteration_mode`
+- [ ] Procedure-level `default_max_iterations` overrides global `loop.default_max_iterations`
+- [ ] Progress displayed between iterations (iteration number, elapsed time)
+- [ ] AI CLI exit status is captured and checked after each iteration
+- [ ] Iteration outcome determined by output signals and exit code per the outcome matrix
+- [ ] Consecutive failure count tracked; loop aborts after configurable threshold (`loop.failure_threshold`, default: 3)
+- [ ] Single failure resets consecutive counter on next success
+- [ ] Dry-run mode validates all prompt files exist and are readable
+- [ ] Dry-run mode validates AI command binary exists and is executable
+- [ ] Dry-run mode displays assembled prompt with clear section markers
+- [ ] Dry-run mode displays resolved configuration with provenance
+- [ ] Dry-run mode exits with code 0 if all validations pass
+- [ ] Dry-run mode exits with code 1 if user error (invalid flags, unknown procedure)
+- [ ] Dry-run mode exits with code 2 if config error (missing AI command, invalid config, missing prompt files)
+- [ ] Dry-run mode does not execute AI CLI
+- [ ] AI CLI output always captured and scanned for `<promise>` signals, regardless of `--verbose`
+- [ ] AI CLI output buffered with configurable max size (`loop.max_output_buffer`, default: 10485760 bytes = 10MB)
+- [ ] If output exceeds buffer size, buffer truncated from beginning (keeps most recent output), warning logged
+- [ ] Output buffer size can be overridden per-procedure via procedure `max_output_buffer`
+- [ ] Promise signal scanning happens after AI CLI exits (not during streaming)
+- [ ] AI CLI output streamed to the terminal in real-time when `--verbose` flag is set
+- [ ] Without `--verbose`, only loop-level progress (iteration start/complete, timing, outcome) is displayed
+- [ ] Loop displays iteration statistics at completion when iterations completed (info level)
+- [ ] Statistics always displayed (omit only stddev when count < 2)
+- [ ] Statistics format: "Iteration timing: count=N min=Xs max=Xs mean=Xs stddev=Xs"
+- [ ] When count=1: display count, min, max, mean (all equal), omit stddev
+- [ ] When count≥2: display all statistics including stddev
+- [ ] Iteration statistics use constant memory (O(1)) regardless of iteration count
+- [ ] Partial output from crashed AI CLI processes scanned for `<promise>` signals
+- [ ] Loop terminates with status `success` when AI signals `<promise>SUCCESS</promise>`
+- [ ] Loop terminates with status `max-iters` when max iterations reached
+- [ ] Loop terminates with status `aborted` when failure threshold exceeded
+- [ ] Loop terminates with status `interrupted` when SIGINT/SIGTERM received
+- [ ] Exit code 0 for `success`, 1 for `aborted`, 2 for `max-iters`, 130 for `interrupted`
+- [ ] Loop log level configurable via `loop.log_level` (debug, info, warn, error, built-in default: info)
+- [ ] AI output streaming configurable via `loop.show_ai_output` (true, false, built-in default: false)
+- [ ] `ROODA_LOOP_LOG_LEVEL` environment variable sets `loop.log_level`
+- [ ] `ROODA_LOOP_SHOW_AI_OUTPUT` environment variable sets `loop.show_ai_output`
+- [ ] `--verbose` flag overrides `loop.show_ai_output` to true
+- [ ] `--quiet` flag overrides `loop.log_level` to warn
+- [ ] `--log-level=<level>` flag overrides `loop.log_level`
+- [ ] SIGINT/SIGTERM kills the AI CLI process, waits for termination (with timeout), and exits with status `interrupted`
+- [ ] If AI CLI exceeds iteration timeout, process is killed and iteration counts as failure (increments `ConsecutiveFailures`)
+- [ ] Iteration timeout configurable via `loop.iteration_timeout` (seconds, nil = no timeout, built-in default: nil)
+- [ ] Timeout can be overridden per-procedure via procedure `iteration_timeout`
+- [ ] `ROODA_LOOP_ITERATION_TIMEOUT` environment variable sets `loop.iteration_timeout`
+- [ ] If AI CLI doesn't terminate within timeout, log warning and exit anyway
+- [ ] Interrupted loops exit with code 130 (standard SIGINT exit code)
 
 ## Data Structures
 
-### Iteration State
-```bash
-ITERATION=0           # Current iteration number (0-indexed)
-MAX_ITERATIONS=N      # Maximum iterations (0 = unlimited)
+### IterationState
+
+```go
+type IterationState struct {
+    Iteration           int           // Current iteration number (0-indexed)
+    MaxIterations       *int          // Termination threshold (nil = unlimited)
+    IterationTimeout    *int          // Per-iteration timeout in seconds (nil = no timeout)
+    MaxOutputBuffer     int           // Max AI CLI output buffer size in bytes (default: 10485760 = 10MB)
+    ConsecutiveFailures int           // Consecutive AI CLI failures
+    FailureThreshold    int           // Max consecutive failures before abort (default: 3)
+    StartedAt           time.Time     // When the loop started
+    Status              LoopStatus    // running, completed, aborted, interrupted
+    ProcedureName       string        // Name of the procedure being executed
+    Stats               IterationStats // Running statistics for iteration timing
+}
+
+type IterationStats struct {
+    Count     int           // Total iterations completed
+    TotalTime time.Duration // Sum of all iteration durations
+    MinTime   time.Duration // Fastest iteration (0 if no iterations)
+    MaxTime   time.Duration // Slowest iteration (0 if no iterations)
+    M2        float64       // Sum of squared differences from mean (for variance calculation)
+}
 ```
 
-**Variables:**
-- `ITERATION` - Current iteration count, starts at 0, increments after each cycle
-- `MAX_ITERATIONS` - Termination threshold from CLI flag, config, or default 0
+**Fields:**
+- `Iteration` — Current iteration count, starts at 0, increments after each completed cycle
+- `MaxIterations` — Termination threshold from `--max-iterations` > `--unlimited` > procedure `default_max_iterations` > `loop.default_max_iterations` > built-in default (5). Nil means unlimited.
+- `IterationTimeout` — Per-iteration timeout in seconds. From `loop.iteration_timeout`; nil means no timeout (default). If AI CLI execution exceeds this duration, process is killed and iteration counts as failure.
+- `MaxOutputBuffer` — Maximum AI CLI output buffer size in bytes. From `loop.max_output_buffer`; default 10485760 (10MB). If output exceeds this, buffer is truncated from beginning (keeping most recent output for signal scanning).
+- `ConsecutiveFailures` — Resets to 0 on any successful iteration
+- `FailureThreshold` — From `loop.failure_threshold`; default 3. Loop aborts when `ConsecutiveFailures >= FailureThreshold`
+- `StartedAt` — Wall clock time when loop began (for total elapsed calculation)
+- `Status` — State machine: running → success | max-iters | aborted | interrupted
+- `ProcedureName` — Which procedure is executing (for logging)
+- `Stats` — Running statistics for iteration timing (constant memory regardless of iteration count)
+
+**IterationStats Fields:**
+- `Count` — Total iterations completed
+- `TotalTime` — Sum of all iteration durations (for mean calculation)
+- `MinTime` — Fastest iteration duration (0 if no iterations completed)
+- `MaxTime` — Slowest iteration duration (0 if no iterations completed)
+- `M2` — Sum of squared differences from mean (for variance/stddev calculation using Welford's online algorithm)
+
+### Loop Configuration
+
+The `loop` section in `rooda-config.yml` defines global defaults for loop execution. Procedures can override `default_max_iterations` and `ai_cmd_alias`.
+
+```yaml
+loop:
+  iteration_mode: max-iterations  # "max-iterations" or "unlimited" (built-in default: max-iterations)
+  default_max_iterations: 5       # Global default (built-in default: 5). Must be >= 1. Ignored when mode is unlimited.
+  iteration_timeout: 300          # Per-iteration timeout in seconds (nil/omitted = no timeout, built-in default: nil)
+  max_output_buffer: 10485760     # Max AI CLI output buffer in bytes (built-in default: 10485760 = 10MB)
+  failure_threshold: 3            # Consecutive failures before abort (built-in default: 3)
+  log_level: info                 # "debug", "info", "warn", "error" (built-in default: info)
+  show_ai_output: false           # Stream AI CLI output to terminal (built-in default: false)
+  ai_cmd_alias: claude            # Default AI command alias for all procedures
+
+procedures:
+  bootstrap:
+    default_max_iterations: 1  # Overrides loop.default_max_iterations for this procedure
+    observe: prompts/observe_bootstrap.md
+    orient: prompts/orient_bootstrap.md
+    decide: prompts/decide_bootstrap.md
+    act: prompts/act_bootstrap.md
+  build:
+    default_max_iterations: 10
+    ai_cmd_alias: thorough     # This procedure uses a beefier model
+    observe: prompts/observe_plan_specs_impl.md
+    orient: prompts/orient_build.md
+    decide: prompts/decide_build.md
+    act: prompts/act_build.md
+  long-running:
+    iteration_mode: unlimited  # Overrides loop.iteration_mode for this procedure
+    observe: prompts/observe_plan_specs_impl.md
+    orient: prompts/orient_build.md
+    decide: prompts/decide_build.md
+    act: prompts/act_build.md
+```
+
+**Precedence for max iterations:**
+1. `--max-iterations N` CLI flag (highest)
+2. `--unlimited` CLI flag (sets to nil)
+3. Procedure `iteration_mode` + `default_max_iterations`
+4. `loop.iteration_mode` + `loop.default_max_iterations`
+5. Built-in default: mode=max-iterations, count=5
+
+**Precedence for AI command (consistent with max iterations — procedure overrides loop, env vars set loop level):**
+1. `--ai-cmd` CLI flag (direct command, highest)
+2. `--ai-cmd-alias` CLI flag (alias name)
+3. Procedure `ai_cmd` (direct command)
+4. Procedure `ai_cmd_alias` (alias name)
+5. `loop.ai_cmd` (merged: env var > workspace > global)
+6. `loop.ai_cmd_alias` (merged: env var > workspace > global)
+7. Error — no AI command configured
+
+### LoopStatus
+
+```go
+type LoopStatus string
+
+const (
+    StatusRunning     LoopStatus = "running"
+    StatusSuccess     LoopStatus = "success"     // AI signaled SUCCESS
+    StatusMaxIters    LoopStatus = "max-iters"   // Max iterations reached
+    StatusAborted     LoopStatus = "aborted"     // Failure threshold exceeded
+    StatusInterrupted LoopStatus = "interrupted" // User pressed Ctrl+C (SIGINT/SIGTERM)
+)
+```
+
+**Exit Codes:**
+- 0: StatusSuccess (AI signaled completion)
+- 1: StatusAborted (failure threshold exceeded)
+- 2: StatusMaxIters (max iterations reached, work may be incomplete)
+- 130: StatusInterrupted (SIGINT/SIGTERM)
+```
+
+### Iteration Outcome Matrix
+
+Each iteration's outcome is determined by two independent signals: the AI CLI process exit code and output markers emitted by the AI agent.
+
+**Output signals:**
+- `<promise>SUCCESS</promise>` — AI agent declares the job is done
+- `<promise>FAILURE</promise>` — AI agent declares it is blocked and cannot make further progress (not a single test failure — the agent has exhausted what it can do)
+
+**Signal precedence:** If both SUCCESS and FAILURE signals are present in output, FAILURE takes precedence.
+
+| Exit Code | Output Signal | Outcome |
+|---|---|---|
+| 0 | none | Success — reset `ConsecutiveFailures`, continue |
+| 0 | `SUCCESS` | Job done — terminate loop as `completed` |
+| 0 | `FAILURE` | Agent-reported failure — increment `ConsecutiveFailures`, continue |
+| 0 | both | FAILURE wins — increment `ConsecutiveFailures`, continue |
+| non-zero | none | Process failure — increment `ConsecutiveFailures`, continue |
+| non-zero | `SUCCESS` | Job done — terminate loop as `completed` (signal wins) |
+| non-zero | `FAILURE` | Both failed — increment `ConsecutiveFailures`, continue |
+| non-zero | both | FAILURE wins — increment `ConsecutiveFailures`, continue |
 
 ## Algorithm
 
-1. Initialize ITERATION to 0
-2. Enter infinite while loop
-3. Check if MAX_ITERATIONS > 0 AND ITERATION >= MAX_ITERATIONS
-4. If termination condition met, display message and break
-5. Create combined OODA prompt from four phase files
-6. Pipe prompt to kiro-cli with --no-interactive and --trust-all-tools flags
-7. Push changes to git remote (create branch if needed)
-8. Increment ITERATION counter
-9. Display iteration separator with next iteration number
-10. Loop back to step 3
+1. Load configuration (CLI flags > env vars > workspace config > global config > built-in defaults)
+2. Resolve AI command (see configuration.md AI Command Resolution)
+3. Initialize fresh `IterationState`
+4. Register signal handlers for SIGINT and SIGTERM:
 
-**Pseudocode:**
-```bash
-ITERATION=0
+```
+function HandleSignal(state *IterationState, aiProcess *os.Process):
+    log.Info("Received interrupt signal")
+    
+    if aiProcess != nil:
+        // Kill AI CLI process
+        aiProcess.Kill()
+        
+        // Wait for termination with timeout
+        done = make(chan bool)
+        go func():
+            aiProcess.Wait()
+            done <- true
+        
+        select:
+            case <-done:
+                log.Info("AI CLI process terminated")
+            case <-time.After(5 * time.Second):
+                log.Warn("AI CLI process did not terminate within 5s timeout")
+    
+    state.Status = interrupted
+    os.Exit(130)  // Standard SIGINT exit code
+```
 
-while true; do
-    if [ "$MAX_ITERATIONS" -gt 0 ] && [ "$ITERATION" -ge "$MAX_ITERATIONS" ]; then
-        echo "Reached max iterations: $MAX_ITERATIONS"
-        break
-    fi
+5. Enter iteration loop:
 
-    create_prompt | kiro-cli chat --no-interactive --trust-all-tools
+```
+function RunLoop(state IterationState, config Config) -> LoopStatus:
+    while true:
+        // Termination check
+        if state.MaxIterations != nil AND state.Iteration >= *state.MaxIterations:
+            state.Status = max-iters
+            break
 
-    git push origin "$CURRENT_BRANCH" || {
-        echo "Failed to push. Creating remote branch..."
-        git push -u origin "$CURRENT_BRANCH"
-    }
+        if state.ConsecutiveFailures >= state.FailureThreshold:
+            state.Status = aborted
+            log.Error("Aborting: %d consecutive failures", state.ConsecutiveFailures)
+            break
 
-    ITERATION=$((ITERATION + 1))
-    echo "\n\n======================== LOOP $ITERATION ========================\n"
-done
+        // Start iteration
+        iterationStart = time.Now()
+        log.Info("Starting iteration %d", state.Iteration+1)
+
+        // Assemble prompt from OODA phase files
+        prompt, err = AssemblePrompt(config.Procedure)
+        if err:
+            log.Error("Prompt assembly failed: %v", err)
+            state.Status = aborted
+            break
+
+        // Execute AI CLI with assembled prompt
+        output, exitCode, err = ExecuteAICLI(config.AICommand, prompt, config.Verbose, state.IterationTimeout)
+        if err:
+            if err == ErrTimeout:
+                log.Warn("Iteration %d: AI CLI exceeded timeout (%ds)", state.Iteration+1, *state.IterationTimeout)
+                state.ConsecutiveFailures++
+                elapsed = time.Since(iterationStart)
+                updateStats(&state.Stats, elapsed)
+                state.Iteration++
+                continue
+            log.Error("AI CLI execution failed: %v", err)
+            state.Status = aborted
+            break
+
+        // Scan output for promise signals
+        hasSuccess = strings.Contains(output, "<promise>SUCCESS</promise>")
+        hasFailure = strings.Contains(output, "<promise>FAILURE</promise>")
+
+        // Determine outcome per matrix (FAILURE wins if both present)
+        if hasFailure:
+            // Agent explicitly blocked - increment failure counter
+            state.ConsecutiveFailures++
+            log.Warn("Iteration %d: AI signaled FAILURE (consecutive: %d)", 
+                state.Iteration+1, state.ConsecutiveFailures)
+        else if hasSuccess:
+            // Job complete - terminate loop
+            log.Info("Iteration %d: AI signaled SUCCESS", state.Iteration+1)
+            state.Status = success
+            elapsed = time.Since(iterationStart)
+            updateStats(&state.Stats, elapsed)
+            log.Info("Iteration %d completed in %v (SUCCESS)", state.Iteration+1, elapsed)
+            break
+        else if exitCode == 0:
+            // Success - reset failure counter
+            state.ConsecutiveFailures = 0
+            log.Info("Iteration %d succeeded", state.Iteration+1)
+        else:
+            // Process failure - increment counter
+            state.ConsecutiveFailures++
+            log.Warn("Iteration %d failed with exit code %d (consecutive: %d)", 
+                state.Iteration+1, exitCode, state.ConsecutiveFailures)
+
+        // Record timing
+        elapsed = time.Since(iterationStart)
+        updateStats(&state.Stats, elapsed)
+        log.Info("Iteration %d completed in %v", state.Iteration+1, elapsed)
+
+        // Increment iteration counter
+        state.Iteration++
+
+    return state.Status
+```
+
+### Statistics Update (Welford's Online Algorithm)
+
+```
+function updateStats(stats *IterationStats, elapsed time.Duration):
+    stats.Count++
+    stats.TotalTime += elapsed
+    
+    // Update min/max
+    if stats.Count == 1 OR elapsed < stats.MinTime:
+        stats.MinTime = elapsed
+    if elapsed > stats.MaxTime:
+        stats.MaxTime = elapsed
+    
+    // Welford's online algorithm for variance
+    delta = float64(elapsed) - (float64(stats.TotalTime) / float64(stats.Count))
+    stats.M2 += delta * (float64(elapsed) - (float64(stats.TotalTime) / float64(stats.Count)))
+
+function getMean(stats IterationStats) -> time.Duration:
+    if stats.Count == 0:
+        return 0
+    return stats.TotalTime / time.Duration(stats.Count)
+
+function getStdDev(stats IterationStats) -> time.Duration:
+    if stats.Count < 2:
+        return 0
+    variance = stats.M2 / float64(stats.Count)
+    return time.Duration(math.Sqrt(variance))
 ```
 
 ## Edge Cases
 
 | Condition | Expected Behavior |
 |-----------|-------------------|
-| MAX_ITERATIONS = 0 | Loop runs indefinitely until Ctrl+C |
-| MAX_ITERATIONS = 1 | Single iteration, then exit |
-| Ctrl+C during iteration | Bash catches signal, exits immediately |
-| kiro-cli fails | Script continues to git push (no error handling) |
-| git push fails | Attempts to create remote branch, continues loop |
-| ITERATION reaches MAX_ITERATIONS | Displays message, breaks loop, script exits |
+| `--unlimited` flag passed | Loop runs indefinitely until Ctrl+C, failure threshold, or AI signals `SUCCESS` |
+| No max iterations configured anywhere | Uses built-in default: mode=max-iterations, count=5 |
+| AI output contains `<promise>SUCCESS</promise>` | Loop terminates with status `success` regardless of exit code |
+| AI output contains `<promise>FAILURE</promise>` with exit code 0 | Counts as failure — increment `ConsecutiveFailures` (output signal overrides exit code) |
+| AI CLI exits non-zero, no output signal | Process failure — increment `ConsecutiveFailures`, continue loop |
+| AI output contains both `SUCCESS` and `FAILURE` | FAILURE takes precedence — increment `ConsecutiveFailures`, continue |
+| MaxIterations = 1 | Single iteration (iteration 0, displayed as 1), then exit with status `max-iters` (or `aborted` if iteration fails and threshold is 1) |
+| MaxIterations = 5 | Runs iterations 0-4 (displayed as 1-5), termination check `Iteration >= 5` prevents iteration 5 from starting |
+| Ctrl+C during AI CLI execution | Signal handler kills AI CLI process, waits for termination (5s timeout), exits with status `interrupted` and code 130 |
+| Ctrl+C between iterations | Signal handler exits immediately with status `interrupted` and code 130 |
+| Consecutive failures reach configured threshold (default: 3) | Loop aborts with status `aborted` |
+| Successful iteration after 2 failures | `ConsecutiveFailures` resets to 0, loop continues |
+| AI CLI output exceeds max buffer size | Buffer truncated from beginning, keeps most recent output, warning logged, signal scanning uses truncated buffer |
+| AI CLI execution exceeds iteration timeout | Process killed, iteration counts as failure, loop continues (unless failure threshold reached) |
+| No iteration timeout configured | AI CLI can run indefinitely (user must Ctrl+C to interrupt) |
+| AI CLI crashes (SIGSEGV, SIGKILL, OOM) | Partial output scanned for signals; outcome determined per matrix (crash exit codes are non-zero) |
+| Dry-run mode | Validates prompt files and AI command exist, displays assembled prompt and resolved config with provenance, exits with code 0 (success) or 1 (validation failed) |
 
 ## Dependencies
 
-- bash - Shell interpreter with arithmetic expansion
-- kiro-cli - AI CLI tool for executing OODA prompts
-- git - Version control for pushing changes after each iteration
-- create_prompt() - Function that combines four OODA phase files
+- **prompt-composition** — Assembles four OODA phase files and optional user context into a single prompt, given iteration state and config
+- **ai-cli-integration** — Executes AI CLI tool and captures exit status
+- **error-handling** — Retry logic, timeout, failure detection patterns
+- **observability** — Structured logging, timing, progress display
+- **cli-interface** — Provides `--max-iterations`, `--unlimited`, `--dry-run`, `--context`
+- **configuration** — Resolves iteration settings and AI command from three-tier config system
 
 ## Implementation Mapping
 
 **Source files:**
-- `src/rooda.sh` - Lines 161-179 implement the iteration loop
+- `cmd/rooda/main.go` — CLI entry point, parses flags, invokes loop
+- `internal/loop/loop.go` — Core iteration loop (`RunLoop` function)
+- `internal/loop/signals.go` — Signal handling (SIGINT, SIGTERM)
 
 **Related specs:**
-- `cli-interface.md` - Defines how MAX_ITERATIONS is set from CLI or config
-- `component-authoring.md` - Defines create_prompt() function behavior
-- `ai-cli-integration.md` - Defines kiro-cli invocation (to be created)
+- `prompt-composition.md` — How prompts are assembled before each iteration
+- `ai-cli-integration.md` — How prompts are piped to AI CLI tools
+- `error-handling.md` — Failure detection and consecutive failure logic
+- `observability.md` — Logging, timing, progress display
+- `cli-interface.md` — CLI flags that control loop behavior
+- `configuration.md` — Where iteration settings come from
 
 ## Examples
 
-### Example 1: Limited Iterations
+### Example 1: Limited Iterations (Happy Path)
 
 **Input:**
 ```bash
-./rooda.sh build --max-iterations 3
+rooda build --max-iterations 3
 ```
 
-**Expected Behavior:**
+**Expected Output:**
 ```
-# Iteration 0 executes
-======================== LOOP 1 ========================
-
-# Iteration 1 executes
-======================== LOOP 2 ========================
-
-# Iteration 2 executes
-======================== LOOP 3 ========================
-
-Reached max iterations: 3
+[10:00:00.000] INFO Starting loop procedure=build max_iterations=3
+[10:00:00.100] INFO Starting iteration 1/3 procedure=build
+[10:00:45.300] INFO Completed iteration 1/3 elapsed=45.2s status=success
+[10:00:45.400] INFO Starting iteration 2/3 procedure=build
+[10:01:24.100] INFO Completed iteration 2/3 elapsed=38.7s status=success
+[10:01:24.200] INFO Starting iteration 3/3 procedure=build
+[10:02:16.300] INFO Completed iteration 3/3 elapsed=52.1s status=success
+[10:02:16.400] INFO Loop completed status=max-iters iterations=3 total_elapsed=2m16.4s
+[10:02:16.400] INFO Iteration timing: count=3 min=38.7s max=52.1s mean=45.3s stddev=5.5s
 ```
 
 **Verification:**
 - Three OODA cycles execute
-- Loop terminates after ITERATION reaches 3
-- Script exits cleanly
+- Only loop-level progress shown (no AI CLI output without `--verbose`)
+- Loop terminates after iteration 3 with status `max-iters` and exit code 2
+- Each iteration shows timing and outcome
+- Statistics include all fields (count≥2)
 
-### Example 2: Unlimited Iterations
-
-**Input:**
-```bash
-./rooda.sh bootstrap --max-iterations 0
-```
-
-**Expected Behavior:**
-```
-# Iteration 0 executes
-======================== LOOP 1 ========================
-
-# Iteration 1 executes
-======================== LOOP 2 ========================
-
-# ... continues until Ctrl+C
-```
-
-**Verification:**
-- Loop runs indefinitely
-- Only Ctrl+C terminates execution
-- Each iteration increments counter
-
-### Example 3: Default Iterations from Config
+### Example 1a: Statistics Display (count=2)
 
 **Input:**
 ```bash
-./rooda.sh build
-# (config specifies default_iterations: 5)
+rooda build --max-iterations 2
 ```
 
-**Expected Behavior:**
+**Expected Output:**
 ```
-# 5 iterations execute
-Reached max iterations: 5
+[10:00:00.000] INFO Starting loop procedure=build max_iterations=2
+[10:00:00.100] INFO Starting iteration 1/2 procedure=build
+[10:00:42.100] INFO Completed iteration 1/2 elapsed=42.0s status=success
+[10:00:42.200] INFO Starting iteration 2/2 procedure=build
+[10:01:18.200] INFO Completed iteration 2/2 elapsed=36.0s status=success
+[10:01:18.300] INFO Loop completed status=max-iters iterations=2 total_elapsed=1m18.3s
+[10:01:18.300] INFO Iteration timing: count=2 min=36.0s max=42.0s mean=39.0s stddev=3.0s
 ```
 
 **Verification:**
-- MAX_ITERATIONS loaded from config (5 for build)
-- Loop terminates after 5 iterations
+- Statistics include stddev when count=2 (minimum for stddev calculation)
+- All timing fields displayed: count, min, max, mean, stddev
 
-### Example 4: Single Iteration
+### Example 2: Consecutive Failure Abort
 
 **Input:**
 ```bash
-./rooda.sh bootstrap
-# (config specifies default_iterations: 1)
+rooda build --max-iterations 10
+# AI CLI fails on iterations 4, 5, 6
 ```
 
-**Expected Behavior:**
+**Expected Output:**
 ```
-# Iteration 0 executes
-======================== LOOP 1 ========================
-
-Reached max iterations: 1
+[10:00:00.000] INFO Starting loop procedure=build max_iterations=10
+[10:00:00.100] INFO Starting iteration 1/10 procedure=build
+[10:00:42.100] INFO Completed iteration 1/10 elapsed=42.0s status=success
+[10:00:42.200] INFO Starting iteration 2/10 procedure=build
+[10:01:18.200] INFO Completed iteration 2/10 elapsed=36.0s status=success
+[10:01:18.300] INFO Starting iteration 3/10 procedure=build
+[10:01:55.300] INFO Completed iteration 3/10 elapsed=37.0s status=success
+[10:01:55.400] INFO Starting iteration 4/10 procedure=build
+[10:02:10.400] WARN Completed iteration 4/10 elapsed=15.0s status=failure consecutive_failures=1
+[10:02:10.500] INFO Starting iteration 5/10 procedure=build
+[10:02:22.500] WARN Completed iteration 5/10 elapsed=12.0s status=failure consecutive_failures=2
+[10:02:22.600] INFO Starting iteration 6/10 procedure=build
+[10:02:35.600] WARN Completed iteration 6/10 elapsed=13.0s status=failure consecutive_failures=3
+[10:02:35.700] ERROR Loop aborted consecutive_failures=3 threshold=3 iterations=6 total_elapsed=2m35.7s
+[10:02:35.700] INFO Iteration timing: count=6 min=12.0s max=42.0s mean=25.8s stddev=12.3s
 ```
 
 **Verification:**
-- Single OODA cycle executes
-- Loop terminates immediately after first iteration
+- Loop aborts after configured threshold of consecutive failures
+- Status is `aborted`
+- Failure count progression visible in iteration summaries
+- Statistics include all fields (count≥2)
+
+### Example 3: Verbose Mode
+
+**Input:**
+```bash
+rooda build --max-iterations 2 --verbose
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Starting loop procedure=build max_iterations=2
+[10:00:00.100] DEBUG Assembling prompt phase_count=4
+[10:00:00.200] DEBUG Prompt assembled size=12450
+[10:00:00.300] INFO Starting iteration 1/2 procedure=build
+[10:00:00.400] DEBUG Executing AI CLI command="kiro-cli chat --prompt-file /tmp/rooda-prompt-12345.md"
+--- AI CLI Output Start ---
+I'll execute the OODA loop iteration systematically.
+
+## OBSERVE
+...
+  ... created internal/loop/loop.go
+  ... running go test ./...
+  ok  	rooda/internal/loop	0.342s
+  ✓ All tests passing
+<promise>SUCCESS</promise>
+--- AI CLI Output End ---
+[10:00:45.300] DEBUG AI CLI exited exit_code=0
+[10:00:45.400] DEBUG Found promise signal signal=SUCCESS
+[10:00:45.500] INFO Completed iteration 1/2 elapsed=45.2s status=success
+[10:00:45.600] INFO Loop completed status=success iterations=1 total_elapsed=45.6s
+[10:00:45.600] INFO Iteration timing: count=1 min=45.2s max=45.2s mean=45.2s
+```
+
+**Verification:**
+- AI CLI output streamed live between iteration markers
+- Full visibility into what the agent is doing each iteration
+- Verbose mode sets both `show_ai_output=true` AND `log_level=debug`
+- Statistics omit stddev when count=1
+
+### Example 4: Dry-Run Mode
+
+**Input:**
+```bash
+rooda build --dry-run
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Dry-run mode enabled dry_run=true
+[10:00:00.100] INFO Validating configuration...
+[10:00:00.200] INFO Resolved configuration:
+  procedure: build (from: CLI argument)
+  max_iterations: 10 (from: workspace config)
+  iteration_timeout: nil (from: built-in default)
+  ai_command: kiro-cli chat (from: global config)
+  log_level: info (from: built-in default)
+  show_ai_output: false (from: built-in default)
+[10:00:00.300] INFO Validating prompt files...
+  observe: prompts/observe_plan_specs_impl.md (exists, readable)
+  orient: prompts/orient_build.md (exists, readable)
+  decide: prompts/decide_build.md (exists, readable)
+  act: prompts/act_build.md (exists, readable)
+[10:00:00.400] INFO Validating AI command...
+  command: kiro-cli (found at /usr/local/bin/kiro-cli, executable)
+[10:00:00.500] INFO Assembled prompt size=12450
+--- Prompt Start ---
+# OODA Loop Iteration
+
+## OBSERVE
+[contents of observe prompt file]
+
+## ORIENT
+[contents of orient prompt file]
+
+## DECIDE
+[contents of decide prompt file]
+
+## ACT
+[contents of act prompt file]
+--- Prompt End ---
+[10:00:00.600] INFO Dry-run validation passed
+```
+
+**Verification:**
+- Full assembled prompt displayed
+- AI CLI not invoked
+- Exit code 0 (validation passed)
+
+### Example 5: Dry-Run Mode with User Context
+
+**Input:**
+```bash
+rooda build --dry-run --context "focus on the auth module, the JWT validation is broken"
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Dry-run mode enabled dry_run=true
+[10:00:00.100] INFO Validating configuration...
+[10:00:00.200] INFO Resolved configuration:
+  procedure: build (from: CLI argument)
+  max_iterations: 10 (from: workspace config)
+  iteration_timeout: nil (from: built-in default)
+  ai_command: kiro-cli chat (from: global config)
+  log_level: info (from: built-in default)
+  show_ai_output: false (from: built-in default)
+[10:00:00.300] INFO Validating prompt files...
+  observe: prompts/observe_plan_specs_impl.md (exists, readable)
+  orient: prompts/orient_build.md (exists, readable)
+  decide: prompts/decide_build.md (exists, readable)
+  act: prompts/act_build.md (exists, readable)
+[10:00:00.400] INFO Validating AI command...
+  command: kiro-cli (found at /usr/local/bin/kiro-cli, executable)
+[10:00:00.500] INFO Assembled prompt size=12520
+--- Prompt Start ---
+# OODA Loop Iteration
+
+## CONTEXT
+focus on the auth module, the JWT validation is broken
+
+## OBSERVE
+[contents of observe prompt file]
+
+## ORIENT
+[contents of orient prompt file]
+
+## DECIDE
+[contents of decide prompt file]
+
+## ACT
+[contents of act prompt file]
+--- Prompt End ---
+[10:00:00.600] INFO Dry-run validation passed
+```
+
+**Verification:**
+- User context appears as a dedicated section before the OODA phases
+- Context is passed through verbatim, not interpreted by the loop
+- AI CLI not invoked
+- Exit code 0 (validation passed)
+
+### Example 6: Unlimited Iterations with Recovery
+
+**Input:**
+```bash
+rooda build --unlimited
+# AI CLI fails once on iteration 3, then succeeds on iteration 4
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Starting loop procedure=build max_iterations=unlimited
+...
+[10:01:55.300] INFO Starting iteration 3 procedure=build
+[10:02:10.400] WARN Completed iteration 3 elapsed=15.0s status=failure consecutive_failures=1
+[10:02:10.500] INFO Starting iteration 4 procedure=build
+[10:02:52.500] INFO Completed iteration 4 elapsed=42.0s status=success
+...
+```
+
+**Verification:**
+- Consecutive failure counter resets to 0 after iteration 4 succeeds
+- Loop continues until Ctrl+C, failure threshold, or `SUCCESS` signal
+
+### Example 7: Dry-Run Validation (Success)
+
+**Input:**
+```bash
+rooda build --dry-run --ai-cmd-alias claude
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Dry-run mode enabled dry_run=true
+[10:00:00.100] INFO Validating configuration...
+[10:00:00.200] INFO Resolved configuration:
+  procedure: build (from: CLI argument)
+  max_iterations: 10 (from: workspace config)
+  iteration_timeout: nil (from: built-in default)
+  max_output_buffer: 10485760 (from: built-in default)
+  failure_threshold: 3 (from: built-in default)
+  ai_command: claude-cli --no-interactive (from: CLI flag --ai-cmd-alias "claude" → built-in alias)
+  log_level: info (from: built-in default)
+  show_ai_output: false (from: built-in default)
+[10:00:00.300] INFO Validating prompt files...
+  observe: prompts/observe_plan_specs_impl.md (exists, readable)
+  orient: prompts/orient_build.md (exists, readable)
+  decide: prompts/decide_build.md (exists, readable)
+  act: prompts/act_build.md (exists, readable)
+[10:00:00.400] INFO Validating AI command...
+  command: claude-cli (found at /usr/local/bin/claude-cli, executable)
+[10:00:00.500] INFO Assembled prompt size=12450
+--- Prompt Start ---
+# OBSERVE
+[observe phase content...]
+
+# ORIENT
+[orient phase content...]
+
+# DECIDE
+[decide phase content...]
+
+# ACT
+[act phase content...]
+--- Prompt End ---
+[10:00:00.600] INFO Dry-run validation passed
+```
+
+**Verification:**
+- All validations pass
+- Prompt assembled and displayed with section markers
+- Configuration shown with provenance
+- Exit code 0
+
+### Example 8: Dry-Run Validation (Failure)
+
+**Input:**
+```bash
+rooda build --dry-run --ai-cmd nonexistent-cli
+```
+
+**Expected Output:**
+```
+[10:00:00.000] INFO Dry-run mode enabled dry_run=true
+[10:00:00.100] INFO Validating configuration...
+[10:00:00.200] INFO Resolved configuration:
+  procedure: build (from: CLI argument)
+  max_iterations: 10 (from: workspace config)
+  iteration_timeout: nil (from: built-in default)
+  max_output_buffer: 10485760 (from: built-in default)
+  failure_threshold: 3 (from: built-in default)
+  ai_command: nonexistent-cli (from: CLI flag --ai-cmd)
+  log_level: info (from: built-in default)
+  show_ai_output: false (from: built-in default)
+[10:00:00.300] INFO Validating prompt files...
+  observe: prompts/observe_plan_specs_impl.md (exists, readable)
+  orient: prompts/orient_build.md (exists, readable)
+  decide: prompts/decide_build.md (exists, readable)
+  act: prompts/act_build.md (exists, readable)
+[10:00:00.400] ERROR Validating AI command...
+  command: nonexistent-cli (not found in PATH)
+  searched: /usr/local/bin:/usr/bin:/bin
+[10:00:00.500] ERROR Dry-run validation failed
+```
+
+**Verification:**
+- AI command validation fails
+- Clear error message with searched paths
+- Exit code 1
+- Prompt not displayed (validation failed before assembly)
 
 ## Notes
 
-**Design Rationale:**
+**Origins — The Ralph Loop:**
 
-The iteration loop is the core mechanism that prevents LLM context degradation. Each iteration invokes kiro-cli as a separate process—the AI CLI starts fresh, processes the prompt, executes tools, then exits completely. This exit-and-restart pattern clears all AI context between iterations. The bash script itself persists across iterations (it's a single bash process running a while loop), but the AI's memory is cleared each time kiro-cli exits.
+The iteration loop in rooda descends directly from the [Ralph Loop](https://ghuntley.com/ralph/), an autonomous AI coding methodology developed by [Geoffrey Huntley](https://ghuntley.com). Huntley's core innovation was recognizing that a dumb bash loop — `while :; do cat PROMPT.md | claude ; done` — could drive an AI agent to build software autonomously by exploiting two properties: fresh context each iteration (preventing LLM degradation) and file-based state continuity (specs, plan, and AGENTS.md persist on disk between cycles). The Ralph Loop demonstrated that steering happens not through conversation but through deterministic file loading, upstream patterns, and downstream backpressure (tests reject invalid work). rooda evolves this by decomposing the single monolithic prompt into four composable OODA phase files (observe, orient, decide, act) that can be mixed and matched across 16 procedures — turning one loop with two modes (plan/build) into a general-purpose orchestration framework. The iteration mechanism itself remains faithful to Huntley's original insight: invoke the AI CLI as a fresh process, let it work, let it exit, persist state to files, repeat.
 
-**Why Exit Between Iterations:**
+**Design Rationale — Fresh Context Per Iteration:**
 
-LLMs advertise 200K token windows but degrade in quality as context fills. Usable capacity is closer to 176K, and performance drops significantly beyond 60% utilization. By invoking kiro-cli fresh each iteration (via pipe: `create_prompt | kiro-cli chat`), the AI stays perpetually in its "smart zone" (40-60% utilization) where output quality remains high.
+LLMs advertise large context windows (200K+ tokens) but degrade in quality as context fills. Usable capacity is closer to 60% of the advertised window. By invoking the AI CLI as a fresh process each iteration, the agent stays perpetually in its "smart zone" where output quality remains high. The loop orchestrator (Go binary) persists across iterations, but the AI's memory is cleared each time the CLI process exits.
 
-**File-Based State:**
+**File-Based State Continuity:**
 
-While the AI's context clears (kiro-cli exits), file-based state persists: AGENTS.md, work tracking, specs, and code remain on disk. The bash script continues running, and the next iteration pipes a fresh prompt to a new kiro-cli invocation. This provides continuity without conversational baggage.
+While the AI's context clears between iterations, file-based state persists: AGENTS.md, work tracking, specs, and code remain on disk. The next iteration's prompt is assembled fresh from these files, giving the AI current context without conversational baggage. This is the key insight — state lives in files, not in conversation history.
 
-**Iteration Counter:**
+**Why Go Instead of Bash:**
 
-The counter is 0-indexed (starts at 0) but displays as 1-indexed in progress messages ("LOOP 1"). This matches user expectations (first iteration is "iteration 1") while keeping code logic simple (0-based comparison).
+The v1 bash loop (archived in `archive/`) validated the core concept but had significant limitations: no error handling, no timing, no structured logging, platform-specific behavior. Go provides: testable code, cross-platform binary, structured error handling, signal handling, and the ability to embed default prompts.
 
-**Git Push Per Iteration:**
+**Iteration Counter Convention:**
 
-Pushing after each iteration creates a commit history that shows incremental progress. If the loop goes off track, you can revert to a previous iteration's state. The fallback branch creation handles first-time pushes gracefully.
+Internal state is 0-indexed (starts at 0) for clean comparison logic (`Iteration >= MaxIterations`). Display is 1-indexed ("Iteration 1/10") to match user expectations. User-facing configuration (`--max-iterations`, `default_max_iterations` in config) is 1-indexed: `--max-iterations 3` means three iterations. Unlimited requires the explicit `--unlimited` flag or is never the implicit default — the built-in default is 5.
 
-**No Error Handling:**
+**No State Persistence By Design:**
 
-The loop doesn't check if kiro-cli succeeds. If the AI CLI fails, the script continues to git push and loop. This is intentional—the loop trusts that file-based backpressure (tests, lints) will catch issues in subsequent iterations.
+The loop does not persist its own state to disk. File-based state continuity — AGENTS.md, work tracking, specs, and code on disk — is the resume mechanism. If the loop is interrupted, the user simply runs it again; the AI agent picks up from whatever state the files are in. This keeps the loop simple and avoids a class of bugs around stale state files, concurrent execution guards, and corrupted checkpoints.
 
-## Known Issues
+**No Pause/Resume Support:**
 
-**No kiro-cli error handling:** If kiro-cli exits with non-zero status, the loop continues anyway. This could lead to repeated failures without termination.
+The loop does not support pausing and resuming execution. Ctrl+C terminates the loop immediately (after killing the AI CLI process and waiting for cleanup). If interrupted, the user must restart the procedure from iteration 0.
 
-**Iteration display off-by-one:** The separator shows "LOOP $ITERATION" after incrementing, so it displays the next iteration number, not the one that just completed. This is confusing but matches the implementation.
+This is by design: file-based state continuity (AGENTS.md, work tracking, specs, code on disk) provides the resume mechanism. The agent picks up from whatever state the files are in, regardless of which iteration the loop was on when interrupted. Restarting from iteration 0 gives the agent fresh context, which is often desirable.
 
-## Areas for Improvement
+If preserving iteration count or statistics across restarts becomes important, a future version could add state persistence via `--resume-from=<state-file>`. For now, the added complexity is not justified by the use case.
 
-**Graceful error handling:** Check kiro-cli exit status and break loop after N consecutive failures.
+**Crash Handling:**
 
-**Iteration timing:** Display elapsed time per iteration to help users understand performance.
+When the AI CLI crashes (segfault, OOM kill, kernel termination), Go's `exec.Command` returns whatever output was written to stdout/stderr before termination. This partial output is scanned for `<promise>` signals using the same logic as clean exits. Crashes produce non-zero exit codes, so the outcome matrix applies identically: if partial output contains `<promise>FAILURE</promise>`, the agent-reported failure is logged; otherwise, it's logged as a process failure. Both increment `ConsecutiveFailures`.
 
-**Progress indicators:** Show which OODA phase is executing during long-running iterations.
+**Logging and Verbosity:**
 
-**Dry-run mode:** Support --dry-run flag to show what would execute without actually running the AI CLI.
+Loop log level and AI output streaming follow the standard precedence chain: CLI flags (`--verbose`, `--quiet`, `--log-level`) > environment variables (`ROODA_LOOP_LOG_LEVEL`, `ROODA_LOOP_SHOW_AI_OUTPUT`) > workspace config > global config > built-in defaults (log_level=info, show_ai_output=false).
 
-**Resume capability:** Save iteration state to file, allowing resume after Ctrl+C or failure.
+Log levels:
+- **debug**: Prompt assembly, config resolution, signal scanning, internal state
+- **info**: Iteration start/complete, timing, outcome, statistics (default)
+- **warn**: Failures, timeouts, buffer truncation, signal handling
+- **error**: Abort conditions, pre-execution failures
+
+The `--verbose` flag is shorthand for setting both `show_ai_output=true` AND `log_level=debug`. The `--quiet` flag is shorthand for setting `log_level=warn`. Both override all lower-precedence sources.
+
+**Observability:**
+
+Detailed logging behavior (format, output destination, structured fields), metrics export, and observability platform integrations are specified in `observability.md`. The iteration loop emits log events at defined levels (debug, info, warn, error) that the observability system captures, formats, and exports according to configuration.
