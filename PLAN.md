@@ -1,236 +1,298 @@
-# Plan: Make Composed Prompts More Actionable for AI Agents
+# Plan: Clarify Promise Signal Format
 
-## Problem Statement
+## Problem
 
-AI agents occasionally fail to recognize that the composed prompt is an executable procedure rather than a template or reference document. The current prompt structure uses passive language ("Load and parse...", "Extract:", "Identify:") which reads like documentation rather than instructions.
+Contradiction between specs and implementation fragments regarding promise signal format:
 
-## Root Cause Analysis
+**Specs say**: Exact string match only - `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>`
 
-Current prompt structure issues:
-1. **Passive voice** - "Load specification files" vs "You must load specification files"
-2. **No explicit execution directive** - Missing clear "Execute this procedure now" framing
-3. **Template-like formatting** - Bullet lists and section headers look like documentation
-4. **No iteration context** - Agent doesn't know this is part of an OODA loop cycle
-5. **Missing success criteria** - No clear "when you're done" signal
-6. **No role definition** - Agent doesn't know it's an autonomous executor
+**Fragments imply**: Reasons might be included in signals (ambiguous guidance)
 
-## Proposed Solution
+This could lead AI agents to emit invalid signals like `<promise>FAILURE: reason</promise>` which won't be detected by the parser.
 
-Add a **procedure execution preamble** that wraps the composed prompt with explicit instructions and context.
+## Goal
 
-### Changes Required
+Ensure all specs and prompt fragments consistently communicate:
+1. Promise signals use exact format with no variations
+2. Explanatory text comes AFTER the signal, not within it
+3. Examples show correct separation of signal and explanation
+4. SUCCESS signal means procedure goal achieved (for build: no ready work remains; for planning/auditing: output validated as minimal, complete, and accurate), not just iteration success
 
-#### 1. Update `prompt-composition.md` Specification
+## Files to Update
 
-**Location:** `specs/prompt-composition.md`
+### Prompt Fragments
 
-**Change:** Add new section "Procedure Execution Preamble" that defines a header injected before OODA phases.
+1. `internal/prompt/fragments/act/emit_success.md`
+   - Add explicit format: `<promise>SUCCESS</promise>`
+   - Show example with explanation after signal
+   - Clarify signal must be exact, explanation separate
 
-**Content to add:**
+2. `internal/prompt/fragments/act/emit_failure.md`
+   - Add explicit format: `<promise>FAILURE</promise>`
+   - Show example with explanation after signal
+   - Clarify signal must be exact, explanation separate
+
+3. `internal/prompt/fragments/decide/check_if_blocked.md`
+   - Change "emit FAILURE with explanation" to "emit FAILURE signal, then explain"
+   - Clarify signal format is exact, explanation comes after
+
+4. `internal/prompt/fragments/act/write_audit_report.md`
+   - Add validation step: review report for minimal, complete, and accurate
+   - Only proceed to emit_success after validation
+
+5. `internal/prompt/fragments/act/write_draft_plan.md`
+   - Add validation step: review plan for minimal, complete, and accurate
+   - Only proceed to emit_success after validation
+
+6. `internal/prompt/fragments/act/write_gap_report.md`
+   - Add validation step: review report for minimal, complete, and accurate
+   - Only proceed to emit_success after validation
+
+### Spec Files
+
+7. `specs/error-handling.md`
+   - Review all examples showing FAILURE signals
+   - Ensure no examples show reasons embedded in signal tags
+   - Add explicit guidance that explanations come after signal
+   - Verify SUCCESS signal semantics align with procedure goals (not just iteration success)
+   - Correct any inconsistencies with signal format or semantics
+
+8. `specs/iteration-loop.md`
+   - Review all examples showing SUCCESS/FAILURE signals
+   - Ensure examples show proper separation
+   - Add note about signal placement (end of output, after explanations)
+   - Clarify SUCCESS means procedure goal achieved (build: no ready work; planning/auditing: validated output)
+   - Correct any inconsistencies with signal format or semantics
+
+9. `specs/ai-cli-integration.md`
+   - Review signal scanning examples
+   - Ensure examples show correct format
+   - Verify no ambiguous examples
+   - Correct any inconsistencies with signal format or semantics
+
+10. `specs/procedures.md`
+    - Review procedure descriptions and examples
+    - Ensure SUCCESS criteria align with procedure goals
+    - Verify examples show correct signal format
+    - Correct any inconsistencies with signal format or semantics
+
+## Changes Required
+
+### emit_success.md
 ```markdown
-### Procedure Execution Preamble
+# Emit Success
 
-Before the OODA phase content, inject an execution preamble that:
-- Identifies this as an executable procedure
-- Defines the agent's role and autonomy level
-- Explains the OODA loop iteration context
-- Specifies success/failure signaling requirements
-- Sets expectations for tool usage and file modifications
+You must output a SUCCESS promise when the procedure's goal is fully achieved.
 
-Format:
-```
-# ROODA PROCEDURE EXECUTION
+For work tracking procedures (build): Signal SUCCESS only when no ready work remains.
+For planning/auditing procedures: Signal SUCCESS only when output is minimal, complete, and accurate.
+For single-task procedures (sync): Signal SUCCESS when the task completes.
 
-You are an autonomous AI coding agent executing the **{procedure_name}** procedure.
+Actions:
+- Output the exact signal: <promise>SUCCESS</promise>
+- After the signal, include summary of what was accomplished
+- List files modified or created
+- Note any follow-up actions needed
 
-## Your Role
-- Execute all four OODA phases (Observe, Orient, Decide, Act) in sequence
-- Use available tools to read files, run commands, and modify code
-- Make decisions independently based on the information you gather
-- Complete the work described in this iteration
+Example (build procedure, no work remaining):
+<promise>SUCCESS</promise>
 
-## Iteration Context
-- This is iteration {N} of up to {M} iterations (or "unlimited" if no max)
-- Each iteration is a fresh process with clean context
-- File-based state (AGENTS.md, specs, code) persists between iterations
-- Previous iterations may have made progress - check current state first
+All ready work completed:
+- Implemented task #42: Add user authentication
+- All tests passing
+- No ready tasks remaining in work tracking
 
-## Success Signaling
-When you have completed the work for this iteration:
-- Output exactly: `<promise>SUCCESS</promise>`
-- Include a summary of what was accomplished
+Example (audit procedure, validated output):
+<promise>SUCCESS</promise>
 
-If you are blocked and cannot make further progress:
-- Output exactly: `<promise>FAILURE</promise>`
-- Explain what is blocking you
+Audit completed and validated:
+- Reviewed 12 specification files
+- Generated audit report at docs/audit-2024-01-15.md
+- Report is minimal yet complete and accurate
+- Found 3 issues requiring attention
 
-If more work remains but you made progress:
-- Do NOT output any promise signal
-- The loop will continue to the next iteration
+Example (draft plan procedure, validated output):
+<promise>SUCCESS</promise>
 
-## Execution Instructions
-The following sections define what you must do in each OODA phase.
-Execute them in order. Use all available tools. Modify files as needed.
-
----
-```
+Draft plan completed and validated:
+- Created plan at docs/draft-plan-auth-feature.md
+- Plan is minimal yet complete and accurate
+- Broken down into 8 actionable tasks
+- Ready for import to work tracking
 ```
 
-#### 2. Update `iteration-loop.md` Specification
-
-**Location:** `specs/iteration-loop.md`
-
-**Change:** Document that assembled prompts include the execution preamble with iteration context.
-
-**Section to update:** "Algorithm" - step 4 "Assemble prompt from OODA phase files"
-
-**Add:**
+### emit_failure.md
 ```markdown
-Prompt assembly includes:
-1. Procedure execution preamble (with iteration number, max iterations, success signaling instructions)
-2. User context (if --context provided)
-3. OODA phase content (observe, orient, decide, act)
+# Emit Failure
+
+You must output a FAILURE promise to indicate the procedure cannot proceed.
+
+Actions:
+- Output the exact signal: <promise>FAILURE</promise>
+- After the signal, explain why work is blocked
+- List missing prerequisites or dependencies
+- Suggest what needs to happen to unblock
+- Provide actionable next steps
+
+Example:
+<promise>FAILURE</promise>
+
+Work is blocked because:
+- No work tracking system detected (.beads/ or .github/issues not found)
+- AGENTS.md does not specify work tracking configuration
+
+To unblock:
+1. Run `rooda bootstrap` to configure work tracking
+2. Or manually create .beads/ directory and initialize beads
 ```
 
-#### 3. Update Fragment Language to Imperative Voice
-
-**Location:** All fragment files in `internal/prompt/fragments/`
-
-**Change:** Convert passive documentation language to imperative commands.
-
-**Examples:**
-
-**Before (passive):**
+### check_if_blocked.md
 ```markdown
-# Read AGENTS.md
+# Check If Blocked
 
-Load and parse the AGENTS.md configuration file from the repository root.
+Your task is to determine if work can proceed or if blockers exist.
 
-Extract:
-- Work tracking system configuration
-- Build/test/lint commands
+Check for:
+- Missing dependencies or prerequisites
+- Unresolved questions or ambiguities
+- Required resources not available
+- Conflicting requirements
+
+If blocked, output the exact signal: <promise>FAILURE</promise>
+Then explain the blockers.
+
+Otherwise, proceed to the ACT phase.
 ```
 
-**After (imperative):**
+### write_audit_report.md
 ```markdown
-# Read AGENTS.md
+# Write Audit Report
 
-**You must load and parse AGENTS.md from the repository root.**
+You must create an audit report documenting the findings. Use the file writing tool.
 
-Use the file reading tool to load `./AGENTS.md`, then extract:
-- Work tracking system configuration (under "Work Tracking System" section)
-- Build/test/lint commands (under "Build/Test/Lint Commands" section)
-- Specification paths (under "Specification Definition" section)
-- Implementation paths (under "Implementation Definition" section)
-- Quality criteria (under "Quality Criteria" section)
+Include:
+- Executive summary of findings
+- Detailed list of issues with evidence
+- Quality criteria results (PASS/FAIL)
+- Prioritized recommendations
+- Metrics and statistics
 
-Store this information - you will use it throughout this procedure.
+After writing, validate the report:
+- Is it minimal? (No unnecessary content)
+- Is it complete? (All findings documented)
+- Is it accurate? (Evidence supports conclusions)
+
+Only proceed to emit_success if validation passes.
 ```
 
-**Pattern to apply across all fragments:**
-- Start with "You must..." or "Your task is to..."
-- Use imperative verbs: "Load", "Execute", "Identify", "Modify"
-- Add tool usage hints: "Use the file reading tool", "Run the command"
-- Include explicit storage/usage instructions: "Store this for later", "You will use this in the Act phase"
+### write_draft_plan.md
+```markdown
+# Write Draft Plan
 
-#### 4. Add Iteration State to Prompt Context
+You must create a draft plan file (PLAN.md) with the prioritized tasks. Use the file writing tool.
 
-**Location:** `internal/prompt/composer.go` (implementation)
+Include:
+- Overview and objectives
+- Task list with descriptions
+- Priorities and dependencies
+- Acceptance criteria for each task
+- Implementation notes
 
-**Change:** Pass iteration state to AssemblePrompt so preamble can include current iteration number.
+After writing, validate the plan:
+- Is it minimal? (No unnecessary tasks)
+- Is it complete? (All requirements covered)
+- Is it accurate? (Tasks are actionable and correctly scoped)
 
-**Function signature change:**
-```go
-// Before
-func AssemblePrompt(proc Procedure, userContext string, configDir string) (string, error)
-
-// After
-func AssemblePrompt(proc Procedure, userContext string, configDir string, iterState *IterationState) (string, error)
+Only proceed to emit_success if validation passes.
 ```
 
-**Preamble template:**
-```
-This is iteration {iterState.Iteration + 1} of {iterState.MaxIterations} (or "unlimited")
-```
+### write_gap_report.md
+```markdown
+# Write Gap Report
 
-#### 5. Update Section Markers for Clarity
+You must create a gap analysis report documenting the findings. Use the file writing tool.
 
-**Location:** `specs/prompt-composition.md`
+Include:
+- Summary of gaps found
+- Spec-to-impl gaps (specified but not implemented)
+- Impl-to-spec gaps (implemented but not specified)
+- Impact assessment for each gap
+- Recommended actions
 
-**Change:** Make section markers more directive.
+After writing, validate the report:
+- Is it minimal? (No unnecessary content)
+- Is it complete? (All gaps documented)
+- Is it accurate? (Gap analysis is correct)
 
-**Before:**
-```
-=== OBSERVE ===
-```
-
-**After:**
-```
-═══════════════════════════════════════════════════════════════
-PHASE 1: OBSERVE
-Execute these observation tasks to gather information.
-═══════════════════════════════════════════════════════════════
+Only proceed to emit_success if validation passes.
 ```
 
-Apply to all four phases with appropriate descriptions:
-- OBSERVE: "Execute these observation tasks to gather information."
-- ORIENT: "Analyze the information you gathered and form your understanding."
-- DECIDE: "Make decisions about what actions to take."
-- ACT: "Execute the actions you decided on. Modify files, run commands, commit changes."
+### Spec Updates
 
-## Implementation Priority
+All spec files must be reviewed for inconsistencies and corrected:
 
-### Phase 1: Minimal Changes (Immediate Impact)
-1. Add procedure execution preamble to prompt composition
-2. Update section markers to be more directive
-3. Test with existing fragments
+**Signal Format Consistency:**
+- All examples showing signals must follow exact format: `<promise>SUCCESS</promise>` or `<promise>FAILURE</promise>`
+- No examples with reasons embedded: `<promise>FAILURE: reason</promise>` ❌
+- Explanations always come after signal, not within tags
 
-### Phase 2: Fragment Updates (Incremental)
-4. Update top 5 most-used fragments to imperative voice
-5. Test and validate improvements
-6. Update remaining fragments
+**Signal Semantics Consistency:**
+- SUCCESS means procedure goal achieved, not iteration success
+- For build procedure: SUCCESS = no ready work remains
+- For planning/auditing procedures: SUCCESS = output validated as minimal, complete, and accurate
+- For single-task procedures: SUCCESS = task completes
 
-### Phase 3: Iteration Context (Enhancement)
-7. Add iteration state to prompt assembly
-8. Include iteration number in preamble
+**Examples to investigate and correct:**
 
-## Success Criteria
+Pattern to find:
+```
+[AI output and work...]
 
-- [ ] Dry-run output shows clear "ROODA PROCEDURE EXECUTION" header
-- [ ] Prompt explicitly states agent role and autonomy
-- [ ] Success/failure signaling instructions are prominent
-- [ ] Section markers clearly indicate execution phases
-- [ ] Fragment language uses imperative voice
-- [ ] Iteration context included in preamble
-- [ ] AI agents consistently recognize prompts as executable procedures
+<promise>SUCCESS</promise>
 
-## Testing Strategy
+[Optional summary after signal]
+```
 
-1. Run `./bin/rooda build --dry-run` and verify preamble appears
-2. Test with actual AI CLI execution - monitor for improved recognition
-3. Compare iteration success rates before/after changes
-4. Validate that agents emit promise signals correctly
+NOT:
+```
+<promise>SUCCESS: completed task</promise>
+<promise>FAILURE: missing API key</promise>
+```
 
-## Risks & Mitigations
+**Specific areas to review in each spec:**
+- error-handling.md: Failure detection examples, outcome matrix examples
+- iteration-loop.md: Loop termination examples, iteration outcome examples
+- ai-cli-integration.md: Signal scanning examples, execution result examples
+- procedures.md: Procedure descriptions, built-in procedure examples
 
-**Risk:** Longer prompts may exceed context windows
-**Mitigation:** Preamble is ~500 chars, well within budget. Monitor total prompt size.
+## Validation
 
-**Risk:** Imperative language may be too prescriptive
-**Mitigation:** Keep instructions clear but allow agent autonomy in implementation details.
+After updates:
+- [ ] All prompt fragments show exact signal format
+- [ ] All prompt fragments show examples with proper separation
+- [ ] emit_success.md clarifies SUCCESS means procedure goal achieved, not iteration success
+- [ ] emit_success.md specifies for build procedure: SUCCESS only when no ready work remains
+- [ ] emit_success.md specifies for planning/auditing procedures: SUCCESS only when output validated as minimal, complete, and accurate
+- [ ] write_audit_report.md includes validation step before proceeding to emit_success
+- [ ] write_draft_plan.md includes validation step before proceeding to emit_success
+- [ ] write_gap_report.md includes validation step before proceeding to emit_success
+- [ ] All spec examples use correct format
+- [ ] No spec examples show reasons embedded in signal tags
+- [ ] Spec files consistently describe SUCCESS as procedure goal achieved, not iteration success
+- [ ] Spec files consistently describe signal format as exact match with explanations after
+- [ ] All inconsistencies between specs and fragments resolved
+- [ ] Signal scanning logic remains simple (exact string match)
 
-**Risk:** Breaking changes to existing procedures
-**Mitigation:** Changes are additive (preamble) and stylistic (fragment voice). No structural changes.
+## Rationale
 
-## Related Specifications
+**Why exact format?**
+- Simple string matching (no regex, no parsing)
+- No ambiguity in detection
+- Forces AI to follow specification precisely
+- Prevents false negatives from format variations
 
-- `specs/prompt-composition.md` - Prompt assembly algorithm
-- `specs/iteration-loop.md` - Iteration context and state
-- `specs/procedures.md` - Fragment structure and organization
-- `specs/ai-cli-integration.md` - How prompts are piped to AI CLI
-
-## Notes
-
-The key insight is that AI agents need **explicit role definition** and **clear execution directives**. The current prompt assumes the agent will infer its role from context, but making it explicit eliminates ambiguity.
-
-The preamble serves as a "system prompt" that frames the entire OODA procedure as an executable task rather than a reference document.
+**Why explanation after signal?**
+- Signal detection happens first (fast path)
+- Explanations are for human debugging, not parsing
+- Keeps signal scanning O(1) complexity
+- Buffer truncation preserves signals at end
