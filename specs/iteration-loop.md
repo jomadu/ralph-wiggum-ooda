@@ -207,8 +207,16 @@ const (
 Each iteration's outcome is determined by two independent signals: the AI CLI process exit code and output markers emitted by the AI agent.
 
 **Output signals:**
-- `<promise>SUCCESS</promise>` — AI agent declares the job is done
+- `<promise>SUCCESS</promise>` — AI agent declares the procedure's goal is achieved
+  - build procedure: no more ready work items to implement
+  - audit procedures: validated audit report produced
+  - planning procedures: validated draft plan produced  
+  - agents-sync: AGENTS.md synchronized with repository state
 - `<promise>FAILURE</promise>` — AI agent declares it is blocked and cannot make further progress (not a single test failure — the agent has exhausted what it can do)
+
+**Signal placement:** Agents should emit signals at the END of their output, after all work is complete. This ensures signals are preserved even if output is truncated (truncation keeps the most recent output).
+
+**Signal format:** Signals must appear on their own line with no surrounding text. Explanatory text should come AFTER the signal, not embedded in the tag.
 
 **Signal precedence:** If both SUCCESS and FAILURE signals are present in output, FAILURE takes precedence.
 
@@ -871,6 +879,23 @@ If preserving iteration count or statistics across restarts becomes important, a
 **Crash Handling:**
 
 When the AI CLI crashes (segfault, OOM kill, kernel termination), Go's `exec.Command` returns whatever output was written to stdout/stderr before termination. This partial output is scanned for `<promise>` signals using the same logic as clean exits. Crashes produce non-zero exit codes, so the outcome matrix applies identically: if partial output contains `<promise>FAILURE</promise>`, the agent-reported failure is logged; otherwise, it's logged as a process failure. Both increment `ConsecutiveFailures`.
+
+**Signal Placement and Format:**
+
+Agents should emit `<promise>` signals at the END of their output, after all work is complete. This placement ensures signals are preserved even if output is truncated (truncation keeps the most recent output, discarding earlier content). The 10MB default buffer is sufficient for most iterations — if truncation occurs frequently, users should increase `max_output_buffer`.
+
+Signals must appear on their own line with no surrounding text. The correct format is:
+
+```
+<promise>SUCCESS</promise>
+```
+
+NOT:
+```
+Task complete <promise>SUCCESS</promise> - all tests passing
+```
+
+Explanatory text should come AFTER the signal, not embedded in the tag. This ensures reliable signal detection via simple string matching.
 
 **Logging and Verbosity:**
 
