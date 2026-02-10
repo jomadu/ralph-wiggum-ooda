@@ -35,7 +35,7 @@ The `./procedures.md` file defines a fragment-based composition system that repl
 
 ### 2. Update Prompt Composition Spec
 **File**: `specs/prompt-composition.md`
-**Status**: Major updates required
+**Status**: ✅ COMPLETE
 **Authority**: `./procedures.md` schema and template system
 
 **Current Issue**: Assumes single file per OODA phase, but `./procedures.md` defines fragment arrays
@@ -155,3 +155,27 @@ All spec changes must be validated against `./procedures.md` to ensure:
 - Path resolution supports both builtin: prefix and relative paths from config file directory
 - Each OODA phase uses array concatenation to compose full prompts from fragments
 - Spec already follows JTBD template structure from specs/README.md with all required sections
+
+### Task 2 Completion: Update Prompt Composition Spec
+**Completed**: specs/prompt-composition.md updated to support fragment-based composition
+
+**What was done**:
+- Replaced single-file-per-phase model with fragment array processing
+- Added support for inline content via content field in FragmentAction
+- Added Go text/template processing for parameterized fragments
+- Updated data structures to show FragmentAction with content/path/parameters
+- Replaced single-file algorithm with ComposePhasePrompt that processes fragment arrays
+- Updated validation to check fragment arrays, content vs path exclusivity, and template syntax
+- Added edge cases for fragment validation, template errors, and concatenation
+- Updated all examples to show fragment arrays instead of single files
+- Added embedded fragments list (55 fragments: 13 observe, 20 orient, 10 decide, 12 act)
+- Updated design rationale to explain fragment-based composition benefits
+
+**Key learnings**:
+- Fragment arrays enable reusability across procedures (e.g., read_agents_md.md used by multiple procedures)
+- Inline content field allows quick customization without creating separate files
+- Template processing happens per-fragment, not per-phase, enabling fine-grained parameterization
+- Double newline concatenation between fragments provides clear visual separation
+- Validation at config load time (fail fast) catches all fragment and template errors before execution
+- Empty fragment arrays are valid (not all procedures need all phases)
+- Fragment system is backward compatible - can still use single fragment per phase if desired
