@@ -35,7 +35,7 @@ func main() {
 		if flags.ProcedureName == "" {
 			printGlobalHelp()
 		} else {
-			printProcedureHelp(flags.ProcedureName)
+			printProcedureHelp(flags.ProcedureName, flags)
 		}
 		os.Exit(ExitSuccess)
 	}
@@ -207,9 +207,80 @@ For procedure-specific help:
   rooda <procedure> --help`)
 }
 
-func printProcedureHelp(procedureName string) {
-	fmt.Printf("rooda %s - Procedure-specific help not yet implemented\n", procedureName)
-	fmt.Println("\nRun 'rooda --help' for general usage.")
+func printProcedureHelp(procedureName string, flags config.CLIFlags) {
+	cfg, err := config.LoadConfig(flags)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error loading configuration: %v\n", err)
+		os.Exit(ExitConfigError)
+	}
+
+	proc, exists := cfg.Procedures[procedureName]
+	if !exists {
+		fmt.Fprintf(os.Stderr, "Error: Unknown procedure '%s'\n", procedureName)
+		fmt.Fprintln(os.Stderr, "\nRun 'rooda --list-procedures' to see available procedures.")
+		os.Exit(ExitUserError)
+	}
+
+	// Display name or fallback to procedure name
+	display := proc.Display
+	if display == "" {
+		display = procedureName
+	}
+
+	fmt.Printf("rooda %s - %s\n\n", procedureName, display)
+
+	// Description
+	if proc.Description != "" {
+		fmt.Println("DESCRIPTION:")
+		fmt.Printf("  %s\n\n", proc.Description)
+	} else if proc.Summary != "" {
+		fmt.Println("DESCRIPTION:")
+		fmt.Printf("  %s\n\n", proc.Summary)
+	}
+
+	// OODA phases
+	fmt.Println("OODA PHASES:")
+	fmt.Printf("  Observe:  %d fragment(s)\n", len(proc.Observe))
+	fmt.Printf("  Orient:   %d fragment(s)\n", len(proc.Orient))
+	fmt.Printf("  Decide:   %d fragment(s)\n", len(proc.Decide))
+	fmt.Printf("  Act:      %d fragment(s)\n\n", len(proc.Act))
+
+	// Configuration overrides
+	hasOverrides := false
+	fmt.Println("CONFIGURATION:")
+	if proc.IterationMode != "" {
+		fmt.Printf("  Iteration mode: %s\n", proc.IterationMode)
+		hasOverrides = true
+	}
+	if proc.DefaultMaxIterations != nil {
+		fmt.Printf("  Max iterations: %d\n", *proc.DefaultMaxIterations)
+		hasOverrides = true
+	}
+	if proc.IterationTimeout != nil {
+		fmt.Printf("  Timeout: %ds\n", *proc.IterationTimeout)
+		hasOverrides = true
+	}
+	if proc.AICmd != "" {
+		fmt.Printf("  AI command: %s\n", proc.AICmd)
+		hasOverrides = true
+	}
+	if proc.AICmdAlias != "" {
+		fmt.Printf("  AI alias: %s\n", proc.AICmdAlias)
+		hasOverrides = true
+	}
+	if !hasOverrides {
+		fmt.Println("  (uses global defaults)")
+	}
+	fmt.Println()
+
+	// Usage examples
+	fmt.Println("USAGE:")
+	fmt.Printf("  rooda %s\n", procedureName)
+	fmt.Printf("  rooda %s --max-iterations 10\n", procedureName)
+	fmt.Printf("  rooda %s --dry-run\n", procedureName)
+	fmt.Printf("  rooda %s --context task.md\n\n", procedureName)
+
+	fmt.Println("Run 'rooda --help' for all available flags.")
 }
 
 func listProcedures(flags config.CLIFlags) {
