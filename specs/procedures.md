@@ -25,8 +25,9 @@ Define the 16 built-in procedures that ship as defaults — their fragment-based
 - [ ] Built-in fragments organized by OODA phase (observe/, orient/, decide/, act/)
 - [ ] Fragment directory structure includes all 55 fragments (13 observe, 20 orient, 10 decide, 12 act)
 - [ ] Template processing executes with provided parameters
-- [ ] Path resolution validates fragment existence
+- [ ] Path resolution validates fragment existence at config load time (fail fast)
 - [ ] Schema validation ensures required fields present
+- [ ] Fragment validation rejects fragments with both content and path specified
 
 ## Data Structures
 
@@ -67,26 +68,34 @@ function ComposePhasePrompt(fragments []FragmentAction, configDir string, embedd
     for fragment in fragments:
         var content string
         
-        // 1. Determine content source
-        if fragment.Content != "":
+        // 1. Validate content vs path (exactly one required)
+        hasContent = fragment.Content != ""
+        hasPath = fragment.Path != ""
+        
+        if hasContent && hasPath:
+            return error("fragment cannot specify both content and path")
+        if !hasContent && !hasPath:
+            return error("fragment must specify either content or path")
+        
+        // 2. Determine content source
+        if hasContent:
             content = fragment.Content
-        else if fragment.Path != "":
+        else:
             content, err = LoadFragment(fragment.Path, configDir, embeddedFS)
             if err:
                 return error("failed to load fragment %s: %v", fragment.Path, err)
-        else:
-            return error("fragment must have either content or path")
         
-        // 2. Process template if parameters provided
+        
+        // 3. Process template if parameters provided
         if len(fragment.Parameters) > 0:
             content, err = ProcessTemplate(content, fragment.Parameters)
             if err:
                 return error("failed to process template: %v", err)
         
-        // 3. Append to parts
+        // 4. Append to parts
         parts = append(parts, content)
     
-    // 4. Concatenate with newlines
+    // 5. Concatenate with newlines
     return strings.Join(parts, "\n\n"), nil
 
 function LoadFragment(path string, configDir string, embeddedFS embed.FS) -> (string, error):
@@ -122,12 +131,13 @@ function ProcessTemplate(content string, parameters map[string]interface{}) -> (
 
 | Condition | Expected Behavior |
 |-----------|-------------------|
-| Fragment has neither content nor path | Error: "fragment must have either content or path" |
-| Fragment has both content and path | Content takes precedence, path ignored |
-| Fragment path with builtin: prefix not found | Error: "embedded fragment not found: [path]" |
-| Fragment path without prefix not found | Error: "fragment file not found: [path] (resolved to [absolute])" |
+| Fragment has neither content nor path | Error at config load: "fragment must specify either content or path" |
+| Fragment has both content and path | Error at config load: "fragment cannot specify both content and path" |
+| Fragment path with builtin: prefix not found | Error at config load: "embedded fragment not found: [path]" |
+| Fragment path without prefix not found | Error at config load: "fragment file not found: [path] (resolved to [absolute])" |
 | Template syntax error in fragment | Error: "template parse error: [details]" |
-| Template parameter missing | Template executes with zero value for missing parameter |
+| Template parameter missing | Template executes with zero value for missing parameter (Go default) |
+| Template execution error (e.g., range over nil) | Error: "template execution error: [details]" |
 | Empty fragment array for OODA phase | Empty string returned for that phase |
 | Fragment parameters provided but no template syntax | Parameters ignored, content returned as-is |
 | Relative path in workspace config | Resolved relative to workspace config directory (./) |
@@ -410,10 +420,11 @@ procedures:
 
 ### Content vs Path
 
-Each fragment action can specify either:
+Each fragment action must specify exactly one of:
 - `content`: Inline prompt text
-- `path`: Path to a fragment file
-- Both `path` and `parameters`: Path to a template file with template variables
+- `path`: Path to a fragment file (with optional `parameters` for templates)
+
+Specifying both `content` and `path` is an error and will be rejected at config load time.
 
 ### Array Concatenation
 
@@ -819,8 +830,13 @@ When a fragment has parameters:
 
 ### Validation
 
-The system must validate:
-1. All referenced fragment paths exist
-2. Template syntax is valid
-3. Required parameters are provided
-4. OODA phase arrays are properly structured
+The system must validate at config load time (fail fast):
+1. Each fragment specifies exactly one of `content` or `path` (not both, not neither)
+2. All referenced fragment paths exist (both builtin: and filesystem paths)
+3. OODA phase arrays are properly structured
+
+The system validates at template execution time:
+1. Template syntax is valid (parse errors)
+2. Template execution succeeds (execution errors)
+
+Note: Template parameter validation is deferred to future versions. For v2, missing parameters use Go template default behavior (zero values). Fragment authors should use defensive template patterns (e.g., `{{if .param}}...{{end}}`) to handle missing parameters gracefully.
