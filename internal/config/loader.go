@@ -12,10 +12,24 @@ import (
 
 // CLIFlags represents command-line flag overrides
 type CLIFlags struct {
-	MaxIterations *int
-	AICmd         string
-	AICmdAlias    string
-	ConfigPath    string
+	ProcedureName    string
+	MaxIterations    *int
+	Unlimited        bool
+	DryRun           bool
+	Contexts         []string
+	AICmd            string
+	AICmdAlias       string
+	Verbose          bool
+	Quiet            bool
+	LogLevel         string
+	ConfigPath       string
+	ObserveFragments []string
+	OrientFragments  []string
+	DecideFragments  []string
+	ActFragments     []string
+	ShowHelp         bool
+	ShowVersion      bool
+	ListProcedures   bool
 }
 
 // LoadConfig loads and merges configuration from all tiers
