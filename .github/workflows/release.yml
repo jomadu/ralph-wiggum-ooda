@@ -1,0 +1,105 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.5'
+      
+      - name: Build binaries
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          COMMIT_SHA=$(git rev-parse HEAD)
+          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-X main.Version=$VERSION -X main.CommitSHA=$COMMIT_SHA -X main.BuildDate=$BUILD_DATE"
+          
+          # macOS arm64
+          GOOS=darwin GOARCH=arm64 go build -ldflags "$LDFLAGS" -o rooda-darwin-arm64 ./cmd/rooda
+          
+          # macOS amd64
+          GOOS=darwin GOARCH=amd64 go build -ldflags "$LDFLAGS" -o rooda-darwin-amd64 ./cmd/rooda
+          
+          # Linux amd64
+          GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o rooda-linux-amd64 ./cmd/rooda
+          
+          # Linux arm64
+          GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o rooda-linux-arm64 ./cmd/rooda
+          
+          # Windows amd64
+          GOOS=windows GOARCH=amd64 go build -ldflags "$LDFLAGS" -o rooda-windows-amd64.exe ./cmd/rooda
+      
+      - name: Generate checksums
+        run: |
+          sha256sum rooda-* > checksums.txt
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            rooda-darwin-arm64
+            rooda-darwin-amd64
+            rooda-linux-amd64
+            rooda-linux-arm64
+            rooda-windows-amd64.exe
+            checksums.txt
+            scripts/install.sh
+      
+      - name: Update Homebrew formula
+        env:
+          GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          
+          # Calculate SHA256 for macOS binaries
+          ARM64_SHA=$(sha256sum rooda-darwin-arm64 | cut -d' ' -f1)
+          AMD64_SHA=$(sha256sum rooda-darwin-amd64 | cut -d' ' -f1)
+          
+          # Clone tap repo
+          git clone https://x-access-token:${GITHUB_TOKEN}@github.com/jomadu/homebrew-rooda.git
+          cd homebrew-rooda
+          
+          # Update formula
+          cat > rooda.rb <<EOF
+          class Rooda < Formula
+            desc "OODA loop orchestrator for AI coding agents"
+            homepage "https://github.com/jomadu/rooda"
+            version "$VERSION"
+            
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/jomadu/rooda/releases/download/$VERSION/rooda-darwin-arm64"
+                sha256 "$ARM64_SHA"
+              else
+                url "https://github.com/jomadu/rooda/releases/download/$VERSION/rooda-darwin-amd64"
+                sha256 "$AMD64_SHA"
+              end
+            end
+
+            def install
+              bin.install "rooda-darwin-#{Hardware::CPU.arch}" => "rooda"
+            end
+
+            test do
+              system "#{bin}/rooda", "--version"
+            end
+          end
+          EOF
+          
+          # Commit and push
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add rooda.rb
+          git commit -m "Update rooda to $VERSION"
+          git push

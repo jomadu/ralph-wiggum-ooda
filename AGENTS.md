@@ -80,20 +80,37 @@ Stories and bugs are documented in `TASK.md` at project root. Create this file b
 - yq >= 4.0.0 (required) — YAML parsing for rooda-config.yml
 - AI CLI tool (configurable) — default: kiro-cli, can substitute with claude, aider, cursor-agent
 - bd (beads CLI) — issue tracking
+- Go >= 1.24.5 (required for v2 Go implementation)
 
-**Test:** Manual verification (no automated tests)
+**Test:**
+```bash
+# v0.1.0 bash: Manual verification (no automated tests)
+./rooda.sh --version
+./rooda.sh --list-procedures
 
-**Build:** Not required (bash scripts are interpreted)
+# v2 Go: Automated test suite
+go test ./...                    # Run all tests
+go test -v ./internal/...        # Run with verbose output
+```
+
+**Build:**
+```bash
+# v0.1.0 bash: Not required (interpreted)
+
+# v2 Go: Build binary
+go build -o bin/rooda ./cmd/rooda
+# or use build script:
+./scripts/build.sh
+```
 
 **Lint:**
 ```bash
+# v0.1.0 bash
 shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
-```
 
-**Verify script works:**
-```bash
-./rooda.sh --version
-./rooda.sh --list-procedures
+# v2 Go
+go vet ./...         # Built-in Go linter
+# golangci-lint run  # Comprehensive linting (not yet configured)
 ```
 
 ## Specification Definition
@@ -104,18 +121,23 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 
 **Exclude:** `specs/README.md` (index file, not a spec)
 
-**Current state:** v2 Go rewrite specs complete — all 11 specs written with JTBD structure, acceptance criteria, examples. No Go implementation exists yet.
+**Current state:** v2 Go rewrite specs complete — all 11 specs written with JTBD structure, acceptance criteria, examples. Go implementation started: fragment embedding (P0.3) complete, config/AI/loop not yet implemented.
 
 **v2 Rewrite Status:** The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0. The v0.1.0 bash implementation (`rooda.sh`) is the current working version. When gap analysis identifies v2 features as "not implemented," this is expected—specs were written first per spec-driven development, and v2 implementation has not started.
 
 ## Implementation Definition
 
-**Location:** `rooda.sh`, `rooda-config.yml`, `prompts/*.md`
+**Location:** `rooda.sh`, `rooda-config.yml`, `prompts/*.md` (v0.1.0 bash), `cmd/`, `internal/` (v2 Go - in progress), `docs/` (user documentation)
 
 **Patterns:**
 - `rooda.sh` — Main OODA loop script (bash, v0.1.0)
 - `rooda-config.yml` — Procedure definitions and AI tool presets
 - `prompts/*.md` — 25 OODA prompt component files (observe_*, orient_*, decide_*, act_*)
+- `cmd/rooda/main.go` — Go binary entry point (v2, stub only)
+- `internal/prompt/` — Prompt composition and fragment loading (v2, partial)
+- `internal/prompt/fragments/` — 25 embedded fragment files organized by OODA phase
+- `docs/*.md` — User documentation (installation, procedures, configuration, CLI reference, troubleshooting, AGENTS.md format)
+- `README.md` — Project overview, quick start, installation
 
 **Exclude:**
 - `archive/` — archived v1 implementation (preserved for reference)
@@ -123,9 +145,7 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `specs/` — specifications
 - `AGENTS.md`, `PLAN.md`, `TASK.md` — operational files
 
-**v2 Rewrite Status:** The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0. The v0.1.0 bash implementation is the current working version. When gap analysis identifies v2 features as "not implemented," this is expected—specs were written first per spec-driven development, and v2 implementation has not started.
-
-**Note:** The `goify` branch restructured the project — files moved from `src/` to root level, and v1 artifacts archived in `archive/`. There is no Go implementation yet (no go.mod, no *.go files); v2 specifications are complete but implementation not started.
+**v2 Rewrite Status:** Go implementation in progress. Completed: fragment embedding (P0.3), config loader with backward compatibility, AI executor, loop state management, error handling, observability/logging, full loop integration (P7.2). Test suite exists with 10 test files covering all implemented packages. Binary builds successfully and executes procedures end-to-end (`./bin/rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1` works). Not yet implemented: all 16 planned procedures (only agents-sync defined). The v0.1.0 bash implementation (`rooda.sh`) remains available but v2 Go is now functional for single-procedure execution.
 
 ## Quality Criteria
 
@@ -140,6 +160,9 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `./rooda.sh --version` executes without errors (PASS/FAIL)
 - `./rooda.sh --list-procedures` executes without errors (PASS/FAIL)
 - shellcheck passes on rooda.sh with no errors (PASS/FAIL) — requires shellcheck installed
+- `go test ./...` passes all tests (PASS/FAIL) — for v2 Go implementation
+- `go build -o bin/rooda ./cmd/rooda` succeeds (PASS/FAIL) — for v2 Go implementation
+- Documentation examples execute successfully (PASS/FAIL) — verify commands in docs/ work as documented
 
 **Refactoring triggers:**
 - Any quality criterion fails
@@ -157,12 +180,17 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - All 25 prompt files in `prompts/` exist and are referenced by rooda-config.yml
 - rooda-config.yml parses without errors
 - All 11 v2 specs complete with JTBD structure, acceptance criteria, examples
+- v2 Go binary `./bin/rooda --list-procedures` works with v0.1.0 config format
+- Config loader supports both v0.1.0 string format and v2 array format (backward compatible)
+- Go test suite exists with 10 test files across internal/ packages
+- `go build -o bin/rooda ./cmd/rooda` succeeds
+- `./bin/rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1` executes end-to-end successfully
+- `go test ./...` passes all tests
 
 **Verified Not Working / Missing:**
 - shellcheck not installed on this machine — `shellcheck rooda.sh` cannot run
-- No automated test suite exists
 - No CI/CD pipeline configured
-- No Go implementation exists (no go.mod, no *.go files, no cmd/ or internal/ directories)
+- v2 Go implementation partial — only agents-sync procedure defined, 15 more procedures needed
 
 **Why These Definitions:**
 - Implementation is at root level (not `src/`) because `goify` branch restructured the project
