@@ -106,3 +106,9 @@ type Config struct {
 	AICmdAliases map[string]string       // AI command alias name -> command string
 	Provenance   map[string]ConfigSource // Setting path -> source that provided it
 }
+
+// AICommand represents a resolved AI command with provenance.
+type AICommand struct {
+	Command string // Full command string to execute
+	Source  string // Provenance: where this command came from
+}
