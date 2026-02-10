@@ -113,16 +113,16 @@ func TestAssemblePrompt_AllPhases(t *testing.T) {
 	}
 
 	// Check section markers
-	if !strings.Contains(result, "# OBSERVE") {
+	if !strings.Contains(result, "=== OBSERVE ===") {
 		t.Errorf("expected OBSERVE section marker")
 	}
-	if !strings.Contains(result, "# ORIENT") {
+	if !strings.Contains(result, "=== ORIENT ===") {
 		t.Errorf("expected ORIENT section marker")
 	}
-	if !strings.Contains(result, "# DECIDE") {
+	if !strings.Contains(result, "=== DECIDE ===") {
 		t.Errorf("expected DECIDE section marker")
 	}
-	if !strings.Contains(result, "# ACT") {
+	if !strings.Contains(result, "=== ACT ===") {
 		t.Errorf("expected ACT section marker")
 	}
 
@@ -164,7 +164,7 @@ func TestAssemblePrompt_WithUserContext(t *testing.T) {
 	}
 
 	// Check context appears first with marker
-	if !strings.HasPrefix(result, "# CONTEXT\n") {
+	if !strings.HasPrefix(result, "=== CONTEXT ===\n") {
 		t.Errorf("expected CONTEXT section marker at start")
 	}
 	if !strings.Contains(result, "Focus on authentication module") {
@@ -172,8 +172,8 @@ func TestAssemblePrompt_WithUserContext(t *testing.T) {
 	}
 
 	// Context should appear before OBSERVE
-	contextIdx := strings.Index(result, "# CONTEXT")
-	observeIdx := strings.Index(result, "# OBSERVE")
+	contextIdx := strings.Index(result, "=== CONTEXT ===")
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
 	if contextIdx == -1 || observeIdx == -1 || contextIdx >= observeIdx {
 		t.Errorf("expected CONTEXT before OBSERVE")
 	}

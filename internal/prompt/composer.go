@@ -15,7 +15,7 @@ func AssemblePrompt(procedure config.Procedure, userContext string, configDir st
 
 	// Inject user context first if provided
 	if userContext != "" {
-		prompt.WriteString("# CONTEXT\n")
+		prompt.WriteString("=== CONTEXT ===\n")
 		prompt.WriteString(userContext)
 		prompt.WriteString("\n\n")
 	}
@@ -40,9 +40,9 @@ func AssemblePrompt(procedure config.Procedure, userContext string, configDir st
 		// Add section marker and content if phase has content
 		trimmed := strings.TrimSpace(phaseContent)
 		if trimmed != "" {
-			prompt.WriteString("# ")
+			prompt.WriteString("=== ")
 			prompt.WriteString(phase.name)
-			prompt.WriteString("\n")
+			prompt.WriteString(" ===\n")
 			prompt.WriteString(trimmed)
 			prompt.WriteString("\n\n")
 		}
