@@ -144,6 +144,7 @@ func TestAssemblePrompt_AllPhases(t *testing.T) {
 
 func TestAssemblePrompt_WithUserContext(t *testing.T) {
 	procedure := config.Procedure{
+		Display: "Test Procedure",
 		Observe: []config.FragmentAction{
 			{Content: "Observe content"},
 		},
@@ -164,16 +165,27 @@ func TestAssemblePrompt_WithUserContext(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	// Check context appears first with marker
-	if !strings.HasPrefix(result, "=== CONTEXT ===\n") {
-		t.Errorf("expected CONTEXT section marker at start")
+	// Check preamble appears first
+	if !strings.Contains(result, "ROODA PROCEDURE EXECUTION") {
+		t.Errorf("expected preamble at start")
+	}
+
+	// Check context appears after preamble with marker
+	if !strings.Contains(result, "=== CONTEXT ===") {
+		t.Errorf("expected CONTEXT section marker")
 	}
 	if !strings.Contains(result, "Focus on authentication module") {
 		t.Errorf("expected user context content")
 	}
 
-	// Context should appear before OBSERVE
+	// Preamble should appear before context
+	preambleIdx := strings.Index(result, "ROODA PROCEDURE EXECUTION")
 	contextIdx := strings.Index(result, "=== CONTEXT ===")
+	if preambleIdx == -1 || contextIdx == -1 || preambleIdx >= contextIdx {
+		t.Errorf("expected preamble before CONTEXT")
+	}
+
+	// Context should appear before OBSERVE
 	observeIdx := strings.Index(result, "=== OBSERVE ===")
 	if contextIdx == -1 || observeIdx == -1 || contextIdx >= observeIdx {
 		t.Errorf("expected CONTEXT before OBSERVE")
@@ -194,11 +206,12 @@ func TestAssemblePrompt_EmptyPhases(t *testing.T) {
 	}
 
 	// Empty phases should not produce section markers
-	if strings.Contains(result, "# OBSERVE") {
+	if strings.Contains(result, "=== OBSERVE ===") {
 		t.Errorf("expected no OBSERVE marker for empty phase")
 	}
-	if result != "" {
-		t.Errorf("expected empty result, got: %s", result)
+	// Preamble should still be present
+	if !strings.Contains(result, "ROODA PROCEDURE EXECUTION") {
+		t.Errorf("expected preamble even with empty phases")
 	}
 }
 
@@ -543,5 +556,78 @@ func TestAssemblePrompt_Integration_MixedFileAndInlineContexts(t *testing.T) {
 
 	if source1Idx >= inlineIdx || inlineIdx >= source2Idx {
 		t.Errorf("contexts not in correct order")
+	}
+}
+
+func TestAssemblePrompt_PreambleStructure(t *testing.T) {
+	procedure := config.Procedure{
+		Display: "Build Procedure",
+		Observe: []config.FragmentAction{{Content: "Observe"}},
+		Orient:  []config.FragmentAction{{Content: "Orient"}},
+		Decide:  []config.FragmentAction{{Content: "Decide"}},
+		Act:     []config.FragmentAction{{Content: "Act"}},
+	}
+
+	result, err := AssemblePrompt(procedure, "", "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Check preamble header
+	if !strings.Contains(result, "ROODA PROCEDURE EXECUTION") {
+		t.Errorf("expected preamble header")
+	}
+
+	// Check procedure name
+	if !strings.Contains(result, "Procedure: Build Procedure") {
+		t.Errorf("expected procedure name")
+	}
+
+	// Check role section
+	if !strings.Contains(result, "Your Role") {
+		t.Errorf("expected role section")
+	}
+
+	// Check success signaling
+	if !strings.Contains(result, "SUCCESS") {
+		t.Errorf("expected success signal instruction")
+	}
+	if !strings.Contains(result, "FAILURE") {
+		t.Errorf("expected failure signal instruction")
+	}
+
+	// Verify preamble comes before OODA phases
+	preambleIdx := strings.Index(result, "ROODA PROCEDURE EXECUTION")
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
+	if preambleIdx == -1 || observeIdx == -1 || preambleIdx >= observeIdx {
+		t.Errorf("expected preamble before OBSERVE phase")
+	}
+}
+
+func TestAssemblePrompt_PreambleOrder(t *testing.T) {
+	procedure := config.Procedure{
+		Display: "Test",
+		Observe: []config.FragmentAction{{Content: "Observe"}},
+		Orient:  []config.FragmentAction{{Content: "Orient"}},
+		Decide:  []config.FragmentAction{{Content: "Decide"}},
+		Act:     []config.FragmentAction{{Content: "Act"}},
+	}
+
+	userContext := "Focus on testing"
+	result, err := AssemblePrompt(procedure, userContext, "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
+	// Verify order: preamble -> context -> OODA phases
+	preambleIdx := strings.Index(result, "ROODA PROCEDURE EXECUTION")
+	contextIdx := strings.Index(result, "=== CONTEXT ===")
+	observeIdx := strings.Index(result, "=== OBSERVE ===")
+
+	if preambleIdx >= contextIdx {
+		t.Errorf("expected preamble before context")
+	}
+	if contextIdx >= observeIdx {
+		t.Errorf("expected context before OBSERVE")
 	}
 }

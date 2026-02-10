@@ -16,6 +16,11 @@ import (
 func AssemblePrompt(procedure config.Procedure, userContext string, configDir string) (string, error) {
 	var prompt strings.Builder
 
+	// Inject preamble first
+	preamble := generatePreamble(procedure)
+	prompt.WriteString(preamble)
+	prompt.WriteString("\n\n")
+
 	// Inject user context first if provided
 	if userContext != "" {
 		prompt.WriteString("=== CONTEXT ===\n")
@@ -81,6 +86,33 @@ func AssemblePrompt(procedure config.Procedure, userContext string, configDir st
 	}
 
 	return prompt.String(), nil
+}
+
+// generatePreamble creates the procedure execution preamble with agent role and success signaling instructions.
+func generatePreamble(procedure config.Procedure) string {
+	var preamble strings.Builder
+
+	preamble.WriteString("═══════════════════════════════════════════════════════════════\n")
+	preamble.WriteString("ROODA PROCEDURE EXECUTION\n")
+	preamble.WriteString("═══════════════════════════════════════════════════════════════\n\n")
+
+	if procedure.Display != "" {
+		preamble.WriteString("Procedure: ")
+		preamble.WriteString(procedure.Display)
+		preamble.WriteString("\n\n")
+	}
+
+	preamble.WriteString("Your Role:\n")
+	preamble.WriteString("You are an AI coding agent executing a structured OODA loop procedure.\n")
+	preamble.WriteString("This is NOT a template or example - this is an EXECUTABLE PROCEDURE.\n")
+	preamble.WriteString("You must complete all phases and produce concrete outputs.\n\n")
+
+	preamble.WriteString("Success Signaling:\n")
+	preamble.WriteString("- When you complete all tasks successfully, output: <promise>SUCCESS</promise>\n")
+	preamble.WriteString("- If you cannot proceed due to blockers, output: <promise>FAILURE: [reason]</promise>\n")
+	preamble.WriteString("- The loop orchestrator uses these signals to determine iteration outcome.\n")
+
+	return preamble.String()
 }
 
 // ComposePhasePrompt composes a single phase prompt from an array of fragment actions.
