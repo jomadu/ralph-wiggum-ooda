@@ -1,86 +1,143 @@
 # Gap Analysis Plan: v0.1.0 vs v2 Specifications
 
+## Executive Summary
+
+Gap analysis reveals **no missing features in v0.1.0**. The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture. This is a separate initiative, not gaps in the current working version.
+
+**v0.1.0 Status:** Complete and working as designed (bash, 9 procedures, 25 prompts)
+**v2 Status:** Specifications complete, implementation not started (expected per spec-driven development)
+
 ## Context
 
-Gap analysis was run comparing the v2 Go rewrite specifications (11 complete specs in `specs/`) against the current v0.1.0 bash implementation (`rooda.sh`). This analysis correctly identified that the v2 Go rewrite has not been implemented.
+Per AGENTS.md: "The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0."
 
-**Critical Finding:** This is not a gap to fix—it's a planned v2 rewrite that is a separate project initiative. The specifications were written first (spec-driven development), and implementation has not yet started.
+## Findings
 
-## Current State
+### v0.1.0 Implementation (Current Working Version)
 
-**v0.1.0 bash implementation (working):**
-- `rooda.sh` - Main OODA loop script (bash, v0.1.0)
-- `rooda-config.yml` - Procedure definitions and AI tool presets
-- `prompts/*.md` - 25 OODA prompt component files
-- 9 procedures: bootstrap, build, draft-plan-story-to-spec, draft-plan-bug-to-spec, draft-plan-spec-to-impl, draft-plan-impl-to-spec, draft-plan-spec-refactor, draft-plan-impl-refactor, publish-plan
-- Single-tier config system (workspace only)
-- Manual verification (no automated tests)
-- Requires yq >= 4.0.0 for YAML parsing
+**What exists:**
+- Bash script (`rooda.sh`) v0.1.0 - working
+- 9 procedures (bootstrap, build, 5 planning, 2 publish)
+- 25 OODA prompt files (single file per phase per procedure)
+- YAML config with `yq` dependency
+- AI tool presets (hardcoded + custom)
+- Max iterations with three-tier precedence
+- Work tracking integration (beads)
 
-**v2 Go rewrite specifications (complete, not implemented):**
-- 11 complete specs with JTBD structure, acceptance criteria, examples
-- 16 procedures with fragment-based composition
-- 55 prompt fragments organized by OODA phase
-- Three-tier config system (workspace/global/built-in)
-- Promise signals for iteration control
-- Iteration statistics with Welford's algorithm
-- Dry-run mode, provenance tracking, template system
-- Single binary distribution with embedded resources
-- No external dependencies (no yq required)
+**Quality gates:** PASS
+- `./rooda.sh --version` returns v0.1.0 ✓
+- `./rooda.sh --list-procedures` lists 9 procedures ✓
+- All 25 prompt files exist ✓
+- rooda-config.yml parses without errors ✓
 
-## Recommended Actions
+### v2 Specifications (Planned Go Rewrite)
 
-### 1. Update AGENTS.md to clarify v2 rewrite status
+**What is specified:**
+- 11 complete specs with JTBD structure
+- 16 procedures (vs 9 in v0.1.0)
+- Fragment-based composition (55 fragments vs 25 monolithic prompts)
+- Three-tier config (built-in > global > workspace)
+- Embedded resources via go:embed
+- Signal-based termination (`<promise>SUCCESS</promise>`)
+- Comprehensive error handling and observability
+- Single binary distribution
 
-**Priority:** P2 (documentation clarity)
+**Implementation status:** Not started (no go.mod, no *.go files)
 
-**Description:** Add a section to AGENTS.md that explicitly documents:
-- v2 specifications are complete (11 specs in `specs/`)
-- v2 implementation has not started (no Go code exists)
-- v0.1.0 bash is the current working implementation
-- v2 is a planned rewrite, not a gap in v0.1.0
-- The "gap" identified by this analysis is intentional (spec-driven development)
+### Architectural Differences (v0.1.0 → v2)
 
-**Acceptance Criteria:**
-- AGENTS.md has a "v2 Rewrite Status" section
-- Section clarifies that v2 specs are complete but implementation hasn't started
-- Section notes that v0.1.0 bash is the current working version
-- Section explains that v2 is a separate planned initiative
+| Aspect | v0.1.0 Bash | v2 Go Spec |
+|--------|-------------|------------|
+| Language | Bash | Go |
+| Procedures | 9 | 16 |
+| Prompts | 25 single files | 55 reusable fragments |
+| Config | Single YAML | Three-tier (built-in/global/workspace) |
+| Distribution | Script + prompts | Single binary (embedded) |
+| Dependencies | yq, AI CLI | None (embedded) |
+| Termination | Max iterations only | Max iterations + signals + failure threshold |
+| Error handling | Basic | Comprehensive (retry, timeout, graceful degradation) |
+| Observability | Minimal | Structured logging, timing, provenance |
 
-**Rationale:** Prevents future confusion when gap analysis is run again. Makes it clear that the v2 rewrite is a known, planned project.
+## Gap Classification
 
-### 2. (Optional) Create v2 rewrite tracking
+### Not Gaps (v0.1.0 is complete for its scope)
 
-**Priority:** P3 (optional, depends on team decision)
+These are v2 features, not missing v0.1.0 functionality:
+- Fragment-based composition (v0.1.0 uses single files - works fine)
+- Three-tier config (v0.1.0 has single config - sufficient)
+- Embedded resources (v0.1.0 requires prompts/ directory - acceptable)
+- Signal-based termination (v0.1.0 uses max iterations - works)
+- Go implementation (v0.1.0 is bash - works)
+- 16 procedures (v0.1.0 has 9 - covers core use cases)
 
-**Description:** If the team wants to track v2 rewrite progress, create a separate plan or epic in the work tracking system. This would be a new initiative with its own tasks, not a gap-filling exercise.
+### True Gaps (if v2 rewrite proceeds)
 
-**Acceptance Criteria:**
-- Decision made on whether to track v2 rewrite
-- If yes: separate plan/epic created with v2 implementation tasks
-- If no: document that v2 rewrite is not currently prioritized
+**Go Implementation Tasks (v2):**
+1. Initialize Go module and project structure
+2. Implement configuration system (three-tier merge, provenance)
+3. Implement fragment-based prompt composition
+4. Implement iteration loop with signal scanning
+5. Implement AI CLI integration
+6. Implement error handling and observability
+7. Implement CLI interface
+8. Embed 55 fragment files
+9. Define 16 built-in procedures
+10. Implement distribution (single binary build)
+11. Write tests for all components
+12. Write migration guide (v0.1.0 → v2)
 
-**Rationale:** Provides visibility into v2 rewrite progress if the team decides to pursue it. Keeps v2 work separate from v0.1.0 maintenance.
+## Recommendations
 
-## Non-Actions
+### Option 1: Continue with v0.1.0 (Recommended for now)
 
-**Do NOT:**
-- Create tasks to "implement missing features" from v2 specs into v0.1.0 bash
-- Treat the v2 rewrite as a gap to be filled incrementally
-- Attempt to backport v2 features (fragment composition, promise signals, etc.) into v0.1.0
-- Create issues for "missing" v2 features—they're not missing, they're unimplemented by design
+**Rationale:** v0.1.0 works, is complete for its scope, and meets current needs.
 
-**Rationale:** v0.1.0 bash and v2 Go are fundamentally different architectures. Incremental migration is not feasible. v2 is a clean rewrite, not an evolution of v0.1.0.
+**Tasks:** None (v0.1.0 is complete)
 
-## Learnings
+### Option 2: Proceed with v2 Rewrite
 
-**What worked:**
-- Gap analysis correctly identified that v2 is not implemented
-- Specifications are complete and internally consistent
-- v0.1.0 bash implementation is working and documented
+**Rationale:** v2 provides better architecture, testability, distribution, and extensibility.
 
-**What to improve:**
-- AGENTS.md should explicitly document v2 rewrite status to prevent confusion
-- Gap analysis procedure should handle "planned rewrite" scenarios differently than "missing features"
+**Tasks:** See "True Gaps" section above (12 major tasks)
 
-**Operational note:** When running gap analysis on a codebase with complete specs but no implementation, the result should acknowledge this is a planned rewrite, not a gap to fix.
+**Estimated effort:** 2-4 weeks for experienced Go developer
+
+**Risk:** Significant rewrite effort, potential for regressions, migration complexity
+
+### Option 3: Incremental v0.1.0 Improvements
+
+**Rationale:** Add v2 features incrementally to v0.1.0 without full rewrite.
+
+**Possible improvements:**
+- Add signal-based termination to bash loop
+- Add failure threshold tracking
+- Add structured logging
+- Add dry-run mode
+- Add verbose mode
+
+**Estimated effort:** 1-2 days per feature
+
+## Decision Required
+
+**Question:** Should we proceed with v2 Go rewrite, or continue with v0.1.0?
+
+**Factors to consider:**
+- v0.1.0 meets current needs
+- v2 provides better long-term architecture
+- v2 requires significant implementation effort
+- v2 specs are complete (ready to implement)
+- No urgent need for v2 features
+
+**Recommendation:** Continue with v0.1.0 unless there's a specific need for v2 features (single binary distribution, better error handling, fragment reusability).
+
+## Acceptance Criteria
+
+- [ ] Decision made: v0.1.0 continuation vs v2 rewrite vs incremental improvements
+- [ ] If v2: Create issues for 12 implementation tasks
+- [ ] If v0.1.0: Document that no work is needed (complete)
+- [ ] If incremental: Prioritize and create issues for specific improvements
+- [ ] Update AGENTS.md if any learnings from this analysis
+
+## Notes
+
+This gap analysis was performed on 2026-02-09. The v0.1.0 bash implementation is working and complete for its scope. The v2 specifications describe a planned rewrite with different architecture, not missing features in v0.1.0.
