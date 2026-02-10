@@ -28,11 +28,9 @@ The developer wants to invoke rooda procedures with minimal typing, override con
 - [ ] `--dry-run` displays assembled prompt without executing AI CLI
 - [ ] `--dry-run` exits with code 0 if validation passes (config valid, prompts exist, AI command found)
 - [ ] `--dry-run` exits with code 1 if validation fails (invalid flags, unknown procedure, missing AI command, invalid config, missing prompt files)
-- [ ] `--context <text>` injects user-provided context into prompt composition
-- [ ] `--context-file <path>` reads context from file and injects into prompt composition
-- [ ] Multiple `--context` flags accumulate (all contexts injected in order)
-- [ ] Multiple `--context-file` flags accumulate (all file contents injected in order)
-- [ ] `--context` and `--context-file` can be mixed (all accumulate in CLI arg order)
+- [ ] `--context <value>` accepts file path or inline text (file existence check determines interpretation)
+- [ ] Multiple `--context` flags accumulate (all values processed in order)
+- [ ] Context file existence heuristic: if value exists as file, read it; otherwise treat as inline content
 - [ ] `--ai-cmd <command>` overrides AI command for this execution (direct command string)
 - [ ] `--ai-cmd-alias <alias>` overrides AI command using a named alias
 - [ ] `--ai-cmd` takes precedence over `--ai-cmd-alias` when both provided
@@ -40,9 +38,15 @@ The developer wants to invoke rooda procedures with minimal typing, override con
 - [ ] `--quiet` suppresses all non-error output
 - [ ] `--log-level <level>` sets log level (debug, info, warn, error)
 - [ ] `--config <path>` specifies alternate workspace config file path
-- [ ] Prompt file paths in CLI overrides (--observe, --orient, --decide, --act) resolve relative to --config file's directory if --config provided, else relative to ./rooda-config.yml directory
-- [ ] `--observe <file>`, `--orient <file>`, `--decide <file>`, `--act <file>` override individual OODA phase prompt files
-- [ ] OODA phase override files validated at config load time (fail fast before execution)
+- [ ] Fragment values in CLI overrides (--observe, --orient, --decide, --act) resolve relative to --config file's directory if --config provided, else relative to ./rooda-config.yml directory
+- [ ] Multiple `--observe` flags accumulate into fragment array
+- [ ] Multiple `--orient` flags accumulate into fragment array
+- [ ] Multiple `--decide` flags accumulate into fragment array
+- [ ] Multiple `--act` flags accumulate into fragment array
+- [ ] OODA phase flags use file existence heuristic (file path vs inline content)
+- [ ] Providing any OODA phase flag replaces entire phase array (not appended to config)
+- [ ] Fragment order preserved: processed left-to-right as specified on CLI
+- [ ] OODA phase override fragments validated at config load time (fail fast before execution)
 - [ ] OODA phase validation skipped for --list-procedures and --version (info commands only)
 - [ ] `--verbose` and `--quiet` are mutually exclusive (error if both provided)
 - [ ] `--max-iterations` and `--unlimited` are mutually exclusive (error if both provided)
@@ -65,25 +69,24 @@ Parsed command-line arguments before merging with configuration.
 
 ```go
 type CLIArgs struct {
-    ProcedureName    string            // Procedure to execute
-    MaxIterations    *int              // --max-iterations <n>
-    Unlimited        bool              // --unlimited
-    DryRun           bool              // --dry-run
-    Contexts         []string          // --context <text> (multiple allowed)
-    ContextFiles     []string          // --context-file <path> (multiple allowed, accumulate)
-    AICmd            string            // --ai-cmd <command>
-    AICmdAlias       string            // --ai-cmd-alias <alias>
-    Verbose          bool              // --verbose
-    Quiet            bool              // --quiet
-    LogLevel         string            // --log-level <level>
-    ConfigPath       string            // --config <path>
-    ObserveFile      string            // --observe <file>
-    OrientFile       string            // --orient <file>
-    DecideFile       string            // --decide <file>
-    ActFile          string            // --act <file>
-    ShowHelp         bool              // --help
-    ShowVersion      bool              // --version
-    ListProcedures   bool              // --list-procedures
+    ProcedureName      string            // Procedure to execute
+    MaxIterations      *int              // --max-iterations <n>
+    Unlimited          bool              // --unlimited
+    DryRun             bool              // --dry-run
+    Contexts           []string          // --context <value> (file path or inline, multiple allowed)
+    AICmd              string            // --ai-cmd <command>
+    AICmdAlias         string            // --ai-cmd-alias <alias>
+    Verbose            bool              // --verbose
+    Quiet              bool              // --quiet
+    LogLevel           string            // --log-level <level>
+    ConfigPath         string            // --config <path>
+    ObserveFragments   []string          // --observe <value> (file path or inline, multiple allowed)
+    OrientFragments    []string          // --orient <value> (file path or inline, multiple allowed)
+    DecideFragments    []string          // --decide <value> (file path or inline, multiple allowed)
+    ActFragments       []string          // --act <value> (file path or inline, multiple allowed)
+    ShowHelp           bool              // --help
+    ShowVersion        bool              // --version
+    ListProcedures     bool              // --list-procedures
 }
 ```
 
@@ -150,6 +153,23 @@ For each setting:
     Use global config value
   Else:
     Use built-in default value
+
+For context values (Contexts array):
+  For each value in array:
+    If file exists at path:
+      Read file content and use as context
+    Else:
+      Use value directly as inline content
+
+For OODA phase fragments (ObserveFragments, OrientFragments, DecideFragments, ActFragments):
+  If CLI provides any fragments for a phase:
+    Replace entire phase array (do not merge with config)
+  For each fragment value:
+    If file exists at path:
+      Create FragmentAction with {path: <file>, content: "", parameters: nil}
+    Else:
+      Create FragmentAction with {path: "", content: <value>, parameters: nil}
+  Preserve order from CLI arguments (left to right)
 ```
 
 ## Edge Cases
@@ -217,23 +237,33 @@ Error: No AI command configured. Set one of:
 
 Exit code: 2
 
-### Context File Not Found
+### Empty Inline Content
 
 ```bash
-$ rooda build --context-file missing.txt
-Error: Context file not found: missing.txt
+$ rooda build --observe ""
+Error: Empty inline content not allowed for --observe flag.
 ```
 
 Exit code: 1
 
-### OODA Phase File Not Found
-
 ```bash
-$ rooda build --observe custom-observe.md
-Error: Observe file not found: custom-observe.md
+$ rooda build --context ""
+Error: Empty inline content not allowed for --context flag.
 ```
 
 Exit code: 1
+
+### Ambiguous Filename
+
+If user wants inline content "file.md" but a file named "file.md" exists, the file wins (file existence heuristic).
+
+```bash
+$ rooda build --observe "file.md"
+# If file.md exists: uses file content
+# If file.md doesn't exist: uses "file.md" as inline content
+```
+
+To force inline content that looks like a filename, ensure the file doesn't exist or use a non-existent absolute path.
 
 ### Dry-Run Validation Success
 
@@ -275,7 +305,8 @@ Exit code: 1
 
 - **configuration.md** — Defines Config, LoopConfig, Procedure structures and merge logic
 - **iteration-loop.md** — Defines iteration modes, max iterations, timeout behavior
-- **prompt-composition.md** — Defines how --context and OODA phase overrides are used
+- **prompt-composition.md** — Defines fragment processing and how --context and OODA phase overrides are used
+- **procedures.md** — Defines fragment array structure and template system
 - **ai-cli-integration.md** — Defines AI command resolution and execution
 
 ## Implementation Mapping
@@ -327,12 +358,17 @@ $ rooda build --dry-run
 
 ```bash
 $ rooda build --context "Focus on the auth module"
-# Injects context into prompt composition
+# Injects inline context into prompt composition
 ```
 
 ```bash
-$ rooda build --context-file task.md
-# Reads context from task.md and injects into prompt
+$ rooda build --context task.md
+# Reads context from task.md file and injects into prompt
+```
+
+```bash
+$ rooda build --context task.md --context "Additional notes"
+# Mixed: file content + inline content (processed in order)
 ```
 
 ### Override AI Command
@@ -358,15 +394,40 @@ $ rooda build --verbose
 ### Override OODA Phase
 
 ```bash
-$ rooda build --observe custom-observe.md
-# Uses custom observe prompt file
+$ rooda build --observe custom.md
+# Single file fragment (replaces entire observe phase)
 ```
 
-### Multiple Contexts
+```bash
+$ rooda build --observe file1.md --observe file2.md
+# Multiple file fragments (replaces entire observe phase)
+```
+
+```bash
+$ rooda build --observe "Focus on auth module"
+# Inline content fragment (replaces entire observe phase)
+```
+
+```bash
+$ rooda build --observe custom.md --observe "Additional instructions"
+# Mixed: file + inline content (replaces entire observe phase)
+```
+
+### Multiple Contexts (Unified Flag)
 
 ```bash
 $ rooda build --context "Focus on auth" --context "Prioritize security"
-# Both contexts injected into prompt
+# Both inline contexts injected into prompt (in order)
+```
+
+```bash
+$ rooda build --context task.md --context notes.md
+# Both file contents injected into prompt (in order)
+```
+
+```bash
+$ rooda build --context task.md --context "Focus on auth" --context notes.md
+# Mixed: file + inline + file (all processed in order)
 ```
 
 ### Procedure Help
@@ -403,6 +464,27 @@ Direct commands (`--ai-cmd`) are useful for one-off testing or custom tools. Ali
 **Why accumulate multiple `--context` flags?**
 Users may want to inject multiple independent contexts (e.g., task description + architectural constraints). Accumulating them is more flexible than requiring a single concatenated string.
 
+**Why unify `--context` and `--context-file` into a single flag?**
+Consistency with OODA phase flags and reduced cognitive load. The file existence heuristic is intuitive: if it looks like a file and exists, it's a file; otherwise it's inline content. This eliminates the need to remember two separate flags.
+
+**Why use file existence heuristic for context and OODA phases?**
+Intuitive and requires no special syntax. Users naturally specify file paths for files and text for inline content. The heuristic makes the right choice 99% of the time without requiring quotes or prefixes.
+
+**Why do OODA phase overrides replace the entire phase array?**
+Predictability. Users specify complete phase composition, not partial modifications. Element-by-element merging would create ambiguity about which fragments come from config vs CLI.
+
+**Why support repeatable flags for OODA phases?**
+Standard CLI convention (matches `--context` pattern). Enables composing phases from multiple fragments without requiring array syntax in shell.
+
+**Why preserve fragment order from CLI arguments?**
+Predictable fragment composition. Left-to-right order matches user intent and makes debugging easier.
+
+**Why doesn't CLI support template parameters for fragments?**
+Template parameters are a config-only feature. CLI focuses on simple overrides (file paths or inline content). Complex parameterization belongs in configuration files where it can be documented and versioned.
+
+**What about ambiguous filenames?**
+File existence wins. This is a design tradeoff for simplicity. If a user wants inline content "file.md" but a file exists with that name, the file will be used. To force inline content, ensure the file doesn't exist or use a non-existent absolute path.
+
 **Why mutually exclusive `--verbose` and `--quiet`?**
 These represent opposite intents. Allowing both would create ambiguity about which takes precedence.
 
@@ -436,12 +518,11 @@ Short flags are reserved for the most frequently used operations only. Future fl
 - `--ai-cmd-alias`
 
 **Prompt Overrides:**
-- `--observe`
-- `--orient`
-- `--decide`
-- `--act`
-- `--context`, `-c`
-- `--context-file`
+- `--observe` (repeatable, file or inline)
+- `--orient` (repeatable, file or inline)
+- `--decide` (repeatable, file or inline)
+- `--act` (repeatable, file or inline)
+- `--context`, `-c` (repeatable, file or inline)
 
 **Output Control:**
 - `--verbose`, `-v`

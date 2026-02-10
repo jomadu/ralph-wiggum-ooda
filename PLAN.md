@@ -72,7 +72,7 @@ The `./procedures.md` file defines a fragment-based composition system that repl
 
 ### 5. Update CLI Interface Spec
 **File**: `specs/cli-interface.md`
-**Status**: Minor updates for fragment system
+**Status**: ✅ COMPLETE
 **Authority**: `./procedures.md` for OODA phase structure
 
 **Current Issue**: 
@@ -279,6 +279,35 @@ All spec changes must be validated against `./procedures.md` to ensure:
 - Validation at config load time (fail fast) catches all fragment and template errors before execution
 - Empty fragment arrays are valid (not all procedures need all phases)
 - Fragment system is backward compatible - can still use single fragment per phase if desired
+
+### Task 5 Completion: Update CLI Interface Spec
+**Completed**: specs/cli-interface.md updated to support fragment-based OODA phases and unified context flags
+
+**What was done**:
+- Unified context flags: removed --context-file, made --context accept both file paths and inline content
+- Updated OODA phase flags (--observe, --orient, --decide, --act) to be repeatable and accumulate into fragment arrays
+- Added file existence heuristic for both context and OODA phase flags (if file exists, read it; otherwise treat as inline)
+- Updated CLIArgs struct: removed ContextFiles field, changed single OODA file fields to fragment arrays (ObserveFragments, OrientFragments, DecideFragments, ActFragments)
+- Updated flag precedence resolution algorithm to show context processing and fragment array creation with file existence checks
+- Updated validation section: removed "file not found" edge cases (now handled by heuristic), added "empty inline content" validation
+- Added "ambiguous filename" edge case explaining file existence wins when name collision occurs
+- Updated all examples to show unified --context flag and fragment array usage (single, multiple, inline, mixed)
+- Updated design rationale with 6 new notes explaining unified flag design, file existence heuristic, phase replacement behavior, repeatable flags, order preservation, CLI parameter limitations, and ambiguous filename tradeoff
+- Updated flag categories to show OODA and context flags are repeatable and support file/inline
+- Updated dependencies to reference procedures.md for fragment array structure
+- Removed all references to --context-file throughout the spec
+
+**Key learnings**:
+- Unified flag design (--context for both files and inline) reduces cognitive load and matches OODA phase flag pattern
+- File existence heuristic is intuitive and eliminates need for special syntax or prefixes
+- Repeatable flags (--observe file1.md --observe file2.md) follow standard CLI conventions and avoid shell array syntax complexity
+- OODA phase overrides replace entire phase array (not merge) for predictability - users specify complete composition
+- Fragment order preservation (left-to-right) matches user intent and simplifies debugging
+- Template parameters remain config-only feature - CLI focuses on simple overrides (paths or inline content)
+- Ambiguous filename handling (file wins) is acceptable tradeoff for simplicity - rare edge case
+- Empty inline content validation prevents user errors (--observe "" is invalid)
+- CLI now fully supports fragment-based composition system defined in procedures.md
+- All 11 required changes from PLAN.md Task 5 completed successfully
 
 ### Task 3 Completion: Update Configuration Spec
 **Completed**: specs/configuration.md updated to support fragment-based procedure schema
