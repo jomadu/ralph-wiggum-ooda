@@ -10,3 +10,10 @@ Include:
 - Impl-to-spec gaps (implemented but not specified)
 - Impact assessment for each gap
 - Recommended actions
+
+After writing the report, validate your output:
+- Is it minimal? (No unnecessary content)
+- Is it complete? (All gaps documented)
+- Is it accurate? (Gaps match analysis)
+
+Only proceed to emit_success if validation passes.
