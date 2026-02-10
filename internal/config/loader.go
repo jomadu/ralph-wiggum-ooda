@@ -10,6 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// BuiltInProceduresFunc is a function type that returns built-in procedures.
+// This allows the config package to avoid importing the procedures package (circular dependency).
+var BuiltInProceduresFunc func() map[string]Procedure
+
 // CLIFlags represents command-line flag overrides
 type CLIFlags struct {
 	ProcedureName    string
@@ -112,6 +116,13 @@ func resolveGlobalConfigDir() string {
 // builtInDefaults returns the built-in default configuration
 func builtInDefaults() *Config {
 	maxIter := DefaultMaxIterations
+	procedures := make(map[string]Procedure)
+	
+	// Load built-in procedures if function is registered
+	if BuiltInProceduresFunc != nil {
+		procedures = BuiltInProceduresFunc()
+	}
+	
 	return &Config{
 		Loop: LoopConfig{
 			IterationMode:        DefaultIterationMode,
@@ -122,7 +133,7 @@ func builtInDefaults() *Config {
 			LogTimestampFormat:   DefaultTimestampFormat,
 			ShowAIOutput:         DefaultShowAIOutput,
 		},
-		Procedures:   make(map[string]Procedure),
+		Procedures:   procedures,
 		AICmdAliases: builtInAliases(),
 		Provenance:   make(map[string]ConfigSource),
 	}

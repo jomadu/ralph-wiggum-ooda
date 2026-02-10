@@ -8,8 +8,14 @@ import (
 	"strings"
 
 	"github.com/jomadu/rooda/internal/config"
+	"github.com/jomadu/rooda/internal/procedures"
 	"github.com/jomadu/rooda/internal/prompt"
 )
+
+func init() {
+	// Register built-in procedures with config package
+	config.BuiltInProceduresFunc = procedures.BuiltInProcedures
+}
 
 var (
 	Version   = "dev"
