@@ -106,6 +106,8 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 
 **Current state:** v2 Go rewrite specs complete — all 11 specs written with JTBD structure, acceptance criteria, examples. No Go implementation exists yet.
 
+**v2 Rewrite Status:** The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0. The v0.1.0 bash implementation (`rooda.sh`) is the current working version. When gap analysis identifies v2 features as "not implemented," this is expected—specs were written first per spec-driven development, and v2 implementation has not started.
+
 ## Implementation Definition
 
 **Location:** `rooda.sh`, `rooda-config.yml`, `prompts/*.md`
@@ -120,6 +122,8 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `.beads/` — work tracking database
 - `specs/` — specifications
 - `AGENTS.md`, `PLAN.md`, `TASK.md` — operational files
+
+**v2 Rewrite Status:** The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0. The v0.1.0 bash implementation is the current working version. When gap analysis identifies v2 features as "not implemented," this is expected—specs were written first per spec-driven development, and v2 implementation has not started.
 
 **Note:** The `goify` branch restructured the project — files moved from `src/` to root level, and v1 artifacts archived in `archive/`. There is no Go implementation yet (no go.mod, no *.go files); v2 specifications are complete but implementation not started.
 
