@@ -1,6 +1,7 @@
 package prompt
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -198,5 +199,119 @@ func TestAssemblePrompt_EmptyPhases(t *testing.T) {
 	}
 	if result != "" {
 		t.Errorf("expected empty result, got: %s", result)
+	}
+}
+
+func TestAssemblePrompt_WithContextFile(t *testing.T) {
+	// Create temp file for context
+	tmpFile, err := os.CreateTemp("", "context-*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	contextContent := "this repository should use make"
+	if _, err := tmpFile.WriteString(contextContent); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+	
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{{Content: "Observe content"}},
+		Orient:  []config.FragmentAction{{Content: "Orient content"}},
+		Decide:  []config.FragmentAction{{Content: "Decide content"}},
+		Act:     []config.FragmentAction{{Content: "Act content"}},
+	}
+	
+	result, err := AssemblePrompt(procedure, tmpFile.Name(), "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	
+	// Check for Source: line
+	if !strings.Contains(result, "Source: "+tmpFile.Name()) {
+		t.Errorf("expected Source line with file path")
+	}
+	
+	// Check for file content
+	if !strings.Contains(result, contextContent) {
+		t.Errorf("expected file content in prompt")
+	}
+	
+	// Verify Source line comes before content
+	sourceIdx := strings.Index(result, "Source:")
+	contentIdx := strings.Index(result, contextContent)
+	if sourceIdx == -1 || contentIdx == -1 || sourceIdx >= contentIdx {
+		t.Errorf("expected Source line before content")
+	}
+}
+
+func TestAssemblePrompt_WithInlineContext(t *testing.T) {
+	procedure := config.Procedure{
+		Observe: []config.FragmentAction{{Content: "Observe content"}},
+		Orient:  []config.FragmentAction{{Content: "Orient content"}},
+		Decide:  []config.FragmentAction{{Content: "Decide content"}},
+		Act:     []config.FragmentAction{{Content: "Act content"}},
+	}
+	
+	inlineContext := "focus on auth module"
+	result, err := AssemblePrompt(procedure, inlineContext, "")
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	
+	// Should NOT have Source: line for inline content
+	if strings.Contains(result, "Source:") {
+		t.Errorf("expected no Source line for inline context")
+	}
+	
+	// Should have inline content directly
+	if !strings.Contains(result, inlineContext) {
+		t.Errorf("expected inline context in prompt")
+	}
+}
+
+func TestLoadContextContent_File(t *testing.T) {
+	// Create temp file
+	tmpFile, err := os.CreateTemp("", "context-*.md")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	expected := "file content here"
+	if _, err := tmpFile.WriteString(expected); err != nil {
+		t.Fatalf("failed to write temp file: %v", err)
+	}
+	tmpFile.Close()
+	
+	content, isFile, err := LoadContextContent(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	
+	if !isFile {
+		t.Errorf("expected isFile=true")
+	}
+	
+	if content != expected {
+		t.Errorf("expected %q, got %q", expected, content)
+	}
+}
+
+func TestLoadContextContent_Inline(t *testing.T) {
+	inline := "inline context text"
+	
+	content, isFile, err := LoadContextContent(inline)
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+	
+	if isFile {
+		t.Errorf("expected isFile=false")
+	}
+	
+	if content != inline {
+		t.Errorf("expected %q, got %q", inline, content)
 	}
 }

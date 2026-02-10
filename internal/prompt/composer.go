@@ -9,14 +9,46 @@ import (
 
 // AssemblePrompt assembles a complete prompt from a procedure definition.
 // It concatenates fragments from each OODA phase with section markers and
-// optionally injects user context at the top.
+// optionally injects user context at the top. Context string may contain
+// multiple values separated by \n\n. Each value is checked for file existence -
+// if a file exists, its content is read and prefixed with "Source: <path>".
+// Otherwise, the value is treated as inline content.
 func AssemblePrompt(procedure config.Procedure, userContext string, configDir string) (string, error) {
 	var prompt strings.Builder
 
 	// Inject user context first if provided
 	if userContext != "" {
 		prompt.WriteString("=== CONTEXT ===\n")
-		prompt.WriteString(userContext)
+		
+		// Split on double newlines (multiple --context flags)
+		contextValues := strings.Split(userContext, "\n\n")
+		
+		for i, contextValue := range contextValues {
+			if strings.TrimSpace(contextValue) == "" {
+				continue
+			}
+			
+			// Check if context is a file path (file existence heuristic)
+			contextContent, isFile, err := LoadContextContent(contextValue)
+			if err != nil {
+				return "", fmt.Errorf("failed to load context: %v", err)
+			}
+			
+			if isFile {
+				// Add source path for file-based context
+				prompt.WriteString("Source: ")
+				prompt.WriteString(contextValue)
+				prompt.WriteString("\n\n")
+			}
+			
+			prompt.WriteString(contextContent)
+			
+			// Add separator between multiple contexts
+			if i < len(contextValues)-1 {
+				prompt.WriteString("\n\n")
+			}
+		}
+		
 		prompt.WriteString("\n\n")
 	}
 
