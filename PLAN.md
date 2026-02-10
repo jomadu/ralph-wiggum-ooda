@@ -1,143 +1,323 @@
-# Gap Analysis Plan: v0.1.0 vs v2 Specifications
+# rooda v2 Implementation Plan
 
-## Executive Summary
+**Status:** Draft  
+**Created:** 2026-02-09  
+**Target:** Minimal viable v2 Go implementation with single working procedure
 
-Gap analysis reveals **no missing features in v0.1.0**. The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture. This is a separate initiative, not gaps in the current working version.
+## Priority 0: Foundation (Blocking Everything)
 
-**v0.1.0 Status:** Complete and working as designed (bash, 9 procedures, 25 prompts)
-**v2 Status:** Specifications complete, implementation not started (expected per spec-driven development)
+### P0.1: Project Bootstrap
+- [ ] Create `go.mod` with module `github.com/jomadu/rooda`
+- [ ] Create directory structure: `cmd/rooda/`, `internal/{config,loop,prompt,ai,agents}/`
+- [ ] Add dependencies: `gopkg.in/yaml.v3`, `github.com/kballard/go-shellquote`
+- [ ] Create `.gitignore` for Go artifacts
 
-## Context
+**Acceptance:** `go mod tidy` succeeds, directory structure exists
 
-Per AGENTS.md: "The specifications in `specs/` describe a planned v2 Go rewrite with fundamentally different architecture (fragment-based composition, three-tier config, embedded resources, 16 procedures). This is a separate planned initiative, not missing features in v0.1.0."
+### P0.2: Version and Build Metadata
+- [ ] Create `cmd/rooda/main.go` with version variables (Version, CommitSHA, BuildDate)
+- [ ] Implement `--version` flag that prints version info
+- [ ] Create `scripts/build.sh` with ldflags injection
 
-## Findings
+**Acceptance:** `go run cmd/rooda/main.go --version` prints version
 
-### v0.1.0 Implementation (Current Working Version)
+### P0.3: Embed Default Fragments
+- [ ] Copy `prompts/*.md` to `fragments/` with OODA phase subdirectories
+- [ ] Reorganize into `fragments/{observe,orient,decide,act}/` structure per procedures.md
+- [ ] Add `//go:embed fragments` directive in `internal/prompt/embed.go`
+- [ ] Implement `LoadFragment(path)` that handles `builtin:` prefix
 
-**What exists:**
-- Bash script (`rooda.sh`) v0.1.0 - working
-- 9 procedures (bootstrap, build, 5 planning, 2 publish)
-- 25 OODA prompt files (single file per phase per procedure)
-- YAML config with `yq` dependency
-- AI tool presets (hardcoded + custom)
-- Max iterations with three-tier precedence
-- Work tracking integration (beads)
+**Acceptance:** Embedded fragments accessible at runtime, no external files needed
 
-**Quality gates:** PASS
-- `./rooda.sh --version` returns v0.1.0 ✓
-- `./rooda.sh --list-procedures` lists 9 procedures ✓
-- All 25 prompt files exist ✓
-- rooda-config.yml parses without errors ✓
+## Priority 1: Configuration System (Blocks Execution)
 
-### v2 Specifications (Planned Go Rewrite)
+### P1.1: Core Config Types
+- [ ] Define `Config`, `LoopConfig`, `Procedure`, `FragmentAction` structs in `internal/config/types.go`
+- [ ] Define `LogLevel`, `TimestampFormat`, `IterationMode` enums
+- [ ] Define built-in defaults as constants
 
-**What is specified:**
-- 11 complete specs with JTBD structure
-- 16 procedures (vs 9 in v0.1.0)
-- Fragment-based composition (55 fragments vs 25 monolithic prompts)
-- Three-tier config (built-in > global > workspace)
-- Embedded resources via go:embed
-- Signal-based termination (`<promise>SUCCESS</promise>`)
-- Comprehensive error handling and observability
-- Single binary distribution
+**Acceptance:** Types compile, built-in defaults defined
 
-**Implementation status:** Not started (no go.mod, no *.go files)
+### P1.2: YAML Parsing and Merging
+- [ ] Implement `LoadConfig(cliFlags)` in `internal/config/loader.go`
+- [ ] Implement three-tier merge: built-in → global → workspace → env vars
+- [ ] Implement global config directory resolution (ROODA_CONFIG_HOME > XDG_CONFIG_HOME > ~/.config/rooda)
+- [ ] Implement provenance tracking
 
-### Architectural Differences (v0.1.0 → v2)
+**Acceptance:** Config loads from all tiers, precedence correct, provenance tracked
 
-| Aspect | v0.1.0 Bash | v2 Go Spec |
-|--------|-------------|------------|
-| Language | Bash | Go |
-| Procedures | 9 | 16 |
-| Prompts | 25 single files | 55 reusable fragments |
-| Config | Single YAML | Three-tier (built-in/global/workspace) |
-| Distribution | Script + prompts | Single binary (embedded) |
-| Dependencies | yq, AI CLI | None (embedded) |
-| Termination | Max iterations only | Max iterations + signals + failure threshold |
-| Error handling | Basic | Comprehensive (retry, timeout, graceful degradation) |
-| Observability | Minimal | Structured logging, timing, provenance |
+### P1.3: Config Validation
+- [ ] Implement `ValidateConfig(config)` in `internal/config/validate.go`
+- [ ] Validate required fields, type constraints, file existence
+- [ ] Validate AI command binary exists and is executable
+- [ ] Return clear error messages with file paths and suggestions
 
-## Gap Classification
+**Acceptance:** Invalid configs rejected with actionable errors
 
-### Not Gaps (v0.1.0 is complete for its scope)
+### P1.4: AI Command Resolution
+- [ ] Implement `ResolveAICommand(config, procedure, flags)` in `internal/config/resolver.go`
+- [ ] Implement built-in aliases map (kiro-cli, claude, copilot, cursor-agent)
+- [ ] Implement precedence chain per ai-cli-integration.md
+- [ ] Return error with guidance if no AI command configured
 
-These are v2 features, not missing v0.1.0 functionality:
-- Fragment-based composition (v0.1.0 uses single files - works fine)
-- Three-tier config (v0.1.0 has single config - sufficient)
-- Embedded resources (v0.1.0 requires prompts/ directory - acceptable)
-- Signal-based termination (v0.1.0 uses max iterations - works)
-- Go implementation (v0.1.0 is bash - works)
-- 16 procedures (v0.1.0 has 9 - covers core use cases)
+**Acceptance:** AI command resolved correctly, aliases work, clear error when missing
 
-### True Gaps (if v2 rewrite proceeds)
+## Priority 2: Prompt Composition (Blocks Execution)
 
-**Go Implementation Tasks (v2):**
-1. Initialize Go module and project structure
-2. Implement configuration system (three-tier merge, provenance)
-3. Implement fragment-based prompt composition
-4. Implement iteration loop with signal scanning
-5. Implement AI CLI integration
-6. Implement error handling and observability
-7. Implement CLI interface
-8. Embed 55 fragment files
-9. Define 16 built-in procedures
-10. Implement distribution (single binary build)
-11. Write tests for all components
-12. Write migration guide (v0.1.0 → v2)
+### P2.1: Fragment Loading
+- [ ] Implement `LoadFragment(path, configDir, embeddedFS)` in `internal/prompt/loader.go`
+- [ ] Handle `builtin:` prefix for embedded resources
+- [ ] Handle relative paths from config directory
+- [ ] Handle inline content from FragmentAction.Content
 
-## Recommendations
+**Acceptance:** Fragments load from embedded FS and filesystem
 
-### Option 1: Continue with v0.1.0 (Recommended for now)
+### P2.2: Template Processing
+- [ ] Implement `ProcessTemplate(content, params)` in `internal/prompt/template.go`
+- [ ] Use Go text/template for parameterized fragments
+- [ ] Return clear errors for template syntax issues
 
-**Rationale:** v0.1.0 works, is complete for its scope, and meets current needs.
+**Acceptance:** Templates execute with parameters, errors clear
 
-**Tasks:** None (v0.1.0 is complete)
+### P2.3: Prompt Assembly
+- [ ] Implement `AssemblePrompt(procedure, userContext, configDir)` in `internal/prompt/composer.go`
+- [ ] Concatenate fragments per phase with double newlines
+- [ ] Add section markers (# OBSERVE, # ORIENT, # DECIDE, # ACT)
+- [ ] Inject user context at top if provided
 
-### Option 2: Proceed with v2 Rewrite
+**Acceptance:** Assembled prompt matches format in prompt-composition.md examples
 
-**Rationale:** v2 provides better architecture, testability, distribution, and extensibility.
+## Priority 3: AI CLI Integration (Blocks Execution)
 
-**Tasks:** See "True Gaps" section above (12 major tasks)
+### P3.1: Process Execution
+- [ ] Implement `ExecuteAICLI(aiCmd, prompt, verbose, timeout, maxBuffer)` in `internal/ai/executor.go`
+- [ ] Spawn process with prompt as stdin
+- [ ] Capture stdout/stderr to buffer with size limit
+- [ ] Stream to terminal if verbose=true
+- [ ] Handle timeout with SIGTERM → SIGKILL escalation
+- [ ] Return `AIExecutionResult` with output, exit code, duration, truncated flag
 
-**Estimated effort:** 2-4 weeks for experienced Go developer
+**Acceptance:** AI CLI executes, output captured, timeout works, verbose streams
 
-**Risk:** Significant rewrite effort, potential for regressions, migration complexity
+### P3.2: Signal Scanning
+- [ ] Implement `ScanOutputForSignals(output)` in `internal/ai/executor.go`
+- [ ] Simple string matching for `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>`
+- [ ] Return both flags (caller decides precedence)
 
-### Option 3: Incremental v0.1.0 Improvements
+**Acceptance:** Signals detected correctly, case-sensitive exact match
 
-**Rationale:** Add v2 features incrementally to v0.1.0 without full rewrite.
+## Priority 4: Iteration Loop (Core Functionality)
 
-**Possible improvements:**
-- Add signal-based termination to bash loop
-- Add failure threshold tracking
-- Add structured logging
-- Add dry-run mode
-- Add verbose mode
+### P4.1: Loop State Management
+- [ ] Define `IterationState`, `IterationStats` structs in `internal/loop/state.go`
+- [ ] Implement Welford's algorithm for statistics in `updateStats()`
+- [ ] Implement `getMean()`, `getStdDev()` helpers
 
-**Estimated effort:** 1-2 days per feature
+**Acceptance:** Statistics calculated correctly with constant memory
 
-## Decision Required
+### P4.2: Failure Detection
+- [ ] Implement `DetectIterationFailure(result)` in `internal/loop/errors.go`
+- [ ] Implement outcome matrix per iteration-loop.md
+- [ ] Promise signals override exit code
+- [ ] FAILURE takes precedence over SUCCESS
 
-**Question:** Should we proceed with v2 Go rewrite, or continue with v0.1.0?
+**Acceptance:** Failure detection matches outcome matrix
 
-**Factors to consider:**
-- v0.1.0 meets current needs
-- v2 provides better long-term architecture
-- v2 requires significant implementation effort
-- v2 specs are complete (ready to implement)
-- No urgent need for v2 features
+### P4.3: Core Loop
+- [ ] Implement `RunLoop(state, config)` in `internal/loop/loop.go`
+- [ ] Check termination conditions (max iterations, failure threshold)
+- [ ] Assemble prompt, execute AI CLI, scan signals
+- [ ] Track consecutive failures, reset on success
+- [ ] Update statistics after each iteration
+- [ ] Return loop status (success, max-iters, aborted, interrupted)
 
-**Recommendation:** Continue with v0.1.0 unless there's a specific need for v2 features (single binary distribution, better error handling, fragment reusability).
+**Acceptance:** Loop executes iterations, terminates correctly, statistics displayed
 
-## Acceptance Criteria
+### P4.4: Signal Handling
+- [ ] Implement SIGINT/SIGTERM handlers in `internal/loop/signals.go`
+- [ ] Kill AI CLI process on signal
+- [ ] Wait for termination with 5s timeout
+- [ ] Exit with code 130
 
-- [ ] Decision made: v0.1.0 continuation vs v2 rewrite vs incremental improvements
-- [ ] If v2: Create issues for 12 implementation tasks
-- [ ] If v0.1.0: Document that no work is needed (complete)
-- [ ] If incremental: Prioritize and create issues for specific improvements
-- [ ] Update AGENTS.md if any learnings from this analysis
+**Acceptance:** Ctrl+C kills AI CLI and exits cleanly
+
+## Priority 5: CLI Interface (User-Facing)
+
+### P5.1: Argument Parsing
+- [ ] Implement flag parsing in `cmd/rooda/main.go`
+- [ ] Support all flags from cli-interface.md
+- [ ] Validate mutually exclusive flags (--verbose/--quiet, --max-iterations/--unlimited)
+- [ ] Parse repeatable flags (--context, --observe, --orient, --decide, --act)
+
+**Acceptance:** All flags parse correctly, validation works
+
+### P5.2: Help and Info Commands
+- [ ] Implement `--help` with usage, flags, examples
+- [ ] Implement `--list-procedures` with descriptions
+- [ ] Implement procedure-specific help (`rooda <proc> --help`)
+
+**Acceptance:** Help text clear and complete
+
+### P5.3: Dry-Run Mode
+- [ ] Implement `--dry-run` validation in `cmd/rooda/main.go`
+- [ ] Validate config, prompt files, AI command
+- [ ] Display assembled prompt with section markers
+- [ ] Display resolved config with provenance
+- [ ] Exit with code 0 (pass) or 1 (fail)
+
+**Acceptance:** Dry-run validates without executing, output matches observability.md
+
+## Priority 6: Observability (Essential for Debugging)
+
+### P6.1: Structured Logging
+- [ ] Implement `LogEvent` struct and logger in `internal/observability/logger.go`
+- [ ] Implement log levels (debug, info, warn, error)
+- [ ] Implement timestamp formats (time, relative, iso, none)
+- [ ] Format as `[timestamp] LEVEL message key=value`
+- [ ] Route to stderr by default
+
+**Acceptance:** Logs formatted correctly, levels filter, timestamps configurable
+
+### P6.2: Progress Display
+- [ ] Log iteration start/complete with timing
+- [ ] Log loop start/complete with status
+- [ ] Display statistics at loop completion
+- [ ] Suppress progress when log level > info
+
+**Acceptance:** Progress matches examples in observability.md
+
+## Priority 7: Single Working Procedure (Milestone)
+
+### P7.1: Implement agents-sync Procedure
+- [ ] Define `agents-sync` in built-in procedures with fragment arrays
+- [ ] Create minimal fragments: `observe/read_agents_md.md`, `observe/scan_repo_structure.md`
+- [ ] Create minimal fragments: `orient/compare_detected_vs_documented.md`, `orient/identify_drift.md`
+- [ ] Create minimal fragments: `decide/determine_sections_to_update.md`, `decide/check_if_blocked.md`
+- [ ] Create minimal fragments: `act/write_agents_md.md`, `act/commit_changes.md`, `act/emit_success.md`
+
+**Acceptance:** `rooda agents-sync --dry-run` shows assembled prompt
+
+### P7.2: End-to-End Test
+- [ ] Run `rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1`
+- [ ] Verify loop executes, AI CLI invoked, output captured
+- [ ] Verify statistics displayed
+- [ ] Verify exit code correct
+
+**Acceptance:** Single procedure works end-to-end
+
+## Priority 8: Remaining Built-in Procedures (Completeness)
+
+### P8.1: Create All 55 Fragment Files
+- [ ] Write all fragments per procedures.md fragment directory structure
+- [ ] 13 observe fragments, 20 orient fragments, 10 decide fragments, 12 act fragments
+- [ ] Embed in binary via go:embed
+
+**Acceptance:** All fragments exist and embedded
+
+### P8.2: Define All 16 Built-in Procedures
+- [ ] Define all procedures in `internal/procedures/builtin.go`
+- [ ] Map fragment arrays per procedures.md built-in procedures configuration
+
+**Acceptance:** `rooda --list-procedures` shows all 16
+
+## Priority 9: Distribution (Deployment)
+
+### P9.1: Cross-Compilation
+- [ ] Create `scripts/build.sh` for cross-platform builds
+- [ ] Build for darwin/arm64, darwin/amd64, linux/amd64, linux/arm64, windows/amd64
+- [ ] Generate checksums.txt
+
+**Acceptance:** Binaries build for all platforms, checksums generated
+
+### P9.2: Installation Script
+- [ ] Create `scripts/install.sh` with platform detection
+- [ ] Verify checksums before installation
+- [ ] Install to /usr/local/bin (Unix) or %USERPROFILE%\bin (Windows)
+
+**Acceptance:** Install script works on macOS and Linux
+
+### P9.3: GitHub Release Workflow
+- [ ] Create `.github/workflows/release.yml`
+- [ ] Build on tag push, upload binaries to GitHub Releases
+- [ ] Include install.sh and checksums.txt in release assets
+
+**Acceptance:** Release workflow publishes binaries on tag
+
+## Priority 10: AGENTS.md Integration (Operational Knowledge)
+
+### P10.1: AGENTS.md Parser
+- [ ] Implement `ParseAgentsMD(content)` in `internal/agents/parser.go`
+- [ ] Parse sections per agents-md-format.md schema
+- [ ] Return `AgentsMD` struct with all fields
+
+**Acceptance:** AGENTS.md parsed correctly
+
+### P10.2: Bootstrap Workflow
+- [ ] Implement `BootstrapAgentsMD(repoPath)` in `internal/agents/bootstrap.go`
+- [ ] Detect build system, test system, spec paths, impl paths, work tracking
+- [ ] Generate AGENTS.md with detected values and rationale comments
+
+**Acceptance:** Bootstrap creates valid AGENTS.md from scratch
+
+### P10.3: Drift Detection and Update
+- [ ] Implement `VerifyAgentsMD(agentsMD)` in `internal/agents/verifier.go`
+- [ ] Run commands, check paths, detect drift
+- [ ] Implement `UpdateAgentsMD(agentsMD, drifts)` in `internal/agents/updater.go`
+- [ ] Update in-place with inline rationale
+
+**Acceptance:** Drift detected and AGENTS.md updated correctly
+
+## Out of Scope for v2.0.0
+
+- Homebrew formula (manual installation sufficient for initial release)
+- JSON log format (text format sufficient)
+- Failure type classification (all failures treated equally)
+- Exponential backoff (simple consecutive failure threshold sufficient)
+- Advanced template validation (basic Go template errors sufficient)
+- Fragment caching (performance not critical for v2.0.0)
+
+## Success Criteria
+
+**v2.0.0 is complete when:**
+1. `rooda --version` prints version
+2. `rooda --list-procedures` shows all 16 procedures
+3. `rooda agents-sync --dry-run` validates and displays prompt
+4. `rooda agents-sync --ai-cmd-alias kiro-cli` executes end-to-end
+5. Single binary with embedded prompts (no external dependencies except AI CLI)
+6. Cross-platform binaries available (macOS, Linux, Windows)
+7. Installation script works
+8. All acceptance criteria from specs pass
+
+## Task Breakdown Summary
+
+- **P0:** 3 tasks (foundation)
+- **P1:** 4 tasks (configuration)
+- **P2:** 3 tasks (prompt composition)
+- **P3:** 2 tasks (AI CLI integration)
+- **P4:** 4 tasks (iteration loop)
+- **P5:** 3 tasks (CLI interface)
+- **P6:** 2 tasks (observability)
+- **P7:** 2 tasks (single working procedure)
+- **P8:** 2 tasks (remaining procedures)
+- **P9:** 3 tasks (distribution)
+- **P10:** 3 tasks (AGENTS.md integration)
+
+**Total:** 31 tasks across 11 priority levels
+
+## Implementation Order
+
+Work sequentially through priorities P0 → P10. Within each priority, tasks can be parallelized if independent. P7 (single working procedure) is the first major milestone — everything before it is foundational, everything after is expansion.
+
+## Estimated Effort
+
+- **P0-P6:** ~60% of effort (core framework)
+- **P7:** ~10% of effort (first working procedure validates architecture)
+- **P8-P10:** ~30% of effort (completeness and polish)
 
 ## Notes
 
-This gap analysis was performed on 2026-02-09. The v0.1.0 bash implementation is working and complete for its scope. The v2 specifications describe a planned rewrite with different architecture, not missing features in v0.1.0.
+- This plan follows spec-driven development: all 11 specs are complete, implementation follows specs exactly
+- No Go code exists yet — starting from scratch
+- v0.1.0 bash implementation remains functional during v2 development
+- Fragment content from `prompts/*.md` will be reorganized into OODA phase subdirectories
+- Built-in procedures use embedded fragments; custom procedures can reference filesystem fragments
