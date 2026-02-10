@@ -52,3 +52,12 @@ type QualityCriterion struct {
 	PassPattern string
 	Category    string
 }
+
+// DriftDetection represents detected drift between AGENTS.md and reality
+type DriftDetection struct {
+	Field      string
+	Expected   string
+	Actual     string
+	FixApplied string
+	Rationale  string
+}
