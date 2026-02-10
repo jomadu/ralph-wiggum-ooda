@@ -385,10 +385,11 @@ func runDryRun(flags config.CLIFlags) int {
 	fmt.Printf("✓ Prompt assembled (%d characters)\n", len(assembledPrompt))
 	fmt.Println()
 
-	// 4. Display assembled prompt with section markers
-	fmt.Println("=== ASSEMBLED PROMPT ===")
-	fmt.Println(assembledPrompt)
-	fmt.Println("=== END PROMPT ===")
+	// 4. Display assembled prompt (already has === PHASE === markers)
+	fmt.Println("--- Assembled Prompt ---")
+	fmt.Println()
+	fmt.Print(assembledPrompt)
+	fmt.Println("--- End Prompt ---")
 	fmt.Println()
 
 	// 5. Display resolved configuration with provenance
