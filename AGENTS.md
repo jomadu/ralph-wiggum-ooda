@@ -127,7 +127,7 @@ go vet ./...         # Built-in Go linter
 
 ## Implementation Definition
 
-**Location:** `rooda.sh`, `rooda-config.yml`, `prompts/*.md` (v0.1.0 bash), `cmd/`, `internal/` (v2 Go - in progress)
+**Location:** `rooda.sh`, `rooda-config.yml`, `prompts/*.md` (v0.1.0 bash), `cmd/`, `internal/` (v2 Go - in progress), `docs/` (user documentation)
 
 **Patterns:**
 - `rooda.sh` — Main OODA loop script (bash, v0.1.0)
@@ -136,6 +136,8 @@ go vet ./...         # Built-in Go linter
 - `cmd/rooda/main.go` — Go binary entry point (v2, stub only)
 - `internal/prompt/` — Prompt composition and fragment loading (v2, partial)
 - `internal/prompt/fragments/` — 25 embedded fragment files organized by OODA phase
+- `docs/*.md` — User documentation (installation, procedures, configuration, CLI reference, troubleshooting, AGENTS.md format)
+- `README.md` — Project overview, quick start, installation
 
 **Exclude:**
 - `archive/` — archived v1 implementation (preserved for reference)
@@ -160,6 +162,7 @@ go vet ./...         # Built-in Go linter
 - shellcheck passes on rooda.sh with no errors (PASS/FAIL) — requires shellcheck installed
 - `go test ./...` passes all tests (PASS/FAIL) — for v2 Go implementation
 - `go build -o bin/rooda ./cmd/rooda` succeeds (PASS/FAIL) — for v2 Go implementation
+- Documentation examples execute successfully (PASS/FAIL) — verify commands in docs/ work as documented
 
 **Refactoring triggers:**
 - Any quality criterion fails
