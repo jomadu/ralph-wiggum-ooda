@@ -104,7 +104,7 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 
 **Exclude:** `specs/README.md` (index file, not a spec)
 
-**Current state:** v2 Go rewrite specs — `specs/README.md` defines the job map and topics of concern; individual spec files referenced in the README are not yet written.
+**Current state:** v2 Go rewrite specs complete — all 11 specs written with JTBD structure, acceptance criteria, examples. No Go implementation exists yet.
 
 ## Implementation Definition
 
@@ -121,7 +121,7 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `specs/` — specifications
 - `AGENTS.md`, `PLAN.md`, `TASK.md` — operational files
 
-**Note:** The `goify` branch restructured the project — files moved from `src/` to root level, and v1 artifacts archived in `archive/`. There is no Go implementation yet; v2 is in the specification phase.
+**Note:** The `goify` branch restructured the project — files moved from `src/` to root level, and v1 artifacts archived in `archive/`. There is no Go implementation yet (no go.mod, no *.go files); v2 specifications are complete but implementation not started.
 
 ## Quality Criteria
 
@@ -144,7 +144,7 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 
 ## Operational Learnings
 
-**Last Bootstrap Verification:** 2026-02-06
+**Last Bootstrap Verification:** 2026-02-09
 
 **Verified Working:**
 - `./rooda.sh --version` returns v0.1.0
@@ -152,11 +152,13 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - `bd ready --json` returns valid JSON
 - All 25 prompt files in `prompts/` exist and are referenced by rooda-config.yml
 - rooda-config.yml parses without errors
+- All 11 v2 specs complete with JTBD structure, acceptance criteria, examples
 
 **Verified Not Working / Missing:**
 - shellcheck not installed on this machine — `shellcheck rooda.sh` cannot run
 - No automated test suite exists
 - No CI/CD pipeline configured
+- No Go implementation exists (no go.mod, no *.go files, no cmd/ or internal/ directories)
 
 **Why These Definitions:**
 - Implementation is at root level (not `src/`) because `goify` branch restructured the project
@@ -164,3 +166,4 @@ shellcheck rooda.sh  # Requires shellcheck installed; brew install shellcheck
 - Archive preserved for reference but excluded from active implementation — prevents agents from modifying deprecated code
 - Quality criteria are boolean PASS/FAIL for clear automated verification
 - No build step because current implementation is bash (v2 Go will need `go build`, `go test`, `golangci-lint`)
+- Gap analysis shows 20 tasks required for complete v2 implementation, organized in 4 phases (foundation, core loop, enhanced features, advanced features)
