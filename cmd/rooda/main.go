@@ -74,6 +74,56 @@ func main() {
 		os.Exit(ExitUserError)
 	}
 
+	// Validate log level
+	if flags.LogLevel != "" {
+		validLevels := []string{"debug", "info", "warn", "error"}
+		valid := false
+		for _, level := range validLevels {
+			if flags.LogLevel == level {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			fmt.Fprintf(os.Stderr, "Error: Invalid log level '%s'. Valid levels: debug, info, warn, error.\n", flags.LogLevel)
+			os.Exit(ExitUserError)
+		}
+	}
+
+	// Validate empty inline content for context flags
+	for _, ctx := range flags.Contexts {
+		if ctx == "" {
+			fmt.Fprintln(os.Stderr, "Error: Empty inline content not allowed for --context flag.")
+			os.Exit(ExitUserError)
+		}
+	}
+
+	// Validate empty inline content for OODA phase flags
+	for _, obs := range flags.ObserveFragments {
+		if obs == "" {
+			fmt.Fprintln(os.Stderr, "Error: Empty inline content not allowed for --observe flag.")
+			os.Exit(ExitUserError)
+		}
+	}
+	for _, ori := range flags.OrientFragments {
+		if ori == "" {
+			fmt.Fprintln(os.Stderr, "Error: Empty inline content not allowed for --orient flag.")
+			os.Exit(ExitUserError)
+		}
+	}
+	for _, dec := range flags.DecideFragments {
+		if dec == "" {
+			fmt.Fprintln(os.Stderr, "Error: Empty inline content not allowed for --decide flag.")
+			os.Exit(ExitUserError)
+		}
+	}
+	for _, act := range flags.ActFragments {
+		if act == "" {
+			fmt.Fprintln(os.Stderr, "Error: Empty inline content not allowed for --act flag.")
+			os.Exit(ExitUserError)
+		}
+	}
+
 	if flags.ProcedureName == "" {
 		fmt.Fprintln(os.Stderr, "Error: No procedure specified. Run 'rooda --help' for usage.")
 		os.Exit(ExitUserError)
