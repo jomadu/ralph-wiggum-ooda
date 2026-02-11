@@ -22,7 +22,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			},
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/determine_sections_to_update.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_agents_md.md"},
@@ -49,7 +49,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/pick_task.md"},
 				{Path: "builtin:fragments/decide/plan_implementation_approach.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/modify_files.md"},
@@ -74,7 +74,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			},
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/determine_import_strategy.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/create_work_items.md"},
@@ -203,7 +203,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -227,7 +227,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -250,7 +250,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -272,7 +272,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -296,7 +296,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -320,7 +320,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -343,7 +343,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},
@@ -365,7 +365,7 @@ func BuiltInProcedures() map[string]config.Procedure {
 			Decide: []config.FragmentAction{
 				{Path: "builtin:fragments/decide/break_down_into_tasks.md"},
 				{Path: "builtin:fragments/decide/prioritize_tasks.md"},
-				{Path: "builtin:fragments/decide/check_if_blocked.md"},
+				{Path: "builtin:fragments/decide/decide_signal.md"},
 			},
 			Act: []config.FragmentAction{
 				{Path: "builtin:fragments/act/write_draft_plan.md"},

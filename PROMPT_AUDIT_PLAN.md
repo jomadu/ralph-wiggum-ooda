@@ -18,10 +18,10 @@
 - [x] `observe/study_agents_md.md` - **16 procedures** (all) - RENAMED from read_agents_md.md
 - [x] `observe/study_specs.md` - **10 procedures** - RENAMED from read_specs.md
 - [x] `observe/study_task_input.md` - **10 procedures** - RENAMED from read_task_input.md
-- [ ] `decide/check_if_blocked.md` - **10 procedures**
-- [ ] `decide/break_down_into_tasks.md` - **10 procedures**
-- [ ] `decide/prioritize_tasks.md` - **10 procedures**
-- [ ] `act/write_draft_plan.md` - **10 procedures**
+- [x] `decide/decide_signal.md` - **10 procedures** - RENAMED from check_if_blocked.md, REFACTORED to decide SUCCESS/FAILURE/continue
+- [x] `decide/break_down_into_tasks.md` - **10 procedures**
+- [x] `decide/prioritize_tasks.md` - **10 procedures**
+- [x] `act/write_draft_plan.md` - **10 procedures**
 
 ### Medium-Impact Fragments (3-9 uses)
 
@@ -86,10 +86,10 @@
 
 **Total Fragments:** 55 files (54 unique) - reduced from 57 after consolidation
 
-**Fragments Completed:** 10 of 55 (18%)
+**Fragments Completed:** 11 of 55 (20%)
 - 2 replaced (emit_success, emit_failure → emit_signal)
-- 6 renamed and enhanced (read_* → study_*)
-- 2 improved (read_agents_md, read_specs before rename)
+- 7 renamed and enhanced (read_* → study_*, check_if_blocked → decide_signal)
+- 2 improved (emit_signal decision logic, decide_signal comprehensive rewrite)
 
 ---
 
@@ -466,6 +466,8 @@ diff prompts-baseline/<procedure-name>.txt prompts-updated/<procedure-name>.txt
 - [x] `observe/read_agents_md.md` - **IMPROVED** - Added all 10 required topics, flexible parsing, validation, error handling
 - [x] `observe/read_specs.md` - **IMPROVED** - Changed "load" to "study", added JTBD structure guidance, examples, implementation status
 - [x] `observe/read_*` → `observe/study_*` - **REFACTORED** - All 6 read fragments renamed to study, enhanced with analytical guidance
+- [x] `decide/check_if_blocked.md` → `decide/decide_signal.md` - **REFACTORED** - Now decides SUCCESS/FAILURE/continue instead of just checking blockers; aligned with OODA principle (Decide makes decisions, Act executes them)
+- [x] `act/emit_signal.md` - **IMPROVED** - Removed decision-making logic, now purely executes decisions made in Decide phase
 
 ---
 
@@ -504,6 +506,40 @@ diff prompts-baseline/<procedure-name>.txt prompts-updated/<procedure-name>.txt
 - Updated: `internal/procedures/builtin_test.go`
 - Updated: `internal/prompt/composer_test.go`
 - Updated: `internal/prompt/fragments_imperative_test.go`
+
+**Status:** ✅ Complete - All tests passing
+
+---
+
+### 2026-02-11 - Refactored check_if_blocked to decide_signal
+
+**Change:** Renamed `decide/check_if_blocked.md` to `decide/decide_signal.md` and refactored to make signal decisions
+
+**Rationale:**
+- Original fragment only checked for blockers, didn't decide what to do about them
+- Fragment is last Decide step before emit_signal in Act phase
+- OODA principle: Decide phase makes decisions, Act phase executes them
+- Fragment should decide SUCCESS/FAILURE/continue, not just identify blockers
+
+**Improvements:**
+- **Renamed** from `check_if_blocked.md` to `decide_signal.md` (clearer purpose)
+- **Added SUCCESS criteria** - When to stop because goal achieved
+- **Added continuation criteria** - When to keep iterating
+- **Removed signal emission** - That's emit_signal's job in Act phase
+- **Added concrete examples** - All three decision types with context
+- **Specific blocker categories** - Context-aware (AGENTS.md, work tracking, permissions)
+- **Aligned with emit_signal** - Decide makes decision, Act executes it
+
+**Impact:**
+- All 10 procedures using this fragment updated
+- emit_signal.md also updated to remove decision-making logic
+- Tests updated and passing
+- Binary rebuilt with embedded changes
+
+**Files Modified:**
+- Renamed: `decide/check_if_blocked.md` → `decide/decide_signal.md`
+- Updated: `internal/procedures/builtin.go` (10 procedures)
+- Updated: `act/emit_signal.md` (removed decision logic, now purely executes)
 
 **Status:** ✅ Complete - All tests passing
 

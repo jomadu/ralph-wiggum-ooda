@@ -1,21 +1,17 @@
 # Emit Signal
 
-Your task is to signal when iteration should stop. If you don't emit a signal, the loop will continue automatically to the next iteration.
+Your task is to emit the signal you decided on in the Decide phase. If you decided not to emit a signal, the loop will continue automatically to the next iteration.
 
 ## Signal Types
 
 ### SUCCESS - Goal Achieved
-Use when the procedure's goal is fully accomplished and no further iteration is needed.
-
-For work tracking procedures (build): Signal SUCCESS only when no ready work remains.
-For planning/auditing procedures: Signal SUCCESS only when output is minimal, complete, and accurate.
-For single-task procedures (sync): Signal SUCCESS when the task completes.
+Emit when you decided the procedure's goal is fully accomplished and no further iteration is needed.
 
 ### FAILURE - Cannot Proceed
-Use when the procedure cannot continue due to missing prerequisites, dependencies, or unresolvable errors.
+Emit when you decided the procedure cannot continue due to blockers identified in the Decide phase.
 
 ### Default Behavior - Continue Iterating
-If you don't emit SUCCESS or FAILURE, the loop will automatically continue to the next iteration with fresh context. Simply provide a summary of what was accomplished and the loop will continue.
+If you decided not to emit a signal, simply provide a summary of what was accomplished and the loop will continue to the next iteration with fresh context.
 
 ## Output Format
 
