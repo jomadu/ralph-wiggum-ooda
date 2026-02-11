@@ -38,6 +38,9 @@ iteration loops to autonomously build, plan, and maintain software from specific
 	// Mark verbose and quiet as mutually exclusive
 	cmd.MarkFlagsMutuallyExclusive("verbose", "quiet")
 
+	// Add subcommands
+	cmd.AddCommand(newListCommand())
+
 	return cmd
 }
 
