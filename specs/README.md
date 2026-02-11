@@ -119,6 +119,7 @@ Treat documentation as implementation artifacts that AI agents read, verify, and
 | [agents-md-format](agents-md-format.md) | J6 | AGENTS.md structure, required sections, field definitions |
 | [operational-knowledge](operational-knowledge.md) | J10 | Read-verify-update lifecycle for AGENTS.md across all procedures |
 | [documentation-structure](documentation-structure.md) | J11 | Required docs, organization, quality criteria, and how agents verify correctness |
+| [documentation-lifecycle](documentation-lifecycle.md) | J11 | How existing procedures interact with docs through read-verify-update cycles |
 
 ### Distribution & Operations
 | Topic | Job | Description |
@@ -149,6 +150,7 @@ Written specs with extracted JTBDs:
 | [procedures](procedures.md) | Define the 16 built-in procedures that ship as defaults — their OODA phase compositions, iteration limits, and use cases. |
 | [prompt-composition](prompt-composition.md) | Assemble fragment arrays for each OODA phase (observe, orient, decide, act) and optional user-provided context into a single prompt that can be piped to an AI CLI tool. Supports embedded defaults, user-provided custom fragments, inline content, and Go template parameterization with clear path resolution. |
 | [documentation-structure](documentation-structure.md) | Define what documentation must exist, how it's organized, and how AI agents verify it matches reality. |
+| [documentation-lifecycle](documentation-lifecycle.md) | Specify how existing procedures interact with docs through read-verify-update cycles. Developers want documentation to stay synchronized with specs and code through the same automated workflow that maintains AGENTS.md — no special doc procedures, just audit → plan → build cycles that treat docs as implementation artifacts. |
 
 ## How to Write Specs
 
