@@ -15,8 +15,8 @@ func TestTop5FragmentsImperativeVoice(t *testing.T) {
 		mustNotStartWith    []string
 	}{
 		{
-			name: "read_agents_md uses imperative voice",
-			path: "fragments/observe/read_agents_md.md",
+			name: "study_agents_md uses imperative voice",
+			path: "fragments/observe/study_agents_md.md",
 			mustContainPhrases: []string{
 				"You must",
 				"Use the",
@@ -27,8 +27,8 @@ func TestTop5FragmentsImperativeVoice(t *testing.T) {
 			},
 		},
 		{
-			name: "read_specs uses imperative voice",
-			path: "fragments/observe/read_specs.md",
+			name: "study_specs uses imperative voice",
+			path: "fragments/observe/study_specs.md",
 			mustContainPhrases: []string{
 				"You must",
 				"Use the",
@@ -39,8 +39,8 @@ func TestTop5FragmentsImperativeVoice(t *testing.T) {
 			},
 		},
 		{
-			name: "read_impl uses imperative voice",
-			path: "fragments/observe/read_impl.md",
+			name: "study_impl uses imperative voice",
+			path: "fragments/observe/study_impl.md",
 			mustContainPhrases: []string{
 				"You must",
 				"Use the",

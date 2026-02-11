@@ -14,10 +14,10 @@
 
 ### High-Impact Fragments (10+ uses)
 
-- [ ] `act/emit_success.md` - **16 procedures** (all)
-- [ ] `observe/read_agents_md.md` - **16 procedures** (all)
-- [ ] `observe/read_specs.md` - **10 procedures**
-- [ ] `observe/read_task_input.md` - **10 procedures**
+- [x] `act/emit_signal.md` - **16 procedures** (all) - REPLACED emit_signal.md + emit_failure.md
+- [x] `observe/study_agents_md.md` - **16 procedures** (all) - RENAMED from read_agents_md.md
+- [x] `observe/study_specs.md` - **10 procedures** - RENAMED from read_specs.md
+- [x] `observe/study_task_input.md` - **10 procedures** - RENAMED from read_task_input.md
 - [ ] `decide/check_if_blocked.md` - **10 procedures**
 - [ ] `decide/break_down_into_tasks.md` - **10 procedures**
 - [ ] `decide/prioritize_tasks.md` - **10 procedures**
@@ -25,7 +25,7 @@
 
 ### Medium-Impact Fragments (3-9 uses)
 
-- [ ] `observe/read_impl.md` - **9 procedures**
+- [x] `observe/study_impl.md` - **9 procedures** - RENAMED from read_impl.md
 - [ ] `act/write_audit_report.md` - **3 procedures**
 
 ### Low-Impact Fragments (2 uses)
@@ -48,8 +48,8 @@
 ### Single-Use Fragments (1 use)
 
 - [ ] `observe/detect_work_tracking.md` - **1 procedure**
-- [ ] `observe/read_task_details.md` - **1 procedure**
-- [ ] `observe/read_draft_plan.md` - **1 procedure**
+- [x] `observe/study_task_details.md` - **1 procedure** - RENAMED from read_task_details.md
+- [x] `observe/study_draft_plan.md` - **1 procedure** - RENAMED from read_draft_plan.md
 - [ ] `observe/run_tests.md` - **1 procedure**
 - [ ] `observe/run_lints.md` - **1 procedure**
 - [ ] `observe/verify_commands.md` - **1 procedure**
@@ -82,13 +82,20 @@
 
 ### Unused Fragments (0 uses)
 
-- [ ] `act/emit_failure.md` - **Not currently used**
+**None** - All fragments now in use after emit_signal unification
 
-**Total Fragments:** 57 files (56 unique)
+**Total Fragments:** 55 files (54 unique) - reduced from 57 after consolidation
+
+**Fragments Completed:** 10 of 55 (18%)
+- 2 replaced (emit_success, emit_failure → emit_signal)
+- 6 renamed and enhanced (read_* → study_*)
+- 2 improved (read_agents_md, read_specs before rename)
 
 ---
 
 ## Procedure Breakdown
+
+*Note: Extract complete composed prompts with `./bin/rooda run <procedure> --dry-run > prompts-baseline/<procedure>.txt`*
 
 ### 1. agents-sync
 **Purpose:** Synchronize AGENTS.md with actual repository state
@@ -99,6 +106,7 @@
 - Decide: `determine_sections_to_update`, `check_if_blocked`
 - Act: `write_agents_md`, `commit_changes`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/agents-sync.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -112,6 +120,7 @@
 - Decide: `pick_task`, `plan_implementation_approach`, `check_if_blocked`
 - Act: `modify_files`, `run_tests`, `update_work_tracking`, `commit_changes`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/build.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -125,6 +134,7 @@
 - Decide: `determine_import_strategy`, `check_if_blocked`
 - Act: `create_work_items`, `update_draft_plan_status`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/publish-plan.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -138,6 +148,7 @@
 - Decide: `identify_issues`, `prioritize_findings`
 - Act: `write_audit_report`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/audit-spec.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -151,6 +162,7 @@
 - Decide: `identify_issues`, `prioritize_findings`
 - Act: `write_audit_report`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/audit-impl.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -164,6 +176,7 @@
 - Decide: `categorize_drift_severity`
 - Act: `write_audit_report`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/audit-agents.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -177,6 +190,7 @@
 - Decide: `prioritize_gaps_by_impact`
 - Act: `write_gap_report`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/audit-spec-to-impl.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -190,6 +204,7 @@
 - Decide: `prioritize_gaps_by_impact`
 - Act: `write_gap_report`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/audit-impl-to-spec.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -203,6 +218,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-spec-feat.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -216,6 +232,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-spec-fix.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -229,6 +246,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-spec-refactor.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -242,6 +260,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-spec-chore.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -255,6 +274,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-impl-feat.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -268,6 +288,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-impl-fix.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -281,6 +302,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-impl-refactor.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -294,6 +316,7 @@
 - Decide: `break_down_into_tasks`, `prioritize_tasks`, `check_if_blocked`
 - Act: `write_draft_plan`, `emit_success`
 
+**Composed Prompt:** `prompts-baseline/draft-plan-impl-chore.txt`  
 **Audit Status:** [ ]
 
 ---
@@ -318,9 +341,170 @@ For each fragment, evaluate:
 5. Implement changes
 6. Update status checkboxes
 
+## Prompt Extraction Procedure
+
+To evaluate prompt quality over time, extract the complete composed prompts for each procedure using dry-run mode.
+
+### Extract Single Procedure
+
+```bash
+./bin/rooda run <procedure-name> --dry-run > prompts-baseline/<procedure-name>.txt
+```
+
+### Extract All Procedures (Baseline)
+
+```bash
+# Create baseline directory
+mkdir -p prompts-baseline
+
+# Extract all 16 procedures
+./bin/rooda run agents-sync --dry-run > prompts-baseline/agents-sync.txt
+./bin/rooda run build --dry-run > prompts-baseline/build.txt
+./bin/rooda run publish-plan --dry-run > prompts-baseline/publish-plan.txt
+./bin/rooda run audit-spec --dry-run > prompts-baseline/audit-spec.txt
+./bin/rooda run audit-impl --dry-run > prompts-baseline/audit-impl.txt
+./bin/rooda run audit-agents --dry-run > prompts-baseline/audit-agents.txt
+./bin/rooda run audit-spec-to-impl --dry-run > prompts-baseline/audit-spec-to-impl.txt
+./bin/rooda run audit-impl-to-spec --dry-run > prompts-baseline/audit-impl-to-spec.txt
+./bin/rooda run draft-plan-spec-feat --dry-run > prompts-baseline/draft-plan-spec-feat.txt
+./bin/rooda run draft-plan-spec-fix --dry-run > prompts-baseline/draft-plan-spec-fix.txt
+./bin/rooda run draft-plan-spec-refactor --dry-run > prompts-baseline/draft-plan-spec-refactor.txt
+./bin/rooda run draft-plan-spec-chore --dry-run > prompts-baseline/draft-plan-spec-chore.txt
+./bin/rooda run draft-plan-impl-feat --dry-run > prompts-baseline/draft-plan-impl-feat.txt
+./bin/rooda run draft-plan-impl-fix --dry-run > prompts-baseline/draft-plan-impl-fix.txt
+./bin/rooda run draft-plan-impl-refactor --dry-run > prompts-baseline/draft-plan-impl-refactor.txt
+./bin/rooda run draft-plan-impl-chore --dry-run > prompts-baseline/draft-plan-impl-chore.txt
+```
+
+### Compare Before/After Changes
+
+After making fragment improvements:
+
+```bash
+# Extract updated prompts
+mkdir -p prompts-updated
+./bin/rooda run <procedure-name> --dry-run > prompts-updated/<procedure-name>.txt
+
+# Compare changes
+diff prompts-baseline/<procedure-name>.txt prompts-updated/<procedure-name>.txt
+```
+
+### Workflow
+
+1. **Baseline extraction** - Run before making any changes to establish baseline
+2. **Make fragment improvements** - Edit fragments in `internal/prompt/fragments/`
+3. **Rebuild binary** - `make build` to embed updated fragments
+4. **Extract updated prompts** - Run dry-run again to new directory
+5. **Compare** - Use diff to see exactly what changed in composed prompts
+6. **Document** - Note improvements in audit status for affected fragments
+
 ## Notes
 
 - `emit_failure.md` exists but is not used by any procedure - investigate if needed
-- `emit_success.md` is used by all 16 procedures - critical fragment
+- `emit_signal.md` is used by all 16 procedures - critical fragment
 - `check_if_blocked.md` is used by 10 procedures - high-impact fragment
 - `read_agents_md.md` is used by all 16 procedures - foundational fragment
+
+---
+
+## Change Log
+
+### 2026-02-11 - Read AGENTS.md Improvements
+
+**Change:** Enhanced `observe/read_agents_md.md` with comprehensive parsing and validation
+
+**Improvements:**
+- Listed all 10 required topics explicitly (was 5 vague items)
+- Added flexible parsing approach (any header level, bold text, plain text)
+- Added validation rules (check all topics covered, commands extractable, paths present)
+- Added error handling (missing file triggers FAILURE signal)
+- Clarified storage instruction ("Remember extracted information" vs "Store parsed data")
+- Aligned with `specs/agents-md-format.md` specification
+
+**Impact:**
+- All 16 procedures use this fragment
+- Better guidance for agents parsing AGENTS.md files with varying formats
+- Clear validation prevents silent failures from missing information
+
+**Files Modified:**
+- Updated: `internal/prompt/fragments/observe/read_agents_md.md`
+
+**Status:** ✅ Complete
+
+---
+
+### 2026-02-11 - Unified Signal Emission
+
+**Change:** Replaced `emit_signal.md` and `emit_failure.md` with unified `emit_signal.md`
+
+**Rationale:** 
+- Original design had implicit third state ("keep iterating") with no clear guidance
+- `emit_failure.md` was never used (0 references)
+- Unified fragment makes state machine explicit: SUCCESS stops, FAILURE stops, no signal continues
+- Removed CONTINUE signal as unnecessary - default behavior is to continue iterating
+- Simplified to two-signal design: only emit when you need to stop
+
+**Impact:**
+- All 16 procedures updated to use `emit_signal.md`
+- Tests updated and passing
+- Binary rebuilt with embedded changes
+
+**Files Modified:**
+- Created: `internal/prompt/fragments/act/emit_signal.md`
+- Deleted: `internal/prompt/fragments/act/emit_success.md`
+- Deleted: `internal/prompt/fragments/act/emit_failure.md`
+- Deleted: `internal/prompt/fragments_signal_test.go` (obsolete test file)
+- Updated: `internal/procedures/builtin.go` (16 procedures)
+- Updated: `internal/procedures/builtin_test.go` (test assertions)
+- Updated: `internal/prompt/fragments_test.go` (signal validation)
+
+**Status:** ✅ Complete - All tests passing
+
+**Fragments Audited:**
+- [x] `act/emit_signal.md` - **REPLACED** with `emit_signal.md`
+- [x] `act/emit_failure.md` - **REPLACED** with `emit_signal.md`
+- [x] `observe/read_agents_md.md` - **IMPROVED** - Added all 10 required topics, flexible parsing, validation, error handling
+- [x] `observe/read_specs.md` - **IMPROVED** - Changed "load" to "study", added JTBD structure guidance, examples, implementation status
+- [x] `observe/read_*` → `observe/study_*` - **REFACTORED** - All 6 read fragments renamed to study, enhanced with analytical guidance
+
+---
+
+### 2026-02-11 - Refactor read_* to study_* Fragments
+
+**Change:** Renamed all `observe/read_*.md` fragments to `observe/study_*.md` and enhanced with analytical guidance
+
+**Rationale:**
+- "Load" and "read" are passive, mechanical terms
+- "Study" better captures the analytical work agents must perform
+- Agents need to understand intent and context, not just load text
+- Consistent with OODA observe phase goal: gather and comprehend information
+
+**Improvements:**
+- **study_agents_md.md** - Added "Use the file reading tool" for tool usage clarity
+- **study_specs.md** - Added JTBD, acceptance criteria, examples, implementation status extraction
+- **study_impl.md** - Added design patterns, architectural decisions, completeness analysis
+- **study_task_input.md** - Added scope boundaries, intent understanding; removed hardcoded TASK.md path; made implementation-agnostic (supports files, APIs, commands)
+- **study_task_details.md** - Added context understanding, historical decisions
+- **study_draft_plan.md** - Added rationale for task breakdown and ordering; removed hardcoded PLAN.md path; made implementation-agnostic (supports files, APIs, commands)
+
+**Impact:**
+- All 16 procedures updated
+- 6 fragments renamed and enhanced
+- Tests updated and passing
+- Binary rebuilt with embedded changes
+
+**Files Modified:**
+- Renamed: `observe/read_agents_md.md` → `observe/study_agents_md.md`
+- Renamed: `observe/read_specs.md` → `observe/study_specs.md`
+- Renamed: `observe/read_impl.md` → `observe/study_impl.md`
+- Renamed: `observe/read_task_input.md` → `observe/study_task_input.md`
+- Renamed: `observe/read_task_details.md` → `observe/study_task_details.md`
+- Renamed: `observe/read_draft_plan.md` → `observe/study_draft_plan.md`
+- Updated: `internal/procedures/builtin.go` (all 16 procedures)
+- Updated: `internal/procedures/builtin_test.go`
+- Updated: `internal/prompt/composer_test.go`
+- Updated: `internal/prompt/fragments_imperative_test.go`
+
+**Status:** ✅ Complete - All tests passing
+
+---

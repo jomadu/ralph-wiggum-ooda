@@ -10,7 +10,7 @@ import (
 
 func TestComposePhasePrompt_SingleFragment(t *testing.T) {
 	fragments := []config.FragmentAction{
-		{Path: "builtin:fragments/observe/read_agents_md.md"},
+		{Path: "builtin:fragments/observe/study_agents_md.md"},
 	}
 
 	result, err := ComposePhasePrompt(fragments, "")
@@ -18,15 +18,15 @@ func TestComposePhasePrompt_SingleFragment(t *testing.T) {
 		t.Fatalf("expected no error, got: %v", err)
 	}
 
-	if !strings.Contains(result, "# Read AGENTS.md") {
+	if !strings.Contains(result, "# Study AGENTS.md") {
 		t.Errorf("expected fragment content, got: %s", result)
 	}
 }
 
 func TestComposePhasePrompt_MultipleFragments(t *testing.T) {
 	fragments := []config.FragmentAction{
-		{Path: "builtin:fragments/observe/read_agents_md.md"},
-		{Path: "builtin:fragments/observe/read_specs.md"},
+		{Path: "builtin:fragments/observe/study_agents_md.md"},
+		{Path: "builtin:fragments/observe/study_specs.md"},
 	}
 
 	result, err := ComposePhasePrompt(fragments, "")
@@ -35,10 +35,10 @@ func TestComposePhasePrompt_MultipleFragments(t *testing.T) {
 	}
 
 	// Should contain content from both fragments separated by double newlines
-	if !strings.Contains(result, "# Read AGENTS.md") {
+	if !strings.Contains(result, "# Study AGENTS.md") {
 		t.Errorf("expected first fragment content")
 	}
-	if !strings.Contains(result, "# Read Specifications") {
+	if !strings.Contains(result, "# Study Specifications") {
 		t.Errorf("expected second fragment content")
 	}
 	if !strings.Contains(result, "\n\n") {
@@ -334,8 +334,8 @@ func TestLoadContextContent_Inline(t *testing.T) {
 func TestAssemblePrompt_Integration_SeparatorFormat(t *testing.T) {
 	procedure := config.Procedure{
 		Observe: []config.FragmentAction{
-			{Path: "builtin:fragments/observe/read_agents_md.md"},
-			{Path: "builtin:fragments/observe/read_specs.md"},
+			{Path: "builtin:fragments/observe/study_agents_md.md"},
+			{Path: "builtin:fragments/observe/study_specs.md"},
 		},
 		Orient: []config.FragmentAction{
 			{Path: "builtin:fragments/orient/understand_task_requirements.md"},

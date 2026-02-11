@@ -153,7 +153,7 @@ func TestBuiltInProcedureFragmentContent(t *testing.T) {
 	agentsSync := procedures["agents-sync"]
 	
 	expectedObserveFragments := []string{
-		"builtin:fragments/observe/read_agents_md.md",
+		"builtin:fragments/observe/study_agents_md.md",
 		"builtin:fragments/observe/scan_repo_structure.md",
 		"builtin:fragments/observe/detect_build_system.md",
 		"builtin:fragments/observe/detect_work_tracking.md",
@@ -173,11 +173,11 @@ func TestBuiltInProcedureFragmentContent(t *testing.T) {
 	build := procedures["build"]
 	
 	expectedBuildObserve := []string{
-		"builtin:fragments/observe/read_agents_md.md",
+		"builtin:fragments/observe/study_agents_md.md",
 		"builtin:fragments/observe/query_work_tracking.md",
-		"builtin:fragments/observe/read_specs.md",
-		"builtin:fragments/observe/read_impl.md",
-		"builtin:fragments/observe/read_task_details.md",
+		"builtin:fragments/observe/study_specs.md",
+		"builtin:fragments/observe/study_impl.md",
+		"builtin:fragments/observe/study_task_details.md",
 	}
 	
 	for i, expected := range expectedBuildObserve {
@@ -261,19 +261,19 @@ func TestBuiltInProceduresFragmentOrdering(t *testing.T) {
 	// Test that fragments are in logical order
 	// For agents-sync, observe should read AGENTS.md first
 	agentsSync := procedures["agents-sync"]
-	if len(agentsSync.Observe) > 0 && agentsSync.Observe[0].Path != "builtin:fragments/observe/read_agents_md.md" {
-		t.Errorf("agents-sync: first observe fragment should be read_agents_md.md, got %s", agentsSync.Observe[0].Path)
+	if len(agentsSync.Observe) > 0 && agentsSync.Observe[0].Path != "builtin:fragments/observe/study_agents_md.md" {
+		t.Errorf("agents-sync: first observe fragment should be study_agents_md.md, got %s", agentsSync.Observe[0].Path)
 	}
 
 	// For build, observe should read AGENTS.md first
 	build := procedures["build"]
-	if len(build.Observe) > 0 && build.Observe[0].Path != "builtin:fragments/observe/read_agents_md.md" {
-		t.Errorf("build: first observe fragment should be read_agents_md.md, got %s", build.Observe[0].Path)
+	if len(build.Observe) > 0 && build.Observe[0].Path != "builtin:fragments/observe/study_agents_md.md" {
+		t.Errorf("build: first observe fragment should be study_agents_md.md, got %s", build.Observe[0].Path)
 	}
 
-	// For build, act should emit success last
-	if len(build.Act) > 0 && build.Act[len(build.Act)-1].Path != "builtin:fragments/act/emit_success.md" {
-		t.Errorf("build: last act fragment should be emit_success.md, got %s", build.Act[len(build.Act)-1].Path)
+	// For build, act should emit signal last
+	if len(build.Act) > 0 && build.Act[len(build.Act)-1].Path != "builtin:fragments/act/emit_signal.md" {
+		t.Errorf("build: last act fragment should be emit_signal.md, got %s", build.Act[len(build.Act)-1].Path)
 	}
 }
 
@@ -287,15 +287,15 @@ func TestBuiltInProceduresCommonFragments(t *testing.T) {
 	for _, proc := range procedures {
 		// Count read_agents_md usage
 		for _, fragment := range proc.Observe {
-			if fragment.Path == "builtin:fragments/observe/read_agents_md.md" {
+			if fragment.Path == "builtin:fragments/observe/study_agents_md.md" {
 				readAgentsMdCount++
 				break
 			}
 		}
 
-		// Count emit_success usage
+		// Count emit_signal usage
 		for _, fragment := range proc.Act {
-			if fragment.Path == "builtin:fragments/act/emit_success.md" {
+			if fragment.Path == "builtin:fragments/act/emit_signal.md" {
 				emitSuccessCount++
 				break
 			}
@@ -307,9 +307,9 @@ func TestBuiltInProceduresCommonFragments(t *testing.T) {
 		t.Errorf("expected at least 10 procedures to read AGENTS.md, got %d", readAgentsMdCount)
 	}
 
-	// All procedures should emit success
+	// All procedures should emit signal
 	if emitSuccessCount != 16 {
-		t.Errorf("expected all 16 procedures to emit success, got %d", emitSuccessCount)
+		t.Errorf("expected all 16 procedures to emit signal, got %d", emitSuccessCount)
 	}
 }
 

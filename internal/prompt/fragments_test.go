@@ -147,8 +147,8 @@ func TestPromiseSignalFormat(t *testing.T) {
 			
 			// If fragment mentions SUCCESS or FAILURE signals, verify exact format
 			if strings.Contains(contentStr, "SUCCESS") || strings.Contains(contentStr, "FAILURE") {
-				// Check emit_success.md specifically
-				if entry.Name() == "emit_success.md" {
+				// Check emit_signal.md specifically
+				if entry.Name() == "emit_signal.md" {
 					if !strings.Contains(contentStr, successSignal) {
 						t.Errorf("Fragment %s must show exact SUCCESS signal format: %s", 
 							fragmentPath, successSignal)

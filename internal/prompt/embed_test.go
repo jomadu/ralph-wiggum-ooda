@@ -9,7 +9,7 @@ import (
 
 func TestLoadFragment_Builtin_Success(t *testing.T) {
 	// Use a known embedded fragment
-	content, err := LoadFragment("builtin:fragments/observe/read_agents_md.md", "")
+	content, err := LoadFragment("builtin:fragments/observe/study_agents_md.md", "")
 	if err != nil {
 		t.Fatalf("expected success, got error: %v", err)
 	}
