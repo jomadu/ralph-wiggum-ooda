@@ -70,15 +70,22 @@ GOOS=windows GOARCH=amd64 → rooda-windows-amd64.exe
    //go:embed prompts/*.md
    var defaultPrompts embed.FS
 
-3. Cross-compile for each platform:
+3. Build binary:
+   # Using Makefile (recommended)
+   make build
+   
+   # Or directly
+   go build -o bin/rooda ./cmd/rooda
+
+4. Cross-compile for each platform:
    for platform in darwin/arm64 darwin/amd64 linux/amd64 linux/arm64 windows/amd64; do
      GOOS=${platform%/*} GOARCH=${platform#*/} go build -o rooda-$platform
    done
 
-4. Generate checksums:
+5. Generate checksums:
    sha256sum rooda-* > checksums.txt
 
-5. Package for distribution:
+6. Package for distribution:
    - Homebrew: Create formula with download URL and SHA256
    - Direct download: Host binaries with install.sh script (includes checksum verification)
    - Go install: Tag release, push to GitHub
@@ -152,6 +159,7 @@ go install github.com/jomadu/rooda@latest
 ### Build-time
 - Go 1.21+ (for `go:embed` and modern stdlib)
 - git (for version metadata)
+- make (optional but recommended for unified build interface)
 - Cross-compilation toolchain (built into Go)
 
 ### Runtime
