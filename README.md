@@ -13,7 +13,7 @@ rooda orchestrates AI coding agents through structured OODA (Observe-Orient-Deci
 curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 
 # Bootstrap a repository (creates/updates AGENTS.md)
-rooda bootstrap --ai-cmd-alias kiro-cli
+rooda run bootstrap --ai-cmd-alias kiro-cli
 
 # List available procedures
 rooda list
@@ -50,8 +50,8 @@ CLI flags override everything. See [docs/configuration.md](docs/configuration.md
 
 **Start a new project:**
 ```bash
-rooda bootstrap --ai-cmd-alias kiro-cli
-rooda audit-spec --ai-cmd-alias kiro-cli
+rooda run bootstrap --ai-cmd-alias kiro-cli
+rooda run audit-spec --ai-cmd-alias kiro-cli
 ```
 
 **Implement from work tracking:**
@@ -61,12 +61,12 @@ rooda run build --ai-cmd-alias kiro-cli --max-iterations 5
 
 **Plan a feature:**
 ```bash
-rooda draft-plan-impl-feat --ai-cmd-alias kiro-cli --context "Add user authentication"
+rooda run draft-plan-impl-feat --ai-cmd-alias kiro-cli --context "Add user authentication"
 ```
 
 **Audit implementation:**
 ```bash
-rooda audit-impl --ai-cmd-alias kiro-cli
+rooda run audit-impl --ai-cmd-alias kiro-cli
 ```
 
 ## Documentation

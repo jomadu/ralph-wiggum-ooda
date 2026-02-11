@@ -19,7 +19,7 @@ AGENTS.md serves as the interface between AI agents and your project. It answers
 Create AGENTS.md for a new repository:
 
 ```bash
-rooda bootstrap --ai-cmd-alias kiro-cli
+rooda run bootstrap --ai-cmd-alias kiro-cli
 ```
 
 This analyzes the repository and generates AGENTS.md with detected:
@@ -35,7 +35,7 @@ This analyzes the repository and generates AGENTS.md with detected:
 Update AGENTS.md when repository structure changes:
 
 ```bash
-rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
+rooda run agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
 ```
 
 This detects drift between AGENTS.md and actual repository state, then updates AGENTS.md to fix:
@@ -48,7 +48,7 @@ This detects drift between AGENTS.md and actual repository state, then updates A
 Verify AGENTS.md is accurate:
 
 ```bash
-rooda audit-agents --ai-cmd-alias kiro-cli
+rooda run audit-agents --ai-cmd-alias kiro-cli
 ```
 
 This runs all commands and checks all paths, producing an audit report with drift detections.
@@ -258,7 +258,7 @@ AGENTS.md is the source of truth for how to interact with the repository. If com
 
 ```bash
 # After changing test command
-rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
+rooda run agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
 ```
 
 ### Use Inline Rationale
@@ -376,14 +376,14 @@ See the AGENTS.md in this repository for a complete example with all sections.
 
 Run bootstrap:
 ```bash
-rooda bootstrap --ai-cmd-alias kiro-cli
+rooda run bootstrap --ai-cmd-alias kiro-cli
 ```
 
 ### "Command in AGENTS.md failed"
 
 Run sync to detect and fix drift:
 ```bash
-rooda agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
+rooda run agents-sync --ai-cmd-alias kiro-cli --max-iterations 1
 ```
 
 ### "Quality criteria failing"
