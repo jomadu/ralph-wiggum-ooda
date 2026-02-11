@@ -1,4 +1,15 @@
-.PHONY: test build lint all clean
+.DEFAULT_GOAL := help
+
+.PHONY: help test build lint all clean
+
+help:
+	@echo "Available targets:"
+	@echo "  make test    - Run Go tests"
+	@echo "  make build   - Build Go binary (bin/rooda)"
+	@echo "  make lint    - Run go vet and shellcheck (if available)"
+	@echo "  make all     - Run lint, test, and build"
+	@echo "  make clean   - Remove build artifacts"
+	@echo "  make help    - Show this help message"
 
 test:
 	@echo "Running Go tests..."
