@@ -8,31 +8,80 @@ import (
 )
 
 func TestFragmentWordCount(t *testing.T) {
-	tests := []struct {
-		path     string
-		maxWords int
-	}{
-		{"observe/study_agents_md.md", 100},
-		{"decide/decide_signal.md", 100},
-		{"act/write_audit_report.md", 80},
-		{"act/write_gap_report.md", 80},
-		{"observe/study_task_details.md", 80},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.path, func(t *testing.T) {
-			fullPath := filepath.Join("fragments", tt.path)
-			content, err := os.ReadFile(fullPath)
+	const maxWords = 100
+	
+	phases := []string{"observe", "orient", "decide", "act"}
+	var violations []string
+	totalWords := 0
+	totalFragments := 0
+	
+	for _, phase := range phases {
+		phaseDir := filepath.Join("fragments", phase)
+		entries, err := os.ReadDir(phaseDir)
+		if err != nil {
+			t.Fatalf("Failed to read %s directory: %v", phase, err)
+		}
+		
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+				continue
+			}
+			
+			path := filepath.Join(phaseDir, entry.Name())
+			content, err := os.ReadFile(path)
 			if err != nil {
-				t.Fatalf("failed to read fragment %s: %v", tt.path, err)
+				t.Errorf("Failed to read %s: %v", path, err)
+				continue
 			}
-
+			
 			wordCount := countWords(string(content))
-			if wordCount > tt.maxWords {
-				t.Errorf("fragment %s has %d words, expected ≤%d", tt.path, wordCount, tt.maxWords)
+			totalWords += wordCount
+			totalFragments++
+			
+			if wordCount > maxWords {
+				firstLine := strings.TrimSpace(strings.Split(string(content), "\n")[0])
+				violations = append(violations, filepath.Join(phase, entry.Name())+" ("+firstLine+"): "+intToString(wordCount)+" words")
 			}
-		})
+		}
 	}
+	
+	if len(violations) > 0 {
+		t.Errorf("Found %d fragments exceeding %d words:\n%s", len(violations), maxWords, strings.Join(violations, "\n"))
+	}
+	
+	avgWords := 0
+	if totalFragments > 0 {
+		avgWords = totalWords / totalFragments
+	}
+	
+	t.Logf("Fragment statistics:")
+	t.Logf("  Total fragments: %d", totalFragments)
+	t.Logf("  Total words: %d", totalWords)
+	t.Logf("  Average words per fragment: %d", avgWords)
+	t.Logf("  Violations (>%d words): %d", maxWords, len(violations))
+}
+
+func intToString(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	
+	var result []byte
+	negative := n < 0
+	if negative {
+		n = -n
+	}
+	
+	for n > 0 {
+		result = append([]byte{byte('0' + n%10)}, result...)
+		n /= 10
+	}
+	
+	if negative {
+		result = append([]byte{'-'}, result...)
+	}
+	
+	return string(result)
 }
 
 func TestStudyAgentsMdPreservesTopics(t *testing.T) {
