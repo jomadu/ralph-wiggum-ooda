@@ -53,12 +53,12 @@ When executing the core functional job, the developer measures success by:
 
 ## What Changed from v1 (Archive)
 
-The previous iteration (archived in `archive/`) was a bash script (`rooda.sh`) that shelled out to `yq` for YAML parsing and piped prompts to an AI CLI. It validated the core concept — composable OODA prompts, fresh context per iteration, file-based state — but had significant operational limitations:
+The previous iteration (archived in `archive/`) was a proof-of-concept that validated the core concept — composable OODA prompts, fresh context per iteration, file-based state — but had significant operational limitations:
 
 | v1 Limitation | v2 Approach |
 |---|---|
-| Bash script — fragile, hard to test, platform-specific | Go binary — testable, cross-platform, single artifact |
-| Required `yq` external dependency | Built-in YAML/config parsing |
+| Script-based — fragile, hard to test, platform-specific | Go binary — testable, cross-platform, single artifact |
+| Required external dependencies | Built-in YAML/config parsing |
 | No error handling for AI CLI failures | Structured error handling with configurable failure threshold and `<promise>` output signals |
 | No dry-run mode | `--dry-run` flag shows assembled prompt without executing |
 | No observability during iteration | Loop-level progress display with timing per iteration; `--verbose` streams AI CLI output |

@@ -321,26 +321,25 @@ Updated AGENTS.md:
 
 AGENTS.md claims:
 ```markdown
-- `./rooda.sh --version` executes without errors (PASS/FAIL)
+- Binary executes without errors (PASS/FAIL)
 ```
 
 Actual behavior:
 ```
-$ ./rooda.sh --version
-bash: ./rooda.sh: No such file or directory
+$ ./bin/rooda --version
+Error: unknown flag: --version
 ```
 
 Drift detection:
 ```
-WARN: Quality criterion failed: ./rooda.sh --version executes without errors
-WARN: File ./rooda.sh does not exist
-INFO: Project has been rewritten in Go, rooda.sh is archived
-INFO: Updating AGENTS.md: Remove outdated quality criterion
+WARN: Quality criterion failed: binary executes without errors
+WARN: Flag --version not supported
+INFO: Updating AGENTS.md: Correct quality criterion
 ```
 
 Updated AGENTS.md:
 ```markdown
-# Removed: ./rooda.sh --version - v1 bash implementation archived, v2 is Go rewrite (not yet implemented)
+- `./bin/rooda list` shows all procedures (PASS/FAIL)
 ```
 
 ### Empirical Verification Prevents Bad Execution
@@ -455,12 +454,8 @@ INFO: Executing audit-spec procedure with corrected paths...
 $ rooda build
 INFO: Reading AGENTS.md...
 INFO: Evaluating quality criteria...
-INFO: Running: shellcheck rooda.sh
-WARN: Quality criterion failed: shellcheck rooda.sh (file not found)
-INFO: rooda.sh is archived in archive/ directory
-INFO: Updating AGENTS.md: Remove outdated quality criterion
-INFO: Rationale: v1 bash implementation archived, v2 is Go rewrite
-INFO: Committing AGENTS.md update...
+INFO: Running: go test ./...
+INFO: All tests passed
 INFO: Continuing build procedure...
 ```
 
