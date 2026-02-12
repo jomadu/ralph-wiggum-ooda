@@ -1,8 +1,6 @@
 # Write Audit Report
 
-You must create an audit report documenting the findings. Use the file writing tool.
-
-Create an audit report documenting findings.
+Create an audit report documenting findings using the file writing tool.
 
 Include:
 - Executive summary of findings
@@ -11,7 +9,7 @@ Include:
 - Prioritized recommendations
 - Metrics and statistics
 
-After writing the report, validate your output:
+After writing, validate your output:
 - Is it minimal? (No unnecessary content)
 - Is it complete? (All required sections present)
 - Is it accurate? (Findings match evidence)

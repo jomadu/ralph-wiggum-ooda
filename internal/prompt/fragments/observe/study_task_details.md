@@ -1,6 +1,6 @@
 # Study Task Details
 
-You must study specific task details from the work tracking system. Use the appropriate work tracking command from AGENTS.md.
+Study specific task details from the work tracking system using the appropriate command from AGENTS.md.
 
 For the selected task, retrieve and analyze:
 - Full task description and context
@@ -9,4 +9,4 @@ For the selected task, retrieve and analyze:
 - Comments, discussion, and historical decisions
 - Current status and progress history
 
-Understand the full context of the task, including why it exists and how it relates to other work. Remember this information for use in later phases.
+Understand the full context of the task, including why it exists and how it relates to other work. Remember this information for later phases.

@@ -14,6 +14,9 @@ func TestFragmentWordCount(t *testing.T) {
 	}{
 		{"observe/study_agents_md.md", 100},
 		{"decide/decide_signal.md", 100},
+		{"act/write_audit_report.md", 80},
+		{"act/write_gap_report.md", 80},
+		{"observe/study_task_details.md", 80},
 	}
 
 	for _, tt := range tests {
