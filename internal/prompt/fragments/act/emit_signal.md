@@ -1,21 +1,21 @@
 # Emit Signal
 
-Your task is to emit the signal you decided on in the Decide phase. If you decided not to emit a signal, the loop will continue automatically to the next iteration.
+Execute the signal decision made in the Decide phase.
 
 ## Signal Types
 
-### SUCCESS - Goal Achieved
-Emit when you decided the procedure's goal is fully accomplished and no further iteration is needed.
+### SUCCESS
+Emit when the Decide phase determined the procedure's goal is fully accomplished.
 
-### FAILURE - Cannot Proceed
-Emit when you decided the procedure cannot continue due to blockers identified in the Decide phase.
+### FAILURE
+Emit when the Decide phase identified blockers that prevent continuation.
 
-### Default Behavior - Continue Iterating
-If you decided not to emit a signal, simply provide a summary of what was accomplished and the loop will continue to the next iteration with fresh context.
+### No Signal
+If the Decide phase determined to continue iterating, provide a summary without emitting a signal.
 
 ## Output Format
 
-Output the exact signal format, then provide context:
+Emit the exact signal format based on the Decide phase decision:
 
 ```
 <promise>SUCCESS</promise>
@@ -25,15 +25,13 @@ Output the exact signal format, then provide context:
 <promise>FAILURE</promise>
 ```
 
-Or omit the signal to continue iterating:
+Or provide a summary without a signal to continue:
 
 ```
 Completed task #42: Add user authentication
 - Implemented OAuth2 flow
 - All tests passing
 - 3 more ready tasks available in work tracking
-
-(No signal - loop continues automatically)
 ```
 
 ## Examples
@@ -102,9 +100,9 @@ Next steps:
 ## Notes
 
 - Only two signals exist: `<promise>SUCCESS</promise>` and `<promise>FAILURE</promise>`
-- The loop orchestrator scans for these exact formats to determine iteration outcome
-- If no signal is found, the loop continues automatically to the next iteration
+- The loop orchestrator scans for these exact formats
+- If no signal is emitted, the loop continues to the next iteration
 - Always provide context explaining the current state
-- For SUCCESS: summarize accomplishments and list modified files
-- For FAILURE: explain why blocked and provide actionable next steps
-- For continuing: summarize progress and what remains to be done
+- For SUCCESS: summarize accomplishments
+- For FAILURE: explain blockers and next steps
+- For continuing: summarize progress

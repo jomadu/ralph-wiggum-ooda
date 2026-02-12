@@ -19,9 +19,9 @@
 - [x] `observe/study_specs.md` - **10 procedures** - RENAMED from read_specs.md
 - [x] `observe/study_task_input.md` - **10 procedures** - RENAMED from read_task_input.md
 - [x] `decide/decide_signal.md` - **10 procedures** - RENAMED from check_if_blocked.md, REFACTORED to decide SUCCESS/FAILURE/continue
-- [x] `decide/break_down_into_tasks.md` - **10 procedures**
-- [x] `decide/prioritize_tasks.md` - **10 procedures**
-- [x] `act/write_draft_plan.md` - **10 procedures**
+- [ ] `decide/break_down_into_tasks.md` - **10 procedures**
+- [ ] `decide/prioritize_tasks.md` - **10 procedures**
+- [ ] `act/write_draft_plan.md` - **10 procedures**
 
 ### Medium-Impact Fragments (3-9 uses)
 
