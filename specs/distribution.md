@@ -17,8 +17,8 @@ Enable users to install rooda as a single binary with no external dependencies, 
 
 - [x] `go build` produces single binary with no runtime dependencies (no external yq, no separate prompt files)
 - [x] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64
-- [ ] SHA256 checksums generated for all binaries in checksums.txt
-- [ ] Install script verifies checksums before installation
+- [x] SHA256 checksums generated for all binaries in checksums.txt
+- [x] Install script verifies checksums before installation
 - [x] Install script hosted in GitHub Releases (not main branch)
 - [x] `rooda version` reports correct version string embedded at build time
 - [x] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
