@@ -13,7 +13,10 @@ Remove references to non-existent Homebrew distribution channel and fix incorrec
 
 ## Tasks
 
-### Task 1: Fix AGENTS.md Procedure References
+### Task 1: Fix AGENTS.md Procedure References ✓ Published
+
+**Issue ID:** ralph-wiggum-ooda-29um  
+**Published:** 2026-02-13T06:58:27-08:00
 
 **Description:** Remove references to non-existent procedures `draft-plan-story-to-spec` and `draft-plan-bug-to-spec` from AGENTS.md.
 
@@ -31,7 +34,10 @@ Remove references to non-existent Homebrew distribution channel and fix incorrec
 
 **Dependencies:** None
 
-### Task 2: Remove Homebrew from README.md
+### Task 2: Remove Homebrew from README.md ✓ Published
+
+**Issue ID:** ralph-wiggum-ooda-6vsh  
+**Published:** 2026-02-13T06:58:27-08:00
 
 **Description:** Remove Homebrew installation method from README.md since it was never implemented.
 
@@ -49,7 +55,10 @@ Remove references to non-existent Homebrew distribution channel and fix incorrec
 
 **Dependencies:** None
 
-### Task 3: Remove Homebrew from docs/installation.md
+### Task 3: Remove Homebrew from docs/installation.md ✓ Published
+
+**Issue ID:** ralph-wiggum-ooda-4e9c  
+**Published:** 2026-02-13T06:58:27-08:00
 
 **Description:** Remove Homebrew section from installation documentation.
 
@@ -68,7 +77,10 @@ Remove references to non-existent Homebrew distribution channel and fix incorrec
 
 **Dependencies:** None
 
-### Task 4: Update distribution.md Spec
+### Task 4: Update distribution.md Spec ✓ Published
+
+**Issue ID:** ralph-wiggum-ooda-5yml  
+**Published:** 2026-02-13T06:58:27-08:00
 
 **Description:** Update distribution spec to reflect that Homebrew is not implemented and add guidance for future distribution method changes.
 
@@ -88,7 +100,10 @@ Remove references to non-existent Homebrew distribution channel and fix incorrec
 
 **Dependencies:** None
 
-### Task 5: Verify Installation Script
+### Task 5: Verify Installation Script ✓ Published
+
+**Issue ID:** ralph-wiggum-ooda-8yvk  
+**Published:** 2026-02-13T06:58:27-08:00
 
 **Description:** Verify that scripts/install.sh does not depend on Homebrew and works correctly.
 
