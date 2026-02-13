@@ -66,7 +66,7 @@ bd create --title "Title" --description "Desc" --priority 2  # Priority range: 0
 
 ## Story/Bug Input
 
-Stories and bugs are documented in `TASK.md` at project root. Create this file before running `draft-plan-story-to-spec` or `draft-plan-bug-to-spec` procedures.
+Stories and bugs are documented in `TASK.md` at project root. Create this file before running planning procedures like `draft-plan-spec-feat`, `draft-plan-spec-fix`, `draft-plan-impl-feat`, or `draft-plan-impl-fix`.
 
 ## Planning System
 
