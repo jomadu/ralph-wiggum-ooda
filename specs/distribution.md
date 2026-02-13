@@ -9,10 +9,9 @@ Enable users to install rooda as a single binary with no external dependencies, 
 1. **Build single binary** — Compile Go source to standalone executable with embedded prompts
 2. **Cross-compile for platforms** — Generate binaries for macOS (arm64, amd64), Linux (amd64, arm64), Windows (amd64)
 3. **Embed default prompts** — Package `prompts/*.md` files using `go:embed` so binary is self-contained
-4. **Install via package manager** — Support Homebrew for macOS users
-5. **Install via direct download** — Provide curl-based installation for Linux/CI environments
-6. **Install via Go toolchain** — Support `go install` for Go developers
-7. **Version the binary** — Embed version string at build time using `-ldflags`
+4. **Install via direct download** — Provide curl-based installation for Linux/CI environments
+5. **Install via Go toolchain** — Support `go install` for Go developers
+6. **Version the binary** — Embed version string at build time using `-ldflags`
 
 ## Acceptance Criteria
 
@@ -23,7 +22,6 @@ Enable users to install rooda as a single binary with no external dependencies, 
 - [x] Install script hosted in GitHub Releases (not main branch)
 - [x] `rooda version` reports correct version string embedded at build time
 - [x] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
-- [ ] **NOT IMPLEMENTED:** Homebrew formula installs binary to standard location and adds to PATH
 - [x] `curl | sh` installation script downloads correct binary for detected platform
 - [x] `go install github.com/jomadu/rooda@latest` installs from source
 - [x] Binary size is reasonable (< 20MB uncompressed)
@@ -37,7 +35,6 @@ Enable users to install rooda as a single binary with no external dependencies, 
 - ✅ **go install** — `go install github.com/jomadu/rooda@latest`
 
 **Not Implemented:**
-- ❌ **Homebrew** — Formula not created, tap repository does not exist
 - ❌ **Checksum verification** — checksums.txt not generated, install script does not verify
 
 ## Removing Distribution Methods
@@ -107,7 +104,6 @@ GOOS=windows GOARCH=amd64 → rooda-windows-amd64.exe
    sha256sum rooda-* > checksums.txt
 
 6. Package for distribution:
-   - Homebrew: Create formula with download URL and SHA256
    - Direct download: Host binaries with install.sh script (includes checksum verification)
    - Go install: Tag release, push to GitHub
    - Include install.sh and checksums.txt in GitHub Release assets
