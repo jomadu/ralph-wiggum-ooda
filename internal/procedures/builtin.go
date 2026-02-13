@@ -237,13 +237,14 @@ func BuiltInProcedures() map[string]config.Procedure {
 		"draft-plan-spec-refactor": {
 			Display:     "Draft Plan: Spec Refactor",
 			Summary:     "Create plan for specification refactoring",
-			Description: "Identifies structural issues in specs and creates refactoring plan",
+			Description: "Analyzes refactoring request from task input and creates focused refactoring plan for specifications",
 			Observe: []config.FragmentAction{
 				{Path: "builtin:fragments/observe/study_agents_md.md"},
 				{Path: "builtin:fragments/observe/study_task_input.md"},
 				{Path: "builtin:fragments/observe/study_specs.md"},
 			},
 			Orient: []config.FragmentAction{
+				{Path: "builtin:fragments/orient/understand_refactor_request.md"},
 				{Path: "builtin:fragments/orient/identify_structural_issues.md"},
 				{Path: "builtin:fragments/orient/identify_duplication.md"},
 			},
@@ -260,13 +261,14 @@ func BuiltInProcedures() map[string]config.Procedure {
 		"draft-plan-spec-chore": {
 			Display:     "Draft Plan: Spec Maintenance",
 			Summary:     "Create plan for specification maintenance tasks",
-			Description: "Identifies maintenance needs in specs and creates chore plan",
+			Description: "Analyzes maintenance request from task input and creates focused chore plan for specifications",
 			Observe: []config.FragmentAction{
 				{Path: "builtin:fragments/observe/study_agents_md.md"},
 				{Path: "builtin:fragments/observe/study_task_input.md"},
 				{Path: "builtin:fragments/observe/study_specs.md"},
 			},
 			Orient: []config.FragmentAction{
+				{Path: "builtin:fragments/orient/understand_chore_request.md"},
 				{Path: "builtin:fragments/orient/identify_maintenance_needs.md"},
 			},
 			Decide: []config.FragmentAction{
@@ -330,13 +332,14 @@ func BuiltInProcedures() map[string]config.Procedure {
 		"draft-plan-impl-refactor": {
 			Display:     "Draft Plan: Implementation Refactor",
 			Summary:     "Create plan for code refactoring",
-			Description: "Identifies code smells and complexity issues, creates refactoring plan",
+			Description: "Analyzes refactoring request from task input and creates focused refactoring plan for code",
 			Observe: []config.FragmentAction{
 				{Path: "builtin:fragments/observe/study_agents_md.md"},
 				{Path: "builtin:fragments/observe/study_task_input.md"},
 				{Path: "builtin:fragments/observe/study_impl.md"},
 			},
 			Orient: []config.FragmentAction{
+				{Path: "builtin:fragments/orient/understand_refactor_request.md"},
 				{Path: "builtin:fragments/orient/identify_code_smells.md"},
 				{Path: "builtin:fragments/orient/identify_complexity_issues.md"},
 			},
@@ -353,13 +356,14 @@ func BuiltInProcedures() map[string]config.Procedure {
 		"draft-plan-impl-chore": {
 			Display:     "Draft Plan: Implementation Maintenance",
 			Summary:     "Create plan for code maintenance tasks",
-			Description: "Identifies maintenance needs in code and creates chore plan",
+			Description: "Analyzes maintenance request from task input and creates focused chore plan for code",
 			Observe: []config.FragmentAction{
 				{Path: "builtin:fragments/observe/study_agents_md.md"},
 				{Path: "builtin:fragments/observe/study_task_input.md"},
 				{Path: "builtin:fragments/observe/study_impl.md"},
 			},
 			Orient: []config.FragmentAction{
+				{Path: "builtin:fragments/orient/understand_chore_request.md"},
 				{Path: "builtin:fragments/orient/identify_maintenance_needs.md"},
 			},
 			Decide: []config.FragmentAction{

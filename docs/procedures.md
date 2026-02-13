@@ -155,55 +155,59 @@ rooda draft-plan-impl-fix --ai-cmd-alias kiro-cli --context "Authentication fail
 
 ### draft-plan-spec-refactor
 
-**Job**: Apply quality criteria to specifications, write refactoring tasks to draft plan.
+**Job**: Analyze refactoring request from task input and create focused refactoring plan for specifications.
 
-**When to use**: Improving spec quality (structure, clarity, completeness).
+**When to use**: Refactoring specific specs based on a defined scope in task input (per AGENTS.md).
 
 **Example**:
 ```bash
+# Create TASK.md with: "Refactor the auth specs to consolidate OAuth2 documentation"
 rooda draft-plan-spec-refactor --ai-cmd-alias kiro-cli
 ```
 
-**Output**: `PLAN.md` with spec refactoring tasks.
+**Output**: `PLAN.md` with spec refactoring tasks focused on the task input scope.
 
 ### draft-plan-impl-refactor
 
-**Job**: Apply quality criteria to implementation, write refactoring tasks to draft plan.
+**Job**: Analyze refactoring request from task input and create focused refactoring plan for code.
 
-**When to use**: Improving code quality (structure, tests, documentation).
+**When to use**: Refactoring specific code based on a defined scope in task input (per AGENTS.md).
 
 **Example**:
 ```bash
+# Create TASK.md with: "Refactor the auth module to reduce cyclomatic complexity"
 rooda draft-plan-impl-refactor --ai-cmd-alias kiro-cli
 ```
 
-**Output**: `PLAN.md` with code refactoring tasks.
+**Output**: `PLAN.md` with code refactoring tasks focused on the task input scope.
 
 ### draft-plan-spec-chore
 
-**Job**: Identify maintenance needs in specs and create chore plan.
+**Job**: Analyze maintenance request from task input and create focused chore plan for specifications.
 
-**When to use**: Routine spec maintenance (update examples, fix formatting, etc.).
+**When to use**: Routine spec maintenance based on a defined scope in task input (per AGENTS.md).
 
 **Example**:
 ```bash
+# Create TASK.md with: "Update all API examples to use v2 endpoints"
 rooda draft-plan-spec-chore --ai-cmd-alias kiro-cli
 ```
 
-**Output**: `PLAN.md` with spec maintenance tasks.
+**Output**: `PLAN.md` with spec maintenance tasks focused on the task input scope.
 
 ### draft-plan-impl-chore
 
-**Job**: Identify maintenance needs in code and create chore plan.
+**Job**: Analyze maintenance request from task input and create focused chore plan for code.
 
-**When to use**: Routine code maintenance (update dependencies, fix warnings, etc.).
+**When to use**: Routine code maintenance based on a defined scope in task input (per AGENTS.md).
 
 **Example**:
 ```bash
+# Create TASK.md with: "Update Go dependencies to latest stable versions"
 rooda draft-plan-impl-chore --ai-cmd-alias kiro-cli
 ```
 
-**Output**: `PLAN.md` with code maintenance tasks.
+**Output**: `PLAN.md` with code maintenance tasks focused on the task input scope.
 
 ### draft-plan-spec-to-impl
 
