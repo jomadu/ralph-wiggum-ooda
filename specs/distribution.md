@@ -33,9 +33,7 @@ Enable users to install rooda as a single binary with no external dependencies, 
 - ✅ **curl install** — `curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash`
 - ✅ **Direct download** — Download platform-specific binary from GitHub Releases
 - ✅ **go install** — `go install github.com/jomadu/rooda@latest`
-
-**Not Implemented:**
-- ❌ **Checksum verification** — checksums.txt not generated, install script does not verify
+- ✅ **Checksum verification** — checksums.txt generated, install script verifies SHA256
 
 ## Removing Distribution Methods
 
@@ -58,6 +56,23 @@ var (
     BuildDate string // e.g., "2026-02-08T20:00:00Z"
 )
 ```
+
+#### Local vs Release Builds
+
+**Local builds** (using `make build` or `go build` directly) show development metadata:
+```bash
+$ make build
+$ ./bin/rooda version
+rooda dev (commit: unknown, built: unknown)
+```
+
+**Release builds** (via CI/CD pipeline) inject real version information using `-ldflags`:
+```bash
+$ rooda version
+rooda v2.0.0 (commit: a1b2c3d4e5f6, built: 2026-02-08T20:00:00Z)
+```
+
+This difference is intentional. Local builds use placeholder values because version metadata comes from git tags and CI environment variables. Release builds have access to this information and embed it at compile time.
 
 ### Embedded Prompts
 ```go
@@ -365,14 +380,14 @@ Automatically verify code quality on pull requests and publish release artifacts
 
 ### Acceptance Criteria
 
-- [ ] CI workflow runs on all pull requests and main branch pushes
-- [ ] CI workflow runs `make lint`, `make test`, `make build` in sequence
-- [ ] CI workflow fails if any step fails (blocks PR merge if branch protection enabled)
-- [ ] Release workflow triggers only on version tags (e.g., `v2.0.0`)
-- [ ] Release workflow cross-compiles for all 5 platforms (darwin arm64/amd64, linux amd64/arm64, windows amd64)
-- [ ] Release workflow embeds version metadata using `-ldflags`
-- [ ] Release workflow generates checksums.txt with SHA256 for all binaries
-- [ ] Release workflow creates GitHub Release with all binaries, checksums, and install script
+- [x] CI workflow runs on all pull requests and main branch pushes
+- [x] CI workflow runs `make lint`, `make test`, `make build` in sequence
+- [x] CI workflow fails if any step fails (blocks PR merge if branch protection enabled)
+- [x] Release workflow triggers only on version tags (e.g., `v2.0.0`)
+- [x] Release workflow cross-compiles for all 5 platforms (darwin arm64/amd64, linux amd64/arm64, windows amd64)
+- [x] Release workflow embeds version metadata using `-ldflags`
+- [x] Release workflow generates checksums.txt with SHA256 for all binaries
+- [x] Release workflow creates GitHub Release with all binaries, checksums, and install script
 
 ### Workflows
 
