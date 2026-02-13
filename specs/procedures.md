@@ -23,7 +23,7 @@ Define the 16 built-in procedures that ship as defaults — their fragment-based
 - [ ] Fragment arrays concatenate in order to form complete phase prompts
 - [ ] Procedure definitions support all configuration fields (display, summary, description, iteration settings, AI command overrides)
 - [ ] Built-in fragments organized by OODA phase (observe/, orient/, decide/, act/)
-- [ ] Fragment directory structure includes all 55 fragments (13 observe, 20 orient, 10 decide, 12 act)
+- [ ] Fragment directory structure includes all 58 fragments (13 observe, 23 orient, 10 decide, 12 act)
 - [ ] Template processing executes with provided parameters
 - [ ] Path resolution validates fragment existence at config load time (fail fast)
 - [ ] Schema validation ensures required fields present
@@ -160,7 +160,7 @@ function ProcessTemplate(content string, parameters map[string]interface{}) -> (
 - `internal/procedures/builtin.go` — Built-in procedure definitions
 - `fragments/` — Built-in fragment files (embedded via go:embed)
   - `fragments/observe/` — 13 observe phase fragments
-  - `fragments/orient/` — 20 orient phase fragments
+  - `fragments/orient/` — 23 orient phase fragments
   - `fragments/decide/` — 10 decide phase fragments
   - `fragments/act/` — 12 act phase fragments
 
@@ -334,6 +334,8 @@ fragments/
 │   ├── understand_task_requirements.md          # Parse task into requirements
 │   ├── understand_feature_requirements.md       # Parse feature requirements
 │   ├── understand_bug_root_cause.md             # Analyze bug cause
+│   ├── understand_refactor_request.md           # Parse refactoring scope from TASK.md
+│   ├── understand_chore_request.md              # Parse maintenance scope from TASK.md
 │   ├── search_codebase.md                       # Find relevant code sections
 │   ├── identify_affected_files.md               # Determine what needs to change
 │   ├── identify_affected_specs.md               # Determine which specs need changes
@@ -343,11 +345,11 @@ fragments/
 │   ├── map_to_work_tracking_format.md           # Convert plan to work tracking format
 │   ├── identify_specified_but_not_implemented.md # Gap analysis (specs → impl)
 │   ├── identify_implemented_but_not_specified.md # Gap analysis (impl → specs)
-│   ├── identify_structural_issues.md            # Find spec/code structure problems
-│   ├── identify_duplication.md                  # Find duplicated content
-│   ├── identify_code_smells.md                  # Find code quality issues
-│   ├── identify_complexity_issues.md            # Find overly complex code
-│   └── identify_maintenance_needs.md            # Find maintenance work
+│   ├── identify_structural_issues.md            # Find spec/code structure problems (scoped)
+│   ├── identify_duplication.md                  # Find duplicated content (scoped)
+│   ├── identify_code_smells.md                  # Find code quality issues (scoped)
+│   ├── identify_complexity_issues.md            # Find overly complex code (scoped)
+│   └── identify_maintenance_needs.md            # Find maintenance work (scoped)
 ├── decide/
 │   ├── determine_sections_to_update.md          # What to change in AGENTS.md
 │   ├── check_if_blocked.md                      # Can we proceed? (emit FAILURE if not)
@@ -846,12 +848,13 @@ procedures:
   draft-plan-spec-refactor:
     display: "Draft Plan: Spec Refactor"
     summary: "Create plan for specification refactoring"
-    description: "Identifies structural issues in specs and creates refactoring plan"
+    description: "Analyzes refactoring request from task input and creates focused refactoring plan for specifications"
     observe:
       - path: "builtin:fragments/observe/read_agents_md.md"
       - path: "builtin:fragments/observe/read_task_input.md"
       - path: "builtin:fragments/observe/read_specs.md"
     orient:
+      - path: "builtin:fragments/orient/understand_refactor_request.md"
       - path: "builtin:fragments/orient/identify_structural_issues.md"
       - path: "builtin:fragments/orient/identify_duplication.md"
     decide:
@@ -865,12 +868,13 @@ procedures:
   draft-plan-spec-chore:
     display: "Draft Plan: Spec Maintenance"
     summary: "Create plan for specification maintenance tasks"
-    description: "Identifies maintenance needs in specs and creates chore plan"
+    description: "Analyzes maintenance request from task input and creates focused chore plan for specifications"
     observe:
       - path: "builtin:fragments/observe/read_agents_md.md"
       - path: "builtin:fragments/observe/read_task_input.md"
       - path: "builtin:fragments/observe/read_specs.md"
     orient:
+      - path: "builtin:fragments/orient/understand_chore_request.md"
       - path: "builtin:fragments/orient/identify_maintenance_needs.md"
     decide:
       - path: "builtin:fragments/decide/break_down_into_tasks.md"
@@ -923,12 +927,13 @@ procedures:
   draft-plan-impl-refactor:
     display: "Draft Plan: Implementation Refactor"
     summary: "Create plan for code refactoring"
-    description: "Identifies code smells and complexity issues, creates refactoring plan"
+    description: "Analyzes refactoring request from task input and creates focused refactoring plan for code"
     observe:
       - path: "builtin:fragments/observe/read_agents_md.md"
       - path: "builtin:fragments/observe/read_task_input.md"
       - path: "builtin:fragments/observe/read_impl.md"
     orient:
+      - path: "builtin:fragments/orient/understand_refactor_request.md"
       - path: "builtin:fragments/orient/identify_code_smells.md"
       - path: "builtin:fragments/orient/identify_complexity_issues.md"
     decide:
@@ -942,12 +947,13 @@ procedures:
   draft-plan-impl-chore:
     display: "Draft Plan: Implementation Maintenance"
     summary: "Create plan for code maintenance tasks"
-    description: "Identifies maintenance needs in code and creates chore plan"
+    description: "Analyzes maintenance request from task input and creates focused chore plan for code"
     observe:
       - path: "builtin:fragments/observe/read_agents_md.md"
       - path: "builtin:fragments/observe/read_task_input.md"
       - path: "builtin:fragments/observe/read_impl.md"
     orient:
+      - path: "builtin:fragments/orient/understand_chore_request.md"
       - path: "builtin:fragments/orient/identify_maintenance_needs.md"
     decide:
       - path: "builtin:fragments/decide/break_down_into_tasks.md"

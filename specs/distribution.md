@@ -9,25 +9,43 @@ Enable users to install rooda as a single binary with no external dependencies, 
 1. **Build single binary** — Compile Go source to standalone executable with embedded prompts
 2. **Cross-compile for platforms** — Generate binaries for macOS (arm64, amd64), Linux (amd64, arm64), Windows (amd64)
 3. **Embed default prompts** — Package `prompts/*.md` files using `go:embed` so binary is self-contained
-4. **Install via package manager** — Support Homebrew for macOS users
-5. **Install via direct download** — Provide curl-based installation for Linux/CI environments
-6. **Install via Go toolchain** — Support `go install` for Go developers
-7. **Version the binary** — Embed version string at build time using `-ldflags`
+4. **Install via direct download** — Provide curl-based installation for Linux/CI environments
+5. **Install via Go toolchain** — Support `go install` for Go developers
+6. **Version the binary** — Embed version string at build time using `-ldflags`
 
 ## Acceptance Criteria
 
-- [ ] `go build` produces single binary with no runtime dependencies (no external yq, no separate prompt files)
-- [ ] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64
+- [x] `go build` produces single binary with no runtime dependencies (no external yq, no separate prompt files)
+- [x] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64
 - [ ] SHA256 checksums generated for all binaries in checksums.txt
 - [ ] Install script verifies checksums before installation
-- [ ] Install script hosted in GitHub Releases (not main branch)
-- [ ] `rooda version` reports correct version string embedded at build time
-- [ ] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
-- [ ] Homebrew formula installs binary to standard location and adds to PATH
-- [ ] `curl | sh` installation script downloads correct binary for detected platform
-- [ ] `go install github.com/jomadu/rooda@latest` installs from source
-- [ ] Binary size is reasonable (< 20MB uncompressed)
-- [ ] Installation instructions documented in README.md
+- [x] Install script hosted in GitHub Releases (not main branch)
+- [x] `rooda version` reports correct version string embedded at build time
+- [x] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
+- [x] `curl | sh` installation script downloads correct binary for detected platform
+- [x] `go install github.com/jomadu/rooda@latest` installs from source
+- [x] Binary size is reasonable (< 20MB uncompressed)
+- [x] Installation instructions documented in README.md
+
+## Implementation Status
+
+**Working Methods:**
+- ✅ **curl install** — `curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash`
+- ✅ **Direct download** — Download platform-specific binary from GitHub Releases
+- ✅ **go install** — `go install github.com/jomadu/rooda@latest`
+
+**Not Implemented:**
+- ❌ **Checksum verification** — checksums.txt not generated, install script does not verify
+
+## Removing Distribution Methods
+
+If a distribution method needs to be removed or deprecated:
+
+1. **Update this spec** — Mark acceptance criteria as NOT IMPLEMENTED, move to "Not Implemented" section
+2. **Update README.md** — Remove installation instructions for deprecated method
+3. **Update docs/installation.md** — Remove or mark as deprecated
+4. **Add deprecation notice** — If method was previously working, add notice explaining removal
+5. **File cleanup issue** — Create task to remove related scripts, workflows, or documentation
 
 ## Data Structures
 
@@ -86,19 +104,12 @@ GOOS=windows GOARCH=amd64 → rooda-windows-amd64.exe
    sha256sum rooda-* > checksums.txt
 
 6. Package for distribution:
-   - Homebrew: Create formula with download URL and SHA256
    - Direct download: Host binaries with install.sh script (includes checksum verification)
    - Go install: Tag release, push to GitHub
    - Include install.sh and checksums.txt in GitHub Release assets
 ```
 
 ### Installation Methods
-
-**Homebrew (macOS):**
-```bash
-brew tap jomadu/rooda
-brew install rooda
-```
 
 **Direct download (Linux/macOS/Windows):**
 ```bash
@@ -117,7 +128,7 @@ go install github.com/jomadu/rooda@latest
 3. Fall back to embedded defaults (extracted from embed.FS)
 ```
 
-## Edge Cases
+### Edge Cases
 
 ### Missing Embedded Prompts
 - **Scenario:** Build succeeds but `go:embed` directive is malformed
@@ -143,12 +154,6 @@ go install github.com/jomadu/rooda@latest
 - **Detection:** CI verifies `rooda version` output matches `$GITHUB_REF_NAME`
 - **Handling:** Release fails if version mismatch detected
 
-### Homebrew Formula Outdated
-- **Scenario:** New release published but Homebrew formula not updated
-- **Detection:** GitHub Actions workflow updates formula automatically
-- **Handling:** Workflow clones jomadu/homebrew-rooda, updates rooda.rb with new version and SHA256s, commits and pushes
-- **Setup:** Requires HOMEBREW_TAP_TOKEN secret with repo + workflow scopes (see docs/HOMEBREW_SETUP.md)
-
 ### Large Binary Size
 - **Scenario:** Binary exceeds 20MB due to embedded assets
 - **Detection:** CI checks binary size after build
@@ -167,7 +172,6 @@ go install github.com/jomadu/rooda@latest
 
 ### Distribution
 - GitHub Releases (for hosting binaries)
-- Homebrew tap repository (for macOS package manager)
 - install.sh script (for curl-based installation)
 
 ## Implementation Mapping
@@ -177,7 +181,6 @@ go install github.com/jomadu/rooda@latest
 - `internal/prompts/loader.go` — Prompt resolution (custom vs embedded)
 - `scripts/build.sh` — Cross-compilation script
 - `scripts/install.sh` — Platform detection and download script
-- `jomadu/homebrew-rooda/rooda.rb` — Homebrew formula (separate repo, auto-updated by CI)
 - `.github/workflows/release.yml` — CI pipeline for building and publishing
 
 ### Related Specs
@@ -213,25 +216,11 @@ $ ls -lh rooda-linux-amd64
 
 **Verification:** Binary is ELF format, statically linked, reasonable size.
 
-### Example 3: Install via Homebrew
+### Example 3: Install via curl
 ```bash
-$ brew tap jomadu/rooda
-$ brew install rooda
-
-$ which rooda
-/opt/homebrew/bin/rooda
-
-$ rooda version
-rooda v2.0.0 (commit: a1b2c3d4e5f6, built: 2026-02-08T20:00:00Z)
-```
-
-**Verification:** Binary installed to standard Homebrew location, version correct.
-
-### Example 4: Install via curl
-```bash
-$ curl -fsSL https://github.com/jomadu/rooda/releases/latest/download/install.sh | sh
+$ curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 Detecting platform... darwin/arm64
-Downloading rooda v2.0.0...
+Downloading rooda...
 Installing to /usr/local/bin/rooda...
 Installation complete!
 
@@ -241,7 +230,7 @@ rooda v2.0.0 (commit: a1b2c3d4e5f6, built: 2026-02-08T20:00:00Z)
 
 **Verification:** Script detects platform, downloads correct binary, installs to PATH.
 
-### Example 5: Embedded Prompts Fallback
+### Example 4: Embedded Prompts Fallback
 ```bash
 $ rm -rf ./prompts  # No custom prompts
 $ rm -rf ~/.config/rooda/prompts  # No global prompts
@@ -254,7 +243,7 @@ $ rooda run build --dry-run
 
 **Verification:** Binary runs without external prompt files, uses embedded defaults.
 
-### Example 6: CI/CD Installation
+### Example 5: CI/CD Installation
 ```yaml
 # .github/workflows/test.yml
 steps:
@@ -288,14 +277,13 @@ Embedding default prompts ensures the binary is self-contained and version-locke
 
 Go's built-in cross-compilation makes it trivial to support multiple platforms without separate build environments. A single `go build` command with `GOOS` and `GOARCH` produces binaries for macOS, Linux, and different architectures. This is essential for CI/CD environments where users may run rooda on various platforms.
 
-### Why Homebrew + curl + go install?
+### Why curl + go install?
 
 Different users have different preferences:
-- **Homebrew:** macOS users expect `brew install` for CLI tools
 - **curl | sh:** Common pattern for Linux/CI environments (Docker, GitHub Actions)
 - **go install:** Go developers prefer installing from source
 
-Supporting all three maximizes adoption with minimal maintenance (Homebrew formula is auto-generated, install.sh is a simple script, `go install` is built into Go).
+Supporting both maximizes adoption with minimal maintenance (install.sh is a simple script, `go install` is built into Go).
 
 ### Binary Size Considerations
 
@@ -313,8 +301,9 @@ Using `-ldflags` to inject version metadata at build time ensures `rooda version
 The `curl | sh` pattern is convenient but risky if the script is compromised. Mitigations:
 - Host script in version-controlled repo (GitHub)
 - Use HTTPS (fsSL flags: fail silently, show errors, follow redirects, use SSL)
-- Verify binary SHA256 in script before installing
 - Document alternative: download binary directly and verify manually
+
+**Note:** Checksum verification not yet implemented. Install script currently downloads without SHA256 verification.
 
 ### Windows Support
 
@@ -346,6 +335,8 @@ Install script renames platform-specific artifact to generic name during install
 
 ### Checksum Verification
 
+**Not yet implemented.** Future enhancement:
+
 Generate checksums during build:
 ```bash
 sha256sum rooda-* > checksums.txt
@@ -357,4 +348,4 @@ Install script verifies before execution:
 grep "$BINARY" checksums.txt | sha256sum -c -
 ```
 
-Prevents MITM attacks and ensures binary integrity. Checksums.txt included in GitHub Release assets.
+Would prevent MITM attacks and ensure binary integrity. Checksums.txt would be included in GitHub Release assets.

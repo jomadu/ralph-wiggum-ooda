@@ -239,7 +239,7 @@ function ExtractCrossReferences(content) -> []CrossReference:
 
 **docs/installation.md**
 - **Purpose:** Explain how to install rooda on different platforms
-- **Required sections:** Prerequisites, Homebrew, Direct Download, Build from Source, Verification
+- **Required sections:** Prerequisites, Quick Install, Direct Download, Build from Source, Verification
 - **Source truth:** `scripts/install.sh`, `Makefile`, `README.md`
 - **Quality criteria:**
   - All installation methods documented
@@ -396,13 +396,13 @@ This will seamlessly install rooda and all its dependencies.
 ```markdown
 ## Installation
 
-rooda requires Go 1.24.5 or later. Install with Homebrew:
+Install rooda with the installation script:
 
 ```bash
-brew install rooda
+curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 ```
 
-This installs rooda and its dependencies.
+This installs rooda to your system.
 ```
 
 **Changes:**

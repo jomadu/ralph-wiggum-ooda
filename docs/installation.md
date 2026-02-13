@@ -1,19 +1,12 @@
 # Installation
 
-## Quick install
+## Quick Install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 ```
 
 Installs the latest release to `/usr/local/bin/rooda` (or `~/.local/bin/rooda` if you don't have write access).
-
-## Homebrew (macOS/Linux)
-
-```bash
-brew tap jomadu/rooda
-brew install rooda
-```
 
 ## Direct Download
 

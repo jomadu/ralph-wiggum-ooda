@@ -82,7 +82,7 @@ All user-facing documentation (README.md, docs/) must pass humanizer review befo
 
 ## Outdated Documentation
 
-- docs/installation.md documents Homebrew install but specs/distribution.md specifies direct download only
+- None currently identified
 ```
 
 ### Task Structure (Doc Work)
@@ -552,20 +552,20 @@ grep -A 5 "\-\-context" docs/cli-reference.md | grep "rooda run" | bash
 It's important to note that rooda requires Go 1.24.5 or later. Simply run the following command to easily install rooda:
 
 ```bash
-brew install rooda
+curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 ```
 
-This will seamlessly install rooda and leverage Homebrew's robust package management to ensure all dependencies are properly configured.
+This will seamlessly install rooda with a single command.
 ```
 
 **After humanization:**
 ```markdown
 ## Installation
 
-rooda requires Go 1.24.5 or later. Install with Homebrew:
+Install rooda with the installation script:
 
 ```bash
-brew install rooda
+curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash
 ```
 
 This installs rooda and its dependencies.

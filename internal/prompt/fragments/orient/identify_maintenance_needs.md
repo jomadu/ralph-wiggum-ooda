@@ -1,8 +1,8 @@
 # Identify Maintenance Needs
 
-Your task is to identify maintenance work needed in specifications or code.
+Your task is to identify maintenance work needed in specifications or code within the scope defined in the maintenance request.
 
-Find maintenance tasks in specifications or code.
+Find maintenance tasks in the target area.
 
 Look for:
 - Outdated dependencies
@@ -10,3 +10,5 @@ Look for:
 - TODO or FIXME comments
 - Missing documentation
 - Technical debt markers
+
+Focus only on the scope identified in the maintenance request. Do not expand analysis beyond that boundary.
