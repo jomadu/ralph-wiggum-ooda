@@ -2,7 +2,7 @@
 
 rooda uses a three-tier configuration system with clear precedence: CLI flags > environment variables > workspace config > global config > built-in defaults.
 
-## Configuration tiers
+## Configuration Tiers
 
 ### 1. Built-in defaults (lowest precedence)
 
