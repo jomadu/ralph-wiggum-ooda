@@ -17,8 +17,8 @@ Enable users to install rooda as a single binary with no external dependencies, 
 
 - [x] `go build` produces single binary with no runtime dependencies (no external yq, no separate prompt files)
 - [x] Binary runs on macOS arm64, macOS amd64, Linux amd64, Linux arm64, Windows amd64
-- [ ] SHA256 checksums generated for all binaries in checksums.txt
-- [ ] Install script verifies checksums before installation
+- [x] SHA256 checksums generated for all binaries in checksums.txt
+- [x] Install script verifies checksums before installation
 - [x] Install script hosted in GitHub Releases (not main branch)
 - [x] `rooda version` reports correct version string embedded at build time
 - [x] Default prompts are accessible when no custom prompts provided (embedded via `go:embed`)
@@ -33,9 +33,7 @@ Enable users to install rooda as a single binary with no external dependencies, 
 - ✅ **curl install** — `curl -fsSL https://raw.githubusercontent.com/jomadu/rooda/main/scripts/install.sh | bash`
 - ✅ **Direct download** — Download platform-specific binary from GitHub Releases
 - ✅ **go install** — `go install github.com/jomadu/rooda@latest`
-
-**Not Implemented:**
-- ❌ **Checksum verification** — checksums.txt not generated, install script does not verify
+- ✅ **Checksum verification** — checksums.txt generated, install script verifies SHA256
 
 ## Removing Distribution Methods
 
@@ -58,6 +56,23 @@ var (
     BuildDate string // e.g., "2026-02-08T20:00:00Z"
 )
 ```
+
+#### Local vs Release Builds
+
+**Local builds** (using `make build` or `go build` directly) show development metadata:
+```bash
+$ make build
+$ ./bin/rooda version
+rooda dev (commit: unknown, built: unknown)
+```
+
+**Release builds** (via CI/CD pipeline) inject real version information using `-ldflags`:
+```bash
+$ rooda version
+rooda v2.0.0 (commit: a1b2c3d4e5f6, built: 2026-02-08T20:00:00Z)
+```
+
+This difference is intentional. Local builds use placeholder values because version metadata comes from git tags and CI environment variables. Release builds have access to this information and embed it at compile time.
 
 ### Embedded Prompts
 ```go
@@ -348,4 +363,149 @@ Install script verifies before execution:
 grep "$BINARY" checksums.txt | sha256sum -c -
 ```
 
-Would prevent MITM attacks and ensure binary integrity. Checksums.txt would be included in GitHub Release assets.
+Prevents MITM attacks and ensures binary integrity. Checksums.txt included in GitHub Release assets.
+
+## CI/CD Pipeline
+
+### Job to be Done
+
+Automatically verify code quality on pull requests and publish release artifacts when version tags are pushed.
+
+### Activities
+
+1. **PR checks** — Run lint, test, and build on every pull request and main branch push
+2. **Release builds** — Cross-compile binaries for all platforms when version tag is pushed
+3. **Checksum generation** — Generate SHA256 checksums for all release binaries
+4. **GitHub Release** — Publish binaries, checksums, and install script to GitHub Releases
+
+### Acceptance Criteria
+
+- [x] CI workflow runs on all pull requests and main branch pushes
+- [x] CI workflow runs `make lint`, `make test`, `make build` in sequence
+- [x] CI workflow fails if any step fails (blocks PR merge if branch protection enabled)
+- [x] Release workflow triggers only on version tags (e.g., `v2.0.0`)
+- [x] Release workflow cross-compiles for all 5 platforms (darwin arm64/amd64, linux amd64/arm64, windows amd64)
+- [x] Release workflow embeds version metadata using `-ldflags`
+- [x] Release workflow generates checksums.txt with SHA256 for all binaries
+- [x] Release workflow creates GitHub Release with all binaries, checksums, and install script
+
+### Workflows
+
+#### PR Workflow (ci.yml)
+
+**Trigger:** Pull requests and pushes to main branch
+
+**Steps:**
+1. Checkout code
+2. Set up Go 1.24.5
+3. Run `make lint` (go vet)
+4. Run `make test` (all tests)
+5. Run `make build` (binary compilation)
+
+**Purpose:** Verify code quality before merge. Prevents broken code from entering main branch.
+
+#### Release Workflow (release.yml)
+
+**Trigger:** Push of version tag (e.g., `v2.0.0`)
+
+**Steps:**
+1. Checkout code
+2. Set up Go 1.24.5
+3. Cross-compile binaries for all platforms with version metadata
+4. Generate SHA256 checksums
+5. Create GitHub Release with artifacts
+
+**Purpose:** Automate release process. Ensures consistent builds.
+
+### Branch Protection Setup
+
+To enforce CI checks before merge:
+
+1. Navigate to repository Settings → Branches
+2. Add branch protection rule for `main`
+3. Enable "Require status checks to pass before merging"
+4. Select required checks: `ci` (from ci.yml workflow)
+5. Enable "Require branches to be up to date before merging"
+
+See docs/troubleshooting.md for detailed setup instructions.
+
+### Examples
+
+#### Example 1: PR Check Success
+```yaml
+# Pull request #42 opened
+# CI workflow triggered
+
+Run make lint
+✓ go vet ./...
+
+Run make test
+✓ go test ./...
+ok      github.com/jomadu/rooda/internal/config    0.123s
+ok      github.com/jomadu/rooda/internal/prompt    0.089s
+
+Run make build
+✓ go build -o bin/rooda ./cmd/rooda
+
+# All checks passed ✓
+# PR ready to merge
+```
+
+**Verification:** CI workflow completes successfully, PR shows green checkmark.
+
+#### Example 2: PR Check Failure
+```yaml
+# Pull request #43 opened
+# CI workflow triggered
+
+Run make lint
+✓ go vet ./...
+
+Run make test
+✗ go test ./...
+FAIL    github.com/jomadu/rooda/internal/config    0.156s
+--- FAIL: TestLoadConfig (0.01s)
+    config_test.go:42: expected nil error, got: invalid format
+
+# Check failed ✗
+# PR blocked from merge (if branch protection enabled)
+```
+
+**Verification:** CI workflow fails, PR shows red X, merge button disabled.
+
+#### Example 3: Release Build
+```bash
+# Developer pushes version tag
+$ git tag v2.1.0
+$ git push origin v2.1.0
+
+# Release workflow triggered
+# Cross-compiling binaries...
+✓ rooda-darwin-arm64 (12.3 MB)
+✓ rooda-darwin-amd64 (13.1 MB)
+✓ rooda-linux-amd64 (12.8 MB)
+✓ rooda-linux-arm64 (12.5 MB)
+✓ rooda-windows-amd64.exe (13.2 MB)
+
+# Generating checksums...
+✓ checksums.txt
+
+# Creating GitHub Release...
+✓ Release v2.1.0 published
+
+# Users can now install:
+$ brew upgrade rooda
+==> Upgrading rooda 2.0.0 -> 2.1.0
+```
+
+**Verification:** GitHub Release created with all artifacts, users can install new version.
+
+### Notes
+
+#### Why Separate CI and Release Workflows?
+
+CI runs on every PR and main push to catch issues early. Release runs only on version tags to avoid unnecessary builds. This separation keeps CI fast (no cross-compilation) while ensuring releases are comprehensive (all platforms).
+
+#### Branch Protection Enforcement
+
+Branch protection is repository configuration, not code. Maintainers must enable it manually in GitHub settings. Without branch protection, CI checks are informational only (PRs can merge even if checks fail). With branch protection, failed checks block merge.

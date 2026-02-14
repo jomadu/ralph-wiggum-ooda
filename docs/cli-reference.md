@@ -58,7 +58,7 @@ rooda --help
 rooda run --help  # Command-specific help
 ```
 
-## Global flags
+## Global Flags
 
 Available for all commands:
 
